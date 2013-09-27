@@ -1,0 +1,241 @@
+#! /bin/bash
+
+installLTSP() {
+apt-get update && apt-get upgrade
+
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-system-tools
+}
+
+buildClient() {
+
+wget http://archive.raspbian.org/raspbian.public.key -O - | gpg --import
+gpg --export 90FDDD2E >> /etc/ltsp/raspbian.public.key.gpg
+
+rm /etc/ltsp/ltsp-raspbian.conf
+
+cat <<EOF > /etc/ltsp/ltsp-raspbian.conf
+DEBOOTSTRAP_KEYRING=/etc/ltsp/raspbian.public.key.gpg
+DIST=wheezy
+# For alternate raspbian mirrors, see: http://www.raspbian.org/RaspbianMirrors
+MIRROR=http://archive.raspbian.org/raspbian
+SECURITY_MIRROR=none
+KERNEL_PACKAGES=linux-image-3.2.0-4-rpi
+EOF
+
+ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
+}
+
+OneTimeFixes(){
+
+echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports
+
+}
+
+configFixes() {
+
+
+sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
+echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
+cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
+ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
+}
+
+ipAddress() {
+rm -rf ~/Downloads/piBoot
+git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+mount -o loop ~/Downloads/piBoot/boot.img /mnt
+
+
+IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`;
+
+whiptail --title "Ip address" --yesno "Is this your planned server IP address? - "$IP 8 78
+ 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    echo "User selected Yes."
+else
+    echo "User selected No."
+
+
+INIT=Blue
+IP=$(whiptail --inputbox "Please enter IP address" 8 78 $INIT --title "IP address" 3>&1 1>&2 2>&3)
+ 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    echo "User selected Ok and entered " $IP
+else
+    echo "User selected Cancel."
+fi
+ 
+echo "(Exit status was $exitstatus)"
+
+
+
+
+fi
+ 
+echo "(Exit status was $exitstatus)"
+
+sudo sed -i 's/1.1.1.1/'$IP'/g' /mnt/cmdline.txt
+sleep 5
+umount /mnt
+
+service nfs-kernel-server restart
+
+cp ~/Downloads/piBoot/boot.img ~/boot.img
+rm -rf ~/Downloads/piBoot
+
+}
+
+InstallProgram() {
+INSTALLP=$(whiptail --inputbox "What program would you like to install?" 8 78 $INIT --title "You can enter multiple programs by leaving a space between each" 3>&1 1>&2 2>&3)
+ 
+exitstatus=$?
+clear
+echo "------------------------------------------------------"
+echo "Am about to try and install " $INSTALLP
+echo "Are you sure? y or n"
+echo "------------------------------------------------------"
+read RESULT
+if [ "$RESULT" = "y" ]; then
+	echo "Updating software lists"
+	echo ""
+	ltsp-chroot --arch armhf apt-get update
+	ltsp-chroot --arch armhf apt-get -y install $INSTALLP
+	if [ $? -eq 0 ]; then
+		echo "-----------------------------"
+		echo $INSTALLP " was installed correctly"
+		echo "-----------------------------"
+		sleep 4
+	else
+		echo "-----------------------------"
+		echo "ERROR"
+		echo $INSTALLP " was NOT installed correctly    Read error above"
+		echo "-----------------------------"
+		sleep 8
+	fi
+fi
+	
+	
+
+
+}
+
+
+Finished() {
+whiptail --title "Install complete" --msgbox "The client install is complete, a boot.img file has been placed in /root folder, write this to an sd card" 16 78
+
+
+}
+
+AddSoftware(){
+#------------------------------------------------------------------------------------------
+#******************************************************************************************
+
+
+# To add more software, just add it to the end of the list below taking a space after each program
+
+ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
+
+
+#******************************************************************************************
+#------------------------------------------------------------------------------------------
+
+}
+
+EpoptesInstaller() {
+whiptail --title "Install complete" --msgbox "Epoptes is classroom management for remote controlling and viewing everyone in the classes screen. You must enter a linux user" 16 78
+INIT=Username
+ADMIN=$(whiptail --inputbox "Please enter the admin account you wish to use with epoptes, this account can control other users." 8 78 $INIT --title "Epoptes Admin" 3>&1 1>&2 2>&3)
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+	apt-get update
+	apt-get install -y epoptes
+    gpasswd -a $ADMIN epoptes
+    gpasswd -a root epoptes
+    ltsp-chroot --arch armhf apt-get update
+    ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends
+    ltsp-chroot --arch armhf epoptes-client -c 
+else
+	echo "***** WARNING *****"
+	echo ""
+    echo "Epoptes not installed!"
+    echo ""
+    echo "***** WARNING *****"
+    sleep 5
+fi
+}
+
+#100
+Menu() {
+echo menu loaded
+#sleep 1
+
+
+  MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Full" "Full install of the Pi LTSP server" \
+    "Change-IP" "Update or change the sd card image" \
+    "Install-Program" "Install a new program on the Raspberry Pi's" \
+    "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
+    "Manage-Users" "Management of users on the network" \
+    "Install-Epoptes" "Install Epoptes, a classroom management piece of software" \
+    3>&1 1>&2 2>&3)
+
+#echo hi
+#echo $MENUOPT
+#if [$MENUOPT -eq 0]; then
+case "$MENUOPT" in 
+    Full)
+    installLTSP
+	buildClient
+	OneTimeFixes
+	configFixes
+	ipAddress
+	Menu
+        ;;
+Change-IP)
+	ipAddress
+	Menu
+	;;
+Install-Program)
+	InstallProgram
+	Menu
+	;;
+Rebuild-OS)
+	#echo rebuilding
+	whiptail --title "About to delete entire client OS" --yesno "Are you sure? Users are not affected" 8 78
+ 
+	exitstatus=$?
+	if [ $exitstatus = 0 ]; then
+    	rm -rf /opt/ltsp/armhf
+    	rm -rf /var/lib/tftpboot/ltsp/armhf
+    	buildClient
+    	configFixes
+		ipAddress
+	fi
+	menu
+	;;
+Manage-Users)
+	whiptail --title "User management" --msgbox "I have installed a program called users and groups on your server. It is much easier to use it. Any user added in it will be able to log in to any of the networked clients, they don't have sudo by default!" 16 78
+	
+	#sleep 2
+	Menu
+;;	
+	
+Install-Epoptes)
+	EpoptesInstaller
+	Menu
+	;;
+	esac
+#fi
+}
+
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+Menu
+
+
+
