@@ -1,9 +1,14 @@
 #! /bin/bash
+#Version 0.02
+UpdateLoc = "https://raw.github.com/gbaman/RaspberryPi-LTSP/master/UPDATE"
+
+Written by gbaman1, based off the fantastic work by vagrantc from the LTSP community
+Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 
 installLTSP() {
 apt-get update && apt-get upgrade
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-system-tools
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
 }
 
 buildClient() {
@@ -17,7 +22,7 @@ cat <<EOF > /etc/ltsp/ltsp-raspbian.conf
 DEBOOTSTRAP_KEYRING=/etc/ltsp/raspbian.public.key.gpg
 DIST=wheezy
 # For alternate raspbian mirrors, see: http://www.raspbian.org/RaspbianMirrors
-MIRROR=http://archive.raspbian.org/raspbian
+MIRROR=http://mirrordirector.raspbian.org/raspbian
 SECURITY_MIRROR=none
 KERNEL_PACKAGES=linux-image-3.2.0-4-rpi
 EOF
@@ -37,7 +42,8 @@ configFixes() {
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
 cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
-ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
+
+#ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
 }
 
 ipAddress() {
@@ -87,6 +93,45 @@ rm -rf ~/Downloads/piBoot
 
 }
 
+FixRepo() {
+
+echo "deb http://archive.raspberrypi.org/debian/ wheezy main untested" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+ltsp-chroot --arch armhf apt-key add - <<EOF1
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+mQENBE/d7o8BCACrwqQacGJfn3tnMzGui6mv2lLxYbsOuy/+U4rqMmGEuo3h9m92
+30E2EtypsoWczkBretzLUCFv+VUOxaA6sV9+puTqYGhhQZFuKUWcG7orf7QbZRuu
+TxsEUepW5lg7MExmAu1JJzqM0kMQX8fVyWVDkjchZ/is4q3BPOUCJbUJOsE+kK/6
+8kW6nWdhwSAjfDh06bA5wvoXNjYoDdnSZyVdcYCPEJXEg5jfF/+nmiFKMZBraHwn
+eQsepr7rBXxNcEvDlSOPal11fg90KXpy7Umre1UcAZYJdQeWcHu7X5uoJx/MG5J8
+ic6CwYmDaShIFa92f8qmFcna05+lppk76fsnABEBAAG0IFJhc3BiZXJyeSBQaSBB
+cmNoaXZlIFNpZ25pbmcgS2V5iQE4BBMBAgAiBQJP3e6PAhsDBgsJCAcDAgYVCAIJ
+CgsEFgIDAQIeAQIXgAAKCRCCsSmSf6MwPk6vB/9pePB3IukU9WC9Bammh3mpQTvL
+OifbkzHkmAYxzjfK6D2I8pT0xMxy949+ThzJ7uL60p6T/32ED9DR3LHIMXZvKtuc
+mQnSiNDX03E2p7lIP/htoxW2hDP2n8cdlNdt0M9IjaWBppsbO7IrDppG2B1aRLni
+uD7v8bHRL2mKTtIDLX42Enl8aLAkJYgNWpZyPkDyOqamjijarIWjGEPCkaURF7g4
+d44HvYhpbLMOrz1m6N5Bzoa5+nq3lmifeiWKxioFXU+Hy5bhtAM6ljVb59hbD2ra
+X4+3LXC9oox2flmQnyqwoyfZqVgSQa0B41qEQo8t1bz6Q1Ti7fbMLThmbRHiuQEN
+BE/d7o8BCADNlVtBZU63fm79SjHh5AEKFs0C3kwa0mOhp9oas/haDggmhiXdzeD3
+49JWz9ZTx+vlTq0s+I+nIR1a+q+GL+hxYt4HhxoA6vlDMegVfvZKzqTX9Nr2VqQa
+S4Kz3W5ULv81tw3WowK6i0L7pqDmvDqgm73mMbbxfHD0SyTt8+fk7qX6Ag2pZ4a9
+ZdJGxvASkh0McGpbYJhk1WYD+eh4fqH3IaeJi6xtNoRdc5YXuzILnp+KaJyPE5CR
+qUY5JibOD3qR7zDjP0ueP93jLqmoKltCdN5+yYEExtSwz5lXniiYOJp8LWFCgv5h
+m8aYXkcJS1xVV9Ltno23YvX5edw9QY4hABEBAAGJAR8EGAECAAkFAk/d7o8CGwwA
+CgkQgrEpkn+jMD5Figf/dIC1qtDMTbu5IsI5uZPX63xydaExQNYf98cq5H2fWF6O
+yVR7ERzA2w33hI0yZQrqO6pU9SRnHRxCFvGv6y+mXXXMRcmjZG7GiD6tQWeN/3wb
+EbAn5cg6CJ/Lk/BI4iRRfBX07LbYULCohlGkwBOkRo10T+Ld4vCCnBftCh5x2OtZ
+TOWRULxP36y2PLGVNF+q9pho98qx+RIxvpofQM/842ZycjPJvzgVQsW4LT91KYAE
+4TVf6JjwUM6HZDoiNcX6d7zOhNfQihXTsniZZ6rky287htsWVDNkqOi5T3oTxWUo
+m++/7s3K3L0zWopdhMVcgg6Nt9gcjzqN1c0gy55L/g==
+=mNSj
+-----END PGP PUBLIC KEY BLOCK-----
+EOF1
+
+
+}
+
 InstallProgram() {
 INSTALLP=$(whiptail --inputbox "What program would you like to install?" 8 78 $INIT --title "You can enter multiple programs by leaving a space between each" 3>&1 1>&2 2>&3)
  
@@ -129,19 +174,69 @@ whiptail --title "Install complete" --msgbox "The client install is complete, a 
 }
 
 AddSoftware(){
+
+FixRepo
 #------------------------------------------------------------------------------------------
 #******************************************************************************************
 
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
+ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch python3-tk python3-rpi.gpio debian-reference-en dillo python idle python-pygame python-tk chromium python3-numpy wget
 
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
 
 }
+
+UpdateChecker() {
+
+}
+
+EpoptesMenu() {
+
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Install" "Install epoptes to server and pis" \
+    "Epoptes-launch" "Launches epoptes, it must be installed first though" \
+    "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
+    "Remove-epoptes" "Uninstall epoptes from the pi clients" \
+    "Manage-Users" "Management of users on the network. Also change passwords" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Install) 
+    EpoptesInstaller
+	Menu
+    ;;
+    Epoptes-launch)
+    EpoptesRun
+    Menu
+    	;;
+    Epoptes-admin)
+    EpoptesAddAdmin
+    Menu
+    	;;
+    Remove-epoptes)
+	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
+    ltsp-chroot --arch armhf apt-get -y autoremove
+    whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
+    Menu
+    ;;
+    *)
+    Menu
+    ;;
+
+esac
+#COMMENT1
+}
+    
+    
+    
+    
+
 
 EpoptesInstaller() {
 whiptail --title "Install complete" --msgbox "Epoptes is classroom management for remote controlling and viewing everyone in the classes screen. You must enter a linux user" 16 78
@@ -166,9 +261,32 @@ else
 fi
 }
 
+EpoptesRun() {
+INIT=""
+ADMIN=$(whiptail --inputbox "Please enter your eopotes username" 8 78 $INIT --title "Epoptes username" 3>&1 1>&2 2>&3)
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+	su -c "epoptes &" $ADMIN > /dev/null 2>&1 &
+fi
+}
+
+EpoptesAddAdmin(){
+ADMIN=$(whiptail --inputbox "Please enter an admin account you wish to use with epoptes, this account can control other users." 8 78 $INIT --title "Epoptes Admin" 3>&1 1>&2 2>&3)
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+	INIT=""
+	gpasswd -a $ADMIN epoptes
+else
+	whiptail --title "Install complete" --msgbox "No admin user has been added" 16 78
+fi
+}
+
+
+
+
 #100
 Menu() {
-echo menu loaded
+#echo menu loaded
 #sleep 1
 
 
@@ -176,9 +294,10 @@ echo menu loaded
     "Full" "Full install of the Pi LTSP server" \
     "Change-IP" "Update or change the sd card image" \
     "Install-Program" "Install a new program on the Raspberry Pi's" \
+    "Update-All" "Run an automatic update on server and pi image" \
     "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
-    "Manage-Users" "Management of users on the network" \
-    "Install-Epoptes" "Install Epoptes, a classroom management piece of software" \
+    "Manage-Users" "Management of users on the network. Also change passwords" \
+    "Epoptes-Menu" "Epoptes classroom management submenu" \
     3>&1 1>&2 2>&3)
 
 #echo hi
@@ -198,6 +317,7 @@ Change-IP)
 	Menu
 	;;
 Install-Program)
+	FixRepo
 	InstallProgram
 	Menu
 	;;
@@ -213,11 +333,11 @@ Rebuild-OS)
     	configFixes
 		ipAddress
 	fi
-	menu
+	Menu
 	;;
 Manage-Users)
-	whiptail --title "User management" --msgbox "I have installed a program called users and groups on your server. It is much easier to use it. Any user added in it will be able to log in to any of the networked clients, they don't have sudo by default!" 16 78
-	
+	#whiptail --title "User management" --msgbox "I have installed a program called users and groups on your server. It is much easier to use it. Any user added in it will be able to log in to any of the networked clients, they don't have sudo by default!" 16 78
+	su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
 	#sleep 2
 	Menu
 ;;	
@@ -225,6 +345,12 @@ Manage-Users)
 Install-Epoptes)
 	EpoptesInstaller
 	Menu
+	;;
+Update-All)
+	apt-get update && apt-get upgrade
+	ltsp-chroot --arch armhf apt-get update && apt-get upgrade
+Epoptes-Menu)
+	EpoptesMenu
 	;;
 	esac
 #fi
@@ -236,6 +362,4 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 Menu
-
-
 
