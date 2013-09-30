@@ -1,9 +1,9 @@
 #! /bin/bash
 #Version 0.02
-UpdateLoc = "https://raw.github.com/gbaman/RaspberryPi-LTSP/master/UPDATE"
+#UpdateLoc = "https://raw.github.com/gbaman/RaspberryPi-LTSP/master/UPDATE"
 
-Written by gbaman1, based off the fantastic work by vagrantc from the LTSP community
-Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
+#Written by gbaman1, based off the fantastic work by vagrantc from the LTSP community
+#Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 
 installLTSP() {
 apt-get update && apt-get upgrade
@@ -190,9 +190,7 @@ ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-d
 
 }
 
-UpdateChecker() {
 
-}
 
 EpoptesMenu() {
 
@@ -201,7 +199,6 @@ EpoptesMenu() {
     "Epoptes-launch" "Launches epoptes, it must be installed first though" \
     "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
     "Remove-epoptes" "Uninstall epoptes from the pi clients" \
-    "Manage-Users" "Management of users on the network. Also change passwords" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -234,8 +231,7 @@ esac
 }
     
     
-    
-    
+     
 
 
 EpoptesInstaller() {
@@ -282,6 +278,14 @@ fi
 }
 
 
+#SetNetwork() {
+
+#IP=$(/sbin/ip route | awk '/default/ { print $3 }') <br>
+#echo $IP
+
+
+#}
+
 
 
 #100
@@ -292,7 +296,7 @@ Menu() {
 
   MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
     "Full" "Full install of the Pi LTSP server" \
-    "Change-IP" "Update or change the sd card image" \
+    "Change-IP" "Update or change the IP address sd card image" \
     "Install-Program" "Install a new program on the Raspberry Pi's" \
     "Update-All" "Run an automatic update on server and pi image" \
     "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
@@ -309,6 +313,7 @@ case "$MENUOPT" in
 	buildClient
 	OneTimeFixes
 	configFixes
+	AddSoftware
 	ipAddress
 	Menu
         ;;
@@ -331,6 +336,7 @@ Rebuild-OS)
     	rm -rf /var/lib/tftpboot/ltsp/armhf
     	buildClient
     	configFixes
+    	AddSoftware
 		ipAddress
 	fi
 	Menu
@@ -349,6 +355,7 @@ Install-Epoptes)
 Update-All)
 	apt-get update && apt-get upgrade
 	ltsp-chroot --arch armhf apt-get update && apt-get upgrade
+	;;
 Epoptes-Menu)
 	EpoptesMenu
 	;;
