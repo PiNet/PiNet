@@ -95,7 +95,7 @@ rm -rf ~/Downloads/piBoot
 
 FixRepo() {
 
-echo "deb http://archive.raspberrypi.org/debian/ wheezy main untested" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+echo "deb http://archive.raspberrypi.org/debian/ wheezy non-free main contrib untested" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.12 (GNU/Linux)
@@ -128,7 +128,7 @@ m++/7s3K3L0zWopdhMVcgg6Nt9gcjzqN1c0gy55L/g==
 =mNSj
 -----END PGP PUBLIC KEY BLOCK-----
 EOF1
-
+ltsp-chroot --arch armhf apt-get update
 
 }
 
@@ -182,8 +182,9 @@ FixRepo
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch python3-tk python3-rpi.gpio debian-reference-en dillo python idle python-pygame python-tk chromium python3-numpy wget
+ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch python3-tk debian-reference-en dillo python python-pygame python-tk chromium python3-numpy wget
 
+ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio 
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
