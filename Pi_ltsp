@@ -489,6 +489,7 @@ Install-Epoptes)
 Update-All)
 	apt-get update && apt-get upgrade
 	ltsp-chroot --arch armhf apt-get update && apt-get upgrade
+	Menu
 	;;
 Epoptes-Menu)
 	EpoptesMenu
