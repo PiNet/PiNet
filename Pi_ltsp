@@ -439,6 +439,7 @@ case "$MENUOPT" in
     #echo "User selected No."
     Menu
 	fi
+	fi
  
     
     installLTSP
@@ -450,7 +451,7 @@ case "$MENUOPT" in
 	
 	ipAddress
 	Menu
-        ;;
+    ;;
 Change-IP)
 	ipAddress
 	Menu
