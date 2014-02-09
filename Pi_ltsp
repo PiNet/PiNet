@@ -434,7 +434,7 @@ case "$MENUOPT" in
  
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
-    	#echo "User selected Yes."
+    	echo "User selected Yes."
 	else
     #echo "User selected No."
     Menu
