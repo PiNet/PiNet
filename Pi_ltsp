@@ -282,7 +282,7 @@ FixRepo
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev nano python3-dev scratch python3-tk debian-reference-en dillo python python-pygame python-tk chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer
+ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
 
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio x2x sonic-pi wolfram-engine
 ltsp-chroot --arch armhf apt-get install -y python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio
@@ -301,7 +301,7 @@ ltsp-chroot --arch armhf sed /etc/xdg/lxsession/LXDE/desktop.conf -i -e "s|sNet/
 ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e \
 "s|<drawContents>yes</drawContents>|<drawContents>no</drawContents>|"
 ltsp-chroot --arch armhf apt-get install -y raspberrypi-artwork
-ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background/desktop-background /usr/share/raspberrypi-artwork/raspberry-pi-logo.png 100
+ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/raspberrypi-artwork/raspberry-pi-logo.png 100
 ltsp-chroot --arch armhf PCMANFMCFG=/etc/xdg/pcmanfm/LXDE/pcmanfm.conf
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^wallpaper_mode.*/wallpaper_mode=3/'
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^desktop_bg.*/desktop_bg=#ffffff/'
