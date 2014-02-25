@@ -275,19 +275,23 @@ whiptail --title "Install complete" --msgbox "The client install is complete, a 
 
 AddSoftware(){
 
-FixRepo
 #------------------------------------------------------------------------------------------
 #******************************************************************************************
 
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
-
+ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
+ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio x2x sonic-pi wolfram-engine
 ltsp-chroot --arch armhf apt-get install -y python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio
+ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils
 
-ltsp-chroot apt-get install -y java-common oracle-java7-jdk apt-utils
+ltsp-chroot apt-get install -y java-common oracle-java7-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek
+
+
+ltsp-chroot --arch armhf update-rc.d nfs-common disable
+ltsp-chroot --arch armhf update-rc.d rpcbind disable
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
@@ -405,8 +409,49 @@ fi
 
 
 
-#100
+##### WIP ##########################
+BackupMenu() {
 
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Enable-backup" "Install epoptes to server and pis" \
+    "Disable-backup" "Launches epoptes, it must be installed first though" \
+    "Backup-frequency" "Add a new epoptes admin. Admins can control other clients" \
+    "Backup-location" "Uninstall epoptes from the pi clients" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Enable-backup) 
+    rm -rf /usr/local/bin/ltspBackup.sh
+    
+	Menu
+    ;;
+    Disable-backup)
+    EpoptesRun
+    Menu
+    	;;
+    Backup-frequency)
+    EpoptesAddAdmin
+    Menu
+    	;;
+    Backup-location)
+	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
+    ltsp-chroot --arch armhf apt-get -y autoremove
+    whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
+    Menu
+    ;;
+    *)
+    Menu
+    ;;
+
+esac
+#COMMENT1
+}
+
+
+
+##### WIP ##########################
 
 
 Menu() {
@@ -447,6 +492,7 @@ case "$MENUOPT" in
 	OneTimeFixes
 	#PiConfigFixes
 	configFixes
+	FixRepo
 	AddSoftware
 	
 	ipAddress
@@ -470,6 +516,7 @@ Rebuild-OS)
     	rm -rf /var/lib/tftpboot/ltsp/armhf
     	buildClient
     	configFixes
+    	FixRepo
     	AddSoftware
 		ipAddress
 	fi
@@ -489,6 +536,7 @@ Install-Epoptes)
 Update-All)
 	apt-get update && apt-get upgrade
 	ltsp-chroot --arch armhf apt-get update && apt-get upgrade
+	AddSoftware
 	Menu
 	;;
 Epoptes-Menu)
