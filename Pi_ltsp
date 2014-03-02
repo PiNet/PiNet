@@ -49,7 +49,7 @@ cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 ipAddress() {
 rm -rf ~/Downloads/piBoot
 git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
-mount -o loop ~/Downloads/piBoot/boot.img /mnt
+#mount -o loop ~/Downloads/piBoot/boot.img /mnt
 
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`;
@@ -82,13 +82,14 @@ fi
  
 echo "(Exit status was $exitstatus)"
 
-sudo sed -i 's/1.1.1.1/'$IP'/g' /mnt/cmdline.txt
+sudo sed -i 's/1.1.1.1/'$IP'/g' ~/Downloads/piBoot/boot/cmdline.txt
 sleep 5
-umount /mnt
+
 
 service nfs-kernel-server restart
 
-cp ~/Downloads/piBoot/boot.img ~/boot.img
+#cp ~/Downloads/piBoot/boot.img ~/boot.img
+cp -r ~/Downloads/piBoot/boot/ ~/piBoot
 rm -rf ~/Downloads/piBoot
 
 }
@@ -283,9 +284,10 @@ AddSoftware(){
 
 ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
-ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio x2x sonic-pi wolfram-engine
-ltsp-chroot --arch armhf apt-get install -y python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio
-ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils
+ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio x2x sonic-pi wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
+ltsp-chroot --arch armhf apt-get install -y python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv
+ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask 
+
 
 ltsp-chroot apt-get install -y java-common oracle-java7-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek
 
