@@ -469,7 +469,7 @@ Menu() {
     "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
     "Manage-Users" "Management of users on the network. Also change passwords" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
-    "Update-Pi-LTSP" "Redownloads Pi-LTSP script" \
+    "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
 #echo hi
