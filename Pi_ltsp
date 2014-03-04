@@ -469,6 +469,7 @@ Menu() {
     "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
     "Manage-Users" "Management of users on the network. Also change passwords" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
+    "Update-Pi-LTSP" "Redownloads Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
 #echo hi
@@ -543,6 +544,10 @@ Update-All)
 	;;
 Epoptes-Menu)
 	EpoptesMenu
+	;;
+Update-Pi-LTSP)
+	rm Pi_ltsp
+	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp
 	;;
 	esac
 #fi
