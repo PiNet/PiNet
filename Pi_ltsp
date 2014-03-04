@@ -548,6 +548,7 @@ Epoptes-Menu)
 Update-Pi-LTSP)
 	rm Pi_ltsp
 	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp
+	sh Pi_ltsp
 	;;
 	esac
 #fi
