@@ -6,7 +6,7 @@
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 
 installLTSP() {
-apt-get update && apt-get upgrade
+apt-get update && apt-get upgrade -y
 
 apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
 }
