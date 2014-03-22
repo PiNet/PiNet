@@ -583,7 +583,7 @@ esac
 
 
 
-Pi-Control() {
+Pi-Control-menu() {
 
   MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
     "Enable/update-Picontrol" "Enables or updates Pi-control " \
