@@ -8,7 +8,7 @@
 installLTSP() {
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center bind
 }
 
 buildClient() {
@@ -35,6 +35,38 @@ OneTimeFixes(){
 echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports
 
 }
+
+groupUpdate(){
+
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+        echo "$user"
+        #theGroup = 'video'
+        if groups "$user" | grep -q -E ' video(\s|$)'; then
+    		echo "True"
+		else
+    		echo false
+    		usermod -a -G video $user
+    
+fi
+done
+
+
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+        echo "$user"
+        if groups "$user" | grep -q -E ' pupil(\s|$)'; then
+    		echo "True"
+		else
+    		echo false
+    		usermod -a -G pupil $user
+    
+fi
+done
+
+
+}
+
 
 configFixes() {
 
@@ -285,7 +317,7 @@ AddSoftware(){
 ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio x2x sonic-pi wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
-ltsp-chroot --arch armhf apt-get install -y python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv
+ltsp-chroot --arch armhf apt-get install -y ftp python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask 
 
 
@@ -394,10 +426,40 @@ ADMIN=$(whiptail --inputbox "Please enter an admin account you wish to use with 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	INIT=""
-	gpasswd -a $ADMIN epoptes
+	usermod -a -G epoptes epoptes
 else
 	whiptail --title "Install complete" --msgbox "No admin user has been added" 16 78
 fi
+}
+
+
+fixGroups(){
+
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+        #echo "$user"
+        #theGroup = 'video'
+        if groups "$user" | grep -q -E ' video(\s|$)'; then
+                echo "True"
+                else
+                #echo false
+                usermod -a -G video $user
+
+fi
+done
+
+
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+        #echo "$user"
+        if groups "$user" | grep -q -E ' pupil(\s|$)'; then
+                echo "True"
+                else
+                #echo false
+                usermod -a -G pupil $user
+
+fi
+done
 }
 
 
@@ -409,8 +471,47 @@ fi
 
 #}
 
+AddTeacher() {
+ADMIN=$(whiptail --inputbox "Please enter a new teacher user. Teacher users have access to the handin folder" 8 78 $INIT --title "Teacher" 3>&1 1>&2 2>&3)
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+	INIT=""
+	groupadd teachers
+	usermod -a -G teachers $ADMIN
+else
+	whiptail --title "Failed" --msgbox "No teacher user was added" 16 78
+fi
+
+}
 
 
+FtpSetup(){
+apt-get install -y vsftpd
+sed -i 's/#write_enable=YES/''write_enable=YES''/g' /etc/vsftpd.conf
+sed -i 's/#anon_upload_enable=YES/''anon_upload_enable=YES''/g' /etc/vsftpd.conf 
+service vsftpd restart
+mkdir -m 2733 /srv/upload/handin
+ln -s /svr/ftp/handin /home/ftp
+chrgrp teachers /svr/ftp/handin 
+
+}
+
+PiControlInstall(){
+git clone https://github.com/gbaman/Pi_Connector.git
+cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer.py
+cp Pi_Connector/Server/piserver.sh /etc/init.d/piserver.sh
+cp Pi_Connector/Client/textclient.py /opt/ltsp/armhf/usr/local/bin/raspiClient
+cp Pi_Connector/Pi/picontrol.py /opt/ltsp/armhf/usr/local/bin/picontrol.py
+chmod 755 /opt/ltsp/armhf/usr/local/bin/picontrol.py
+chmod 755 /opt/ltsp/armhf/usr/local/bin/raspiClient.py
+chmod 755 /usr/local/bin/raspiServer.py
+chmod 755 /opt/ltsp/armhf/etc/init.d/picontrol.sh
+chmod 755 /etc/init.d/piserver.sh
+
+}
+
+
+#***************************************************************************************************
 ##### WIP ##########################
 BackupMenu() {
 
@@ -448,17 +549,71 @@ case "$MENUEPT" in
     ;;
 
 esac
-#COMMENT1
+
 }
-
-
 
 ##### WIP ##########################
 
+#***************************************************************************************************
+UserGroups() {
+
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Add-teacher" "Add user to the teachers permission group" \
+    "Graphics-fix" "Fixes graphically accelerated applications (e.g. MCPI)" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Add-teacher) 
+    AddTeacher
+    
+	Menu
+    ;;
+    Graphics-fix)
+    fixGroups
+    Menu
+	;;
+    *)
+    Menu
+    ;;
+
+esac
+} #***************************************************************************************************
+
+
+
+Pi-Control() {
+
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Enable/update-Picontrol" "Enables or updates Pi-control " \
+    "Disable-Picontrol" "Disables Pi-control, users may need to log out and in again" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Enable/update-Picontrol) 
+    AddTeacher
+    
+	Menu
+    ;;
+    Graphics-fix)
+    fixGroups
+    Menu
+	;;
+    *)
+    Menu
+    ;;
+
+esac
+}
+
+#***************************************************************************************************
+
 
 Menu() {
-#echo menu loaded
-#sleep 1
+
 
 
   MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
@@ -469,12 +624,11 @@ Menu() {
     "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
     "Manage-Users" "Management of users on the network. Also change passwords" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
+    "User-groups" "Functions for adding users to groups" \
+    "Pi-control-menu" "Pi-control classroom management submenu" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
-#echo hi
-#echo $MENUOPT
-#if [$MENUOPT -eq 0]; then
 case "$MENUOPT" in 
     Full)
     if [ -d /opt/ltsp ]; then
@@ -499,6 +653,8 @@ case "$MENUOPT" in
 	AddSoftware
 	
 	ipAddress
+	FtpSetup
+	AddTeacher
 	Menu
     ;;
 Change-IP)
@@ -537,13 +693,20 @@ Install-Epoptes)
 	Menu
 	;;
 Update-All)
-	apt-get update && apt-get upgrade
-	ltsp-chroot --arch armhf apt-get update && apt-get upgrade
+	apt-get update && apt-get upgrade -y
+	ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
+	FtpSetup
 	AddSoftware
 	Menu
 	;;
 Epoptes-Menu)
 	EpoptesMenu
+	;;
+User-groups)
+	UserGroups
+	;;
+Pi-control-submenu)
+	UserGroups
 	;;
 Update-Pi-LTSP)
 	rm Pi_ltsp
@@ -552,7 +715,7 @@ Update-Pi-LTSP)
 	;;
 	esac
 #fi
-}
+} #***************************************************************************************************
 
 if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
