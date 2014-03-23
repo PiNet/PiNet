@@ -8,7 +8,7 @@
 installLTSP() {
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center bind
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
 }
 
 buildClient() {
@@ -490,9 +490,9 @@ apt-get install -y vsftpd
 sed -i 's/#write_enable=YES/''write_enable=YES''/g' /etc/vsftpd.conf
 sed -i 's/#anon_upload_enable=YES/''anon_upload_enable=YES''/g' /etc/vsftpd.conf 
 service vsftpd restart
-mkdir -m 2733 /srv/upload/handin
+mkdir -m 2733 /srv/ftp/handin
 ln -s /svr/ftp/handin /home/ftp
-chrgrp teachers /svr/ftp/handin 
+chgrp teachers /srv/ftp/handin 
 
 }
 
