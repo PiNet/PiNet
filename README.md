@@ -47,7 +47,7 @@ Menu options
 **Full** - Full installs a full version of the system. It should be only run once! Ever! It is the first command you run as most others won't work without it!  
 **Change-IP** - Run this if your servers IP address changes or if you want to grab the most recent SD card image from the repository  
 **Install-Program** - Use this to install any additional packages you want on your Raspberry Pis. The full package name is required! Just like if being done with apt-get install.  
-**Update-All** - Updates all packages on the server and on the Raspberry Pi. Basically apt-get update && apt-get upgrade for server and Raspberry Pis. 
+**Update-All** - Updates all packages on the server and on the Raspberry Pi. Basically apt-get update && apt-get upgrade for server and Raspberry Pis.  
 **Manage-Users** - Launches the graphical user management system to add users, remove users and reset passwords.  
 **Epoptes-Menu** - Use for install epoptes classroom management software, for adding a new "teacher" account.  
 **User-groups** - Functions for fixing users permissions.   
