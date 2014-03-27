@@ -20,9 +20,11 @@ It is currently pre-alpha quality so I take no responsibility for deleted data o
 
 Use at your own risk
 
-——————————————
-How to install
-——————————————
+
+
+
+####How to install
+
 
 
 To use, first install Debian wheezy onto your server and download the Pi_ltsp file.
@@ -39,9 +41,10 @@ Next create your users with Manage-users
 
 Finally run Graphics-fix in user-groups to fix all newly added user accounts
 
-——————————————
-Menu options
-——————————————
+
+
+
+####Menu options
 
 
 **Full** - Full installs a full version of the system. It should be only run once! Ever! It is the first command you run as most others won't work without it!  
@@ -57,8 +60,9 @@ Menu options
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
 
 
-————————
-WARNING
-————————
+
+
+####WARNING
+
 
 This is a not a project yet for someone new to Linux. Although it should work, there is a number of places the system could fall over on. It is recommended, if you are interested in bringing this into your school, to drop a tweet to @gbaman1 (twitter).
