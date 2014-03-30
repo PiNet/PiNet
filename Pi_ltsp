@@ -5,11 +5,15 @@
 #Written by gbaman1, based off the fantastic work by vagrantc from the LTSP community
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 
+
+
 installLTSP() {
 apt-get update && apt-get upgrade -y
 
 apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
 }
+
+
 
 buildClient() {
 
@@ -30,11 +34,15 @@ EOF
 ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
 }
 
+
+
 OneTimeFixes(){
 
 echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports
 
 }
+
+
 
 groupUpdate(){
 
@@ -47,7 +55,6 @@ do
 		else
     		echo false
     		usermod -a -G video $user
-    
 fi
 done
 
@@ -63,13 +70,11 @@ do
     
 fi
 done
-
-
 }
 
 
-configFixes() {
 
+configFixes() {
 
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
@@ -77,6 +82,8 @@ cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 #ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
 }
+
+
 
 ipAddress() {
 rm -rf ~/Downloads/piBoot
@@ -104,12 +111,7 @@ if [ $exitstatus = 0 ]; then
 else
     echo "User selected Cancel."
 fi
- 
 echo "(Exit status was $exitstatus)"
-
-
-
-
 fi
  
 echo "(Exit status was $exitstatus)"
@@ -497,6 +499,7 @@ chgrp teachers /srv/ftp/handin
 }
 
 PiControlInstall(){
+rm -rf Pi_Connector
 git clone https://github.com/gbaman/Pi_Connector.git
 cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer.py
 cp Pi_Connector/Server/piserver.sh /etc/init.d/piserver.sh
@@ -594,12 +597,12 @@ PiControlmenu() {
 #if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
     Enable/update-Picontrol) 
-    AddTeacher
+    PiControlInstall
     
 	Menu
     ;;
     Graphics-fix)
-    fixGroups
+    service piserver.sh stop
     Menu
 	;;
     *)
@@ -653,7 +656,7 @@ case "$MENUOPT" in
 	AddSoftware
 	
 	ipAddress
-	FtpSetup
+	#FtpSetup
 	AddTeacher
 	Menu
     ;;
@@ -706,7 +709,7 @@ User-groups)
 	UserGroups
 	;;
 Pi-control-submenu)
-	UserGroups
+	PiControlmenu
 	;;
 Update-Pi-LTSP)
 	rm Pi_ltsp
