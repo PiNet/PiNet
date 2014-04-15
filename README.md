@@ -27,22 +27,23 @@ Use at your own risk
 
 
 
-To use, first install Debian wheezy onto your server and download the Pi_ltsp file.
+To use, first install Debian wheezy onto your server and download the ```Pi_ltsp``` file.
 
-Change to root with the command   su   (or run a root terminal)
+Change to root with the command   ```su```   (or run a root terminal)
 
-Now run the script with     sh Pi_ltsp
+Now run the script with     ```sh Pi_ltsp```
 
 The script will launch and you will be presented with a few options. 
 
 Select full install to set everything up. This can take anywhere form 30 mins to 3 hours 
 
-Next create your users with Manage-users
+Next create your users with ```Manage-users```
 
-Finally run Graphics-fix in user-groups to fix all newly added user accounts
+Finally run ```Graphics-fix``` in ```user-groups``` to fix all newly added user accounts
 
 
-
+To switch to the Raspberry Pi virtual OS at any time, use ```ltsp-chroot --arch armhf```   
+This will change the shell to the Raspberry Pi OS. Make any changes and type ```exit``` to return to normal shell
 
 ###Menu options
 
