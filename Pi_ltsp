@@ -334,6 +334,7 @@ git clone https://github.com/gbaman/RaspberryPi-LTSP.git
 cp -r RaspberryPi-LTSP/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
 rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
+rm -rf RaspberryPi-LTSP
 
 }
 
