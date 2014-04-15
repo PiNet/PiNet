@@ -1,0 +1,128 @@
+gtk_color_scheme = "fg_color:#ffffff\nbg_color:#424242\nbase_color:#FFF\ntext_color:#000000\nselected_bg_color:#c8c8c9\nselected_fg_color:#1A1A1A\ntooltip_bg_color:#F5F5B5\ntooltip_fg_color:#000"
+
+style "default"
+{
+        fg[NORMAL]              = @fg_color
+        fg[ACTIVE]              = @fg_color
+        fg[INSENSITIVE]         = mix (0.4, @fg_color, shade (0.85, @bg_color)) #shaded to bg[INSENSITIVE]
+
+        fg[PRELIGHT]            = @fg_color
+        fg[SELECTED]            = @selected_fg_color
+        
+        bg[ACTIVE]              = shade (0.9, @bg_color)
+	bg[NORMAL]              = @bg_color
+        bg[INSENSITIVE]         = shade (0.95, @bg_color)
+        bg[PRELIGHT]            = shade (1.03, @bg_color)
+        bg[SELECTED]            = @selected_bg_color
+
+        base[NORMAL]            = @base_color
+        base[ACTIVE]            = shade (0.9, @selected_bg_color)
+        base[INSENSITIVE]       = shade (0.95, @base_color)
+        base[PRELIGHT]          = @bg_color
+	base[SELECTED]          = @selected_bg_color
+        
+        text[NORMAL]            = @text_color
+        text[ACTIVE]            = @text_color
+        text[PRELIGHT]          = @text_color
+        text[SELECTED]          = @selected_fg_color
+        text[INSENSITIVE]       = mix (0.5, @text_color, @base_color)
+	
+
+	GtkRange::trough_border = 0
+	GtkRange::slider_width = 15
+	GtkRange::stepper_size = 15
+
+	GtkEntry::progress-border = { 0, 0, 0, 0 }
+
+	GtkScrollbar::min_slider_length = 15
+	GtkCheckButton::indicator_size=10
+	GtkCheckMenuItem::indicator_size=10
+	GtkRadioButton::indicator_size=12
+
+	GtkNotebook::tab_vborder = 1
+	GtkNotebook::tab_hborder = 1
+	xthickness = 1
+	ythickness = 1
+
+	NautilusIconContainer::dark_info_color="#888888"
+	NautilusIconContainer::light_info_color="#bbbbbb"
+	NautilusIconContainer::highlight_alpha=200
+
+	GtkMenu::horizontal_padding=0
+	GtkMenu::vertical_padding=0
+
+	engine "mist"
+ 	{
+	}
+}
+
+style "menuitem"
+{
+	ythickness = 2
+	xthickness = 2
+
+        fg[PRELIGHT]          = @selected_fg_color
+}
+
+style "menu" 
+{
+	ythickness = 2
+	xthickness = 2
+} 
+
+style "entry"
+{
+	bg[SELECTED] = mix(0.35, @selected_bg_color, @base_color)
+	fg[SELECTED] = @text_color
+}
+
+class "GtkWidget" style "default"
+class "GtkMenu" style "menu"
+class "GtkEntry" style "entry"
+
+widget_class "*<GtkMenuItem>*" style "menuitem"
+
+
+
+# Work around for http://bugzilla.gnome.org/show_bug.cgi?id=382646
+# Note that the work around assumes that the combobox is _not_ in
+# appears-as-list mode.
+# This style does not affect GtkComboBoxEntry, it does have an effect
+# on comboboxes in appears-as-list mode though.
+style "mist-text-is-fg-color-workaround"
+{
+        text[NORMAL]              = @fg_color
+        text[ACTIVE]              = @fg_color
+        text[INSENSITIVE]         = mix (0.4, @fg_color, shade (0.85, @bg_color)) #shaded to bg[INSENSITIVE]
+        text[PRELIGHT]            = @fg_color
+        text[SELECTED]            = @selected_fg_color
+}
+widget_class "*.<GtkComboBox>.<GtkCellView>"   style "mist-text-is-fg-color-workaround"
+
+style "mist-menuitem-text-is-fg-color-workaround"
+{
+        text[NORMAL]              = @fg_color
+        text[ACTIVE]              = @fg_color
+        text[INSENSITIVE]         = mix (0.4, @fg_color, shade (0.85, @bg_color)) #shaded to bg[INSENSITIVE]
+        text[PRELIGHT]            = @selected_fg_color
+        text[SELECTED]            = @selected_fg_color
+}
+widget "*.gtk-combobox-popup-menu.*"   style "mist-menuitem-text-is-fg-color-workaround"
+
+# Work around the usage of GtkLabel inside GtkListItems to display text.
+# This breaks because the label is shown on a background that is based on the
+# base color set.
+style "mist-fg-is-text-color-workaround"
+{
+        fg[NORMAL]            = @text_color
+        fg[ACTIVE]            = @text_color
+        fg[PRELIGHT]          = @text_color
+        fg[SELECTED]          = @selected_fg_color
+        fg[INSENSITIVE]       = mix (0.5, @text_color, @base_color)
+}
+widget_class "*<GtkListItem>*" style "mist-fg-is-text-color-workaround"
+# The same problem also exists for GtkCList and GtkCTree
+# Only match GtkCList and not the parent widgets, because that would also change the headers.
+widget_class "*<GtkCList>" style "mist-fg-is-text-color-workaround"
+
+
