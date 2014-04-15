@@ -86,8 +86,26 @@ cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 
 ipAddress() {
-rm -rf ~/Downloads/piBoot
-git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+echo "$1"
+if ["$1" -eq 0]; then
+whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
+ 
+exitstatus=$?
+	if [ $exitstatus = 0 ]; then
+    	rm -rf ~/Downloads/piBoot
+		git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+		cp ~/Downloads/piBoot
+	fi
+ 
+	echo "(Exit status was $exitstatus)"
+else
+	rm -rf ~/Downloads/piBoot
+	git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+	cp ~/Downloads/piBoot
+
+fi
+#rm -rf ~/Downloads/piBoot
+#git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
 #mount -o loop ~/Downloads/piBoot/boot.img /mnt
 
 
@@ -308,6 +326,17 @@ whiptail --title "Install complete" --msgbox "The client install is complete, a 
 
 }
 
+RaspiTheme(){
+#Grabs a copy of the custom Raspberry Pi login screen and applies it
+
+rm -rf RaspberryPi-LTSP
+git clone https://github.com/gbaman/RaspberryPi-LTSP.git
+cp -r RaspberryPi-LTSP/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
+rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
+ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
+
+}
+
 AddSoftware(){
 
 #------------------------------------------------------------------------------------------
@@ -505,11 +534,13 @@ cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer.py
 cp Pi_Connector/Server/piserver.sh /etc/init.d/piserver.sh
 cp Pi_Connector/Client/textclient.py /opt/ltsp/armhf/usr/local/bin/raspiClient
 cp Pi_Connector/Pi/picontrol.py /opt/ltsp/armhf/usr/local/bin/picontrol.py
+cp Pi_Connector/Pi/picontrol.sh /etc/init.d/picontrol.sh
 chmod 755 /opt/ltsp/armhf/usr/local/bin/picontrol.py
 chmod 755 /opt/ltsp/armhf/usr/local/bin/raspiClient.py
 chmod 755 /usr/local/bin/raspiServer.py
 chmod 755 /opt/ltsp/armhf/etc/init.d/picontrol.sh
 chmod 755 /etc/init.d/piserver.sh
+echo "Picontrol installed!"
 
 }
 
@@ -654,14 +685,14 @@ case "$MENUOPT" in
 	configFixes
 	FixRepo
 	AddSoftware
-	
-	ipAddress
+	RaspiTheme
+	ipAddress 1
 	#FtpSetup
 	AddTeacher
 	Menu
     ;;
 Change-IP)
-	ipAddress
+	ipAddress 0 
 	Menu
 	;;
 Install-Program)
@@ -680,7 +711,8 @@ Rebuild-OS)
     	configFixes
     	FixRepo
     	AddSoftware
-		ipAddress
+    	RaspiTheme
+		ipAddress 1
 	fi
 	Menu
 	;;
@@ -698,8 +730,9 @@ Install-Epoptes)
 Update-All)
 	apt-get update && apt-get upgrade -y
 	ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
-	FtpSetup
+	#FtpSetup
 	AddSoftware
+	RaspiTheme
 	Menu
 	;;
 Epoptes-Menu)
@@ -708,7 +741,7 @@ Epoptes-Menu)
 User-groups)
 	UserGroups
 	;;
-Pi-control-submenu)
+Pi-control-menu)
 	PiControlmenu
 	;;
 Update-Pi-LTSP)
