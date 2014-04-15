@@ -87,21 +87,21 @@ cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 ipAddress() {
 echo "$1"
-if ["$1" -eq 0]; then
+if [ $1 -eq 0 ]; then
 whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
  
 exitstatus=$?
 	if [ $exitstatus = 0 ]; then
     	rm -rf ~/Downloads/piBoot
 		git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
-		cp ~/Downloads/piBoot
+		#cp ~/Downloads/piBoot
 	fi
  
 	echo "(Exit status was $exitstatus)"
 else
 	rm -rf ~/Downloads/piBoot
 	git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
-	cp ~/Downloads/piBoot
+	#cp ~/Downloads/piBoot
 
 fi
 #rm -rf ~/Downloads/piBoot
@@ -142,7 +142,7 @@ service nfs-kernel-server restart
 
 #cp ~/Downloads/piBoot/boot.img ~/boot.img
 cp -r ~/Downloads/piBoot/boot/ ~/piBoot
-rm -rf ~/Downloads/piBoot
+#rm -rf ~/Downloads/piBoot
 
 }
 
