@@ -146,6 +146,20 @@ cp -r ~/Downloads/piBoot/boot/ ~/piBoot
 
 }
 
+EnableNBDswap(){
+
+rm /etc/nbd-server/conf.d/swap.conf
+cat <<EOF > /etc/nbd-server/conf.d/swap.conf
+[swap]
+exportname = /tmp/nbd-swap/%s
+prerun = nbdswapd %s
+postrun = rm -f %s
+EOF
+service nbd-server restart
+
+}
+
+
 FixRepo() {
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
@@ -687,6 +701,7 @@ case "$MENUOPT" in
 	FixRepo
 	AddSoftware
 	RaspiTheme
+	EnableNBDswap
 	ipAddress 1
 	#FtpSetup
 	AddTeacher
@@ -713,6 +728,7 @@ Rebuild-OS)
     	FixRepo
     	AddSoftware
     	RaspiTheme
+    	EnableNBDswap
 		ipAddress 1
 	fi
 	Menu
