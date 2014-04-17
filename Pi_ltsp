@@ -545,20 +545,25 @@ chgrp teachers /srv/ftp/handin
 PiControlInstall(){
 rm -rf Pi_Connector
 git clone https://github.com/gbaman/Pi_Connector.git
-cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer.py
+cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer
 cp Pi_Connector/Server/piserver.sh /etc/init.d/piserver.sh
 cp Pi_Connector/Client/textclient.py /opt/ltsp/armhf/usr/local/bin/raspiClient
 cp Pi_Connector/Pi/picontrol.py /opt/ltsp/armhf/usr/local/bin/picontrol.py
 cp Pi_Connector/Pi/picontrol.sh /etc/init.d/picontrol.sh
 chmod 755 /opt/ltsp/armhf/usr/local/bin/picontrol.py
-chmod 755 /opt/ltsp/armhf/usr/local/bin/raspiClient.py
-chmod 755 /usr/local/bin/raspiServer.py
+chmod 755 /opt/ltsp/armhf/usr/local/bin/raspiClient
+chmod 755 /usr/local/bin/raspiServer
 chmod 755 /opt/ltsp/armhf/etc/init.d/picontrol.sh
 chmod 755 /etc/init.d/piserver.sh
 echo "Picontrol installed!"
 
 }
 
+PiControlInstallNew(){
+rm -rf Pi_Connector
+git clone https://github.com/gbaman/Pi_Connector.git
+python Pi_Connector/setup.py ltsp full
+}
 
 #***************************************************************************************************
 ##### WIP ##########################
@@ -636,19 +641,19 @@ PiControlmenu() {
 
   MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
     "Enable/update-Picontrol" "Enables or updates Pi-control " \
-    "Disable-Picontrol" "Disables Pi-control, users may need to log out and in again" \
+    "Disable-Picontrol" "Disables Pi-control" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
 #if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
     Enable/update-Picontrol) 
-    PiControlInstall
+    PiControlInstallNew
     
 	Menu
     ;;
-    Graphics-fix)
-    service piserver.sh stop
+    Disable-Picontrol)
+    python Pi_Connector/setup.py ltsp remove
     Menu
 	;;
     *)
