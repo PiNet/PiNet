@@ -9,6 +9,7 @@ VariablesSetup() {
 if [ -e "/opt/ltsp/.nbd" ]; then
 	NBD=$(head -n 1 /opt/ltsp/.nbd)
 else
+	mkdir /opt/ltsp/
 	echo "false" > /opt/ltsp/.nbd
 	VariablesSetup
 fi
