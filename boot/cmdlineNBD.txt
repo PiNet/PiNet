@@ -1,0 +1,1 @@
+dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 init=/sbin/init-ltsp nbdroot=1.1.1.1:/opt/ltsp/armhf root=/dev/nbd0 elevator=deadline rootwait
