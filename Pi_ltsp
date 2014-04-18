@@ -745,7 +745,7 @@ Menu() {
     "User-groups" "Functions for adding users to groups" \
     "Pi-control-menu" "Pi-control classroom management submenu" \
     "NBD-options" "Enable or disable NBD" \
-    "NBD-options" "Enable or disable NBD" \
+    "NBD-recompress" "Run if using NBD and change is made outside of script" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
@@ -839,6 +839,10 @@ Pi-control-menu)
 NBD-options)
 	NBDSetup
 	ipAddress 0 
+	Menu
+	;;
+NBD-recompress)
+	NBDRun
 	Menu
 	;;
 Update-Pi-LTSP)
