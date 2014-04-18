@@ -35,7 +35,9 @@ Now run the script with     ```sh Pi_ltsp```
 
 The script will launch and you will be presented with a few options. 
 
-Select full install to set everything up. This can take anywhere form 30 mins to 3 hours 
+Select full install to set everything up. This can take anywhere form 30 mins to 3 hours   
+
+When asked about NBD or NFS. It is recommended to use NBD. NBD uses 40% of the network bandwidth that NFS uses, but must be recompressed every time a change is made. It is easy to later switch back and forth with ```NBD-options```
 
 Next create your users with ```Manage-users```
 
@@ -43,7 +45,9 @@ Finally run ```Graphics-fix``` in ```user-groups``` to fix all newly added user 
 
 
 To switch to the Raspberry Pi virtual OS at any time, use ```ltsp-chroot --arch armhf```   
-This will change the shell to the Raspberry Pi OS. Make any changes and type ```exit``` to return to normal shell
+This will change the shell to the Raspberry Pi OS. Make any changes and type ```exit``` to return to normal shell.   
+   
+If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NBD-recompress``` to recompress the image again or the changes wont push out to the Pis when they boot.   
 
 ###Menu options
 
@@ -57,7 +61,11 @@ This will change the shell to the Raspberry Pi OS. Make any changes and type ```
 **User-groups** - Functions for fixing users permissions.   
 ---**Add-teacher** - Used to add a teacher to the teacher group, a group able to access file uploads.  
 ---**Graphics-fix** - Fixes all the graphically accelerated applications for all users, e.g. MCPI.  
-**Pi-control-menu** - Not implemented.  
+**Pi-control-menu** - Use for installing Picontrol classroom management software   
+---**Enable/update-Picontrol** - Installs Picontrol or runs an update on it, fetching most recent version   
+---**Disable-Picontrol** - Uninstalls Picontrol   
+**NBD-options** - Displays NBD dialog allowing you to switch between NBD and NFS   
+**NBD-recompress** - Forces a NBD OS recompression. Do this if using NBD and you make a change outside of Pi-LTSP to the image   
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
 
 
