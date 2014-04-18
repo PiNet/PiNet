@@ -2,8 +2,38 @@
 #Version 0.02
 #UpdateLoc = "https://raw.github.com/gbaman/RaspberryPi-LTSP/master/UPDATE"
 
-#Written by gbaman1, based off the fantastic work by vagrantc from the LTSP community
+#Written by gbaman1, based off the fantastic work by vagrantc and alksig from the LTSP community
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
+
+VariablesSetup() {
+if [ -e "/opt/ltsp/.nbd" ]; then
+	NBD=$(head -n 1 /opt/ltsp/.nbd)
+else
+	echo "false" > /opt/ltsp/.nbd
+	VariablesSetup
+fi
+}
+
+YesNoBox(){
+
+whiptail --title $1 --yesno $2 8 78
+ 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    result=y
+else
+    result=n
+fi
+}
+
+message() {
+
+whiptail --title $1 --msgbox $2 8 78
+
+}
+
+
+
 
 
 
@@ -89,7 +119,7 @@ ipAddress() {
 echo "$1"
 if [ $1 -eq 0 ]; then
 whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
- 
+rm -rf ~/piBoot
 exitstatus=$?
 	if [ $exitstatus = 0 ]; then
     	rm -rf ~/Downloads/piBoot
@@ -133,6 +163,15 @@ echo "(Exit status was $exitstatus)"
 fi
  
 echo "(Exit status was $exitstatus)"
+
+#ls ~/Downloads/piBoot/boot/
+if [ "$NBD" = "true" ]; then
+	rm ~/Downloads/piBoot/boot/cmdline.txt
+	cp ~/Downloads/piBoot/boot/cmdlineNBD.txt ~/Downloads/piBoot/boot/cmdline.txt
+else
+	rm ~/Downloads/piBoot/boot/cmdline.txt
+	cp ~/Downloads/piBoot/boot/cmdlineNFS.txt ~/Downloads/piBoot/boot/cmdline.txt
+fi
 
 sudo sed -i 's/1.1.1.1/'$IP'/g' ~/Downloads/piBoot/boot/cmdline.txt
 sleep 5
@@ -351,6 +390,30 @@ ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
 rm -rf RaspberryPi-LTSP
 
 }
+
+NBDRun() {
+if [ "$NBD" = "true" ]; then
+	ltsp-update-image /opt/ltsp/armhf
+fi
+}
+
+NBDSetup() {
+
+whiptail --title "NBD" --yesno "Would you like to enable NBD? It is twice as fast as old NFS but requires 5 min compression after each change to the OS" 8 78
+ 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    /usr/sbin/ltsp-update-image --config-nbd /opt/ltsp/armhf
+    service nbd-server restart
+    echo "true" > /opt/ltsp/.nbd
+    NBD=true
+else
+    echo "false" > /opt/ltsp/.nbd
+    NBD=false
+fi
+}
+
+
 
 AddSoftware(){
 
@@ -670,7 +733,7 @@ Menu() {
 
 
 
-  MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+  MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 12 \
     "Full" "Full install of the Pi LTSP server" \
     "Change-IP" "Update or change the IP address sd card image" \
     "Install-Program" "Install a new program on the Raspberry Pi's" \
@@ -680,6 +743,8 @@ Menu() {
     "Epoptes-Menu" "Epoptes classroom management submenu" \
     "User-groups" "Functions for adding users to groups" \
     "Pi-control-menu" "Pi-control classroom management submenu" \
+    "NBD-options" "Enable or disable NBD" \
+    "NBD-options" "Enable or disable NBD" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
@@ -707,6 +772,7 @@ case "$MENUOPT" in
 	AddSoftware
 	RaspiTheme
 	EnableNBDswap
+	NBDSetup
 	ipAddress 1
 	#FtpSetup
 	AddTeacher
@@ -718,6 +784,7 @@ Change-IP)
 	;;
 Install-Program)
 	InstallProgram
+	NBDRun
 	Menu
 	;;
 Rebuild-OS)
@@ -734,6 +801,7 @@ Rebuild-OS)
     	AddSoftware
     	RaspiTheme
     	EnableNBDswap
+    	NBDSetup
 		ipAddress 1
 	fi
 	Menu
@@ -755,6 +823,7 @@ Update-All)
 	#FtpSetup
 	AddSoftware
 	RaspiTheme
+	NBDRun
 	Menu
 	;;
 Epoptes-Menu)
@@ -765,6 +834,11 @@ User-groups)
 	;;
 Pi-control-menu)
 	PiControlmenu
+	;;
+NBD-options)
+	NBDSetup
+	ipAddress 0 
+	Menu
 	;;
 Update-Pi-LTSP)
 	rm Pi_ltsp
@@ -779,5 +853,5 @@ if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
    exit 1
 fi
-
+VariablesSetup
 Menu
