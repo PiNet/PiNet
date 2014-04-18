@@ -751,7 +751,7 @@ Menu() {
 
 case "$MENUOPT" in 
     Full)
-    if [ -d /opt/ltsp ]; then
+    if [ -d /opt/ltsp/armhf ]; then
     whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
  
 	exitstatus=$?
