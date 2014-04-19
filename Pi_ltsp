@@ -70,6 +70,7 @@ ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
 OneTimeFixes(){
 
 echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports
+mkdir /etc/skel/handin
 
 }
 
@@ -629,6 +630,87 @@ git clone https://github.com/gbaman/Pi_Connector.git
 python Pi_Connector/setup.py ltsp full
 }
 
+CollectWork(){
+INIT=""
+USERHAND=$(whiptail --inputbox "Enter the user you want the files to go to" 8 78 $INIT --title "User selection" 3>&1 1>&2 2>&3)
+ 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    #echo "User selected Ok and entered " 
+
+	whiptail --title "WARNING" --yesno "The current submitted folder will be deleted, are you sure?" 8 78
+ 
+	exitstatus=$?
+	if [ $exitstatus = 0 ]; then
+		rm -rf /home/"$USERHAND"/submitted
+		mkdir /home/"$USERHAND"/submitted
+		exitstatus=$?
+		if [ $exitstatus = 0 ]; then
+			if [ "$USERHAND" != "" ]; then
+			
+			#if [ "$USERHAND" = "" ]; then
+			#	whiptail --title "ERROR" --msgbox "The username must not be blank" 8 78
+			#else
+    			cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+				do
+        			if groups "$user" | grep -q -E ' pupil(\s|$)'; then
+        				if [ -d "/home/$user/handin" ]; then
+							echo "The user $user has a handin folder"
+							cp -r "/home/$user/handin/" "/home/$USERHAND/submitted/$user/"
+					
+						fi
+				
+                		else
+                			echo "The user $user does not have a handin folder"
+
+					fi
+				done
+				
+				chown -R "$USERHAND" /home/"$USERHAND"/submitted
+				whiptail --title "Complete" --msgbox "Students work has been collected and can be found in /home/$USERHAND/submitted/" 8 78
+			else
+			whiptail --title "ERROR" --msgbox "The username can't be blank!" 8 78
+			fi
+		else
+			whiptail --title "ERROR" --msgbox "The user $USERHAND was not found!" 8 78
+			
+		fi
+	fi
+		
+	
+    
+#else
+#    echo "User selected Cancel."
+fi
+
+
+}
+
+
+#***************************************************************************************************
+OtherMenu() {
+
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Collect-work" "Collects all work into a folder" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Collect-work) 
+    CollectWork
+    
+	Menu
+    ;;
+    *)
+    Menu
+    ;;
+
+esac
+} #***************************************************************************************************
+
+
+
 #***************************************************************************************************
 ##### WIP ##########################
 BackupMenu() {
@@ -734,7 +816,7 @@ Menu() {
 
 
 
-  MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 12 \
+  MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 13 \
     "Full" "Full install of the Pi LTSP server" \
     "Change-IP" "Update or change the IP address sd card image" \
     "Install-Program" "Install a new program on the Raspberry Pi's" \
@@ -746,6 +828,7 @@ Menu() {
     "Pi-control-menu" "Pi-control classroom management submenu" \
     "NBD-options" "Enable or disable NBD" \
     "NBD-recompress" "Run if using NBD and change is made outside of script" \
+    "Other" "Other options and utilities for management" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
@@ -844,6 +927,10 @@ NBD-options)
 NBD-recompress)
 	NBDRun
 	Menu
+	;;
+Other)
+	OtherMenu
+	
 	;;
 Update-Pi-LTSP)
 	rm Pi_ltsp
