@@ -65,12 +65,18 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 ---**Enable/update-Picontrol** - Installs Picontrol or runs an update on it, fetching most recent version   
 ---**Disable-Picontrol** - Uninstalls Picontrol   
 **NBD-options** - Displays NBD dialog allowing you to switch between NBD and NFS   
-**NBD-recompress** - Forces a NBD OS recompression. Do this if using NBD and you make a change outside of Pi-LTSP to the image   
+**NBD-recompress** - Forces a NBD OS recompression. Run this if you make a change to the OS and using NBD   
+**Other** - Submenu for miscellaneous options   
+---**Collect-work** - Collects work from students ```handin``` folders. See below   
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
 
 
-
-
+###Handin system   
+   
+A simple handin system is included with Pi_ltsp. Each user account is created with a handin folder in their home folder. E.g. ```/home/andrew/handin```   
+It goes through all users (in the ```pupil``` group) and grabs their handin folder. It then copies this to the provided teacher account into a new folder called ```submitted```.   
+Each students handin folder is renamed to that students name in the submitted folder.   
+   
 ###WARNING
 
 
