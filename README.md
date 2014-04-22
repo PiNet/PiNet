@@ -3,7 +3,7 @@ RaspberryPi-LTSP
 
 Linux Termal Server Project is a collection of pieces of software for running fat and thin clients from a linux based server.
 
-This can also be done on the Raspberry Pi. It allows a master pi image to be created which is then booted by each pi. This means no more flashing 100s of sd cards with large raspberry pi OS's, just load the 30mb image produced by the server when it is installed onto all your pis and you are good to go.
+This can also be done on the Raspberry Pi. It allows a master pi image to be created which is then booted by each pi. This means no more flashing 100s of sd cards with large Raspberry Pi OS's, just load the 30mb image produced by the server when it is installed onto all your pis and you are good to go.
 It brings 3 main advantages to schools.
 
 1. Pis boot off the network, only using SD card for kernel. (20mb) - The OS for them is stored on a central Linux server. Means if you want to add a new package to all the pis, you install it on the server in the pi chroot and reboot pis, poof, all of them have it installed!
@@ -15,10 +15,11 @@ We are working though on having a local OS, so that you swap 2 config files on t
 
 
 The main part of this repository is Pi_ltsp. It is a bash script for installing and managing the built master image.
+Also included is a custom Raspberry Pi theme and some custom config files for booting the Raspberry Pis   
 
-It is currently pre-alpha quality so I take no responsibility for deleted data or damage caused by it.
+It is currently pre-alpha quality so I take no responsibility for deleted data or damage caused by it.   
 
-Use at your own risk
+Use at your own risk   
 
 
 
@@ -52,22 +53,22 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 ###Menu options
 
 
-**Full** - Full installs a full version of the system. It should be only run once! Ever! It is the first command you run as most others won't work without it!  
-**Change-IP** - Run this if your servers IP address changes or if you want to grab the most recent SD card image from the repository  
-**Install-Program** - Use this to install any additional packages you want on your Raspberry Pis. The full package name is required! Just like if being done with apt-get install.  
-**Update-All** - Updates all packages on the server and on the Raspberry Pi. Basically apt-get update && apt-get upgrade for server and Raspberry Pis.  
+**Full** - Full installs a full version of the system. Run this first. Should only be run once.   
+**Change-IP** - Run this if your servers IP address changes or want to update your SD card image.   
+**Install-Program** - Use if you want to install new package, enter full package name.   
+**Update-All** - Runs apt-get update && apt-get upgrade on server and Raspberry Pi OS to update everything.   
 **Manage-Users** - Launches the graphical user management system to add users, remove users and reset passwords.  
-**Epoptes-Menu** - Use for install epoptes classroom management software, for adding a new "teacher" account.  
+**Epoptes-Menu** - Use for install epoptes classroom management software, for adding a new "teacher" account.   
 **User-groups** - Functions for fixing users permissions.   
 ---**Add-teacher** - Used to add a teacher to the teacher group, a group able to access file uploads.  
 ---**Graphics-fix** - Fixes all the graphically accelerated applications for all users, e.g. MCPI.  
-**Pi-control-menu** - Use for installing Picontrol classroom management software   
----**Enable/update-Picontrol** - Installs Picontrol or runs an update on it, fetching most recent version   
----**Disable-Picontrol** - Uninstalls Picontrol   
-**NBD-options** - Displays NBD dialog allowing you to switch between NBD and NFS   
-**NBD-recompress** - Forces a NBD OS recompression. Run this if you make a change to the OS and using NBD   
-**Other** - Submenu for miscellaneous options   
----**Collect-work** - Collects work from students ```handin``` folders. See below   
+**Pi-control-menu** - Use for installing Picontrol classroom management software.   
+---**Enable/update-Picontrol** - Installs Picontrol or runs an update on it, fetching most recent version.  
+---**Disable-Picontrol** - Uninstalls Picontrol.   
+**NBD-options** - Displays NBD dialog allowing you to switch between NBD and NFS.   
+**NBD-recompress** - Forces a NBD OS recompression. Run this if you make a change to the OS and using NBD.   
+**Other** - Submenu for miscellaneous options.   
+---**Collect-work** - Collects work from students ```handin``` folders. See below.   
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
 
 
@@ -77,7 +78,13 @@ A simple handin system is included with Pi_ltsp. Each user account is created wi
 It goes through all users (in the ```pupil``` group) and grabs their handin folder. It then copies this to the provided teacher account into a new folder called ```submitted```.   
 Each students handin folder is renamed to that students name in the submitted folder.   
    
+###New Features   
+If you have an idea for a new feature that your school would find useful for this project, please feel free to open an issue at tag it with feature.   
+Issues can be found on the right side of the page.   
+
+
 ###WARNING
 
-
-This is a not a project yet for someone new to Linux. Although it should work, there is a number of places the system could fall over on. It is recommended, if you are interested in bringing this into your school, to drop a tweet to @gbaman1 (twitter).
+The software included should work but is not heavily tested with every new code change. Consider it Alpha quality software.   
+It is recommended, if you are interested in bringing this into your school, to drop a tweet to @gbaman1 (twitter).   
+For details on the licence of this project, see the LICENCE file
