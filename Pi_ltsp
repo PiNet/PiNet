@@ -6,6 +6,7 @@
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 
 VariablesSetup() {
+#Configures the global variables for PiLTSP.
 if [ -e "/opt/ltsp/.nbd" ]; then
 	NBD=$(head -n 1 /opt/ltsp/.nbd)
 else
@@ -15,30 +16,8 @@ else
 fi
 }
 
-YesNoBox(){
-
-whiptail --title $1 --yesno $2 8 78
- 
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-    result=y
-else
-    result=n
-fi
-}
-
-message() {
-
-whiptail --title $1 --msgbox $2 8 78
-
-}
-
-
-
-
-
-
 installLTSP() {
+#Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
 apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
