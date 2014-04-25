@@ -350,8 +350,6 @@ if [ "$RESULT" = "y" ]; then
 	fi
 fi
 	
-	
-
 
 }
 
@@ -664,7 +662,24 @@ if [ $exitstatus = 0 ]; then
 #    echo "User selected Cancel."
 fi
 
+}
+CopyToUsers(){ #Path-to-folder
+whiptail --title "WARNING" --yesno "This involves copying a folder to the users home folder, if it already exists should we delete it?" 8 78
+local delete=$?
+local filepath=$1
+local filename=$(basename "$filepath")
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+	if [ $delete = 0 ] ; then
+		rm -rf "/home/$user/$filename"
+	fi
+		echo "$filename"
+		echo "/home/$user/$filename"
+		
+		cp -r  "$filepath" "/home/$user/$filename"
+		chown -R "$user" "/home/$user/$filename"
 
+done
 }
 
 
@@ -673,6 +688,7 @@ OtherMenu() {
 
   MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
     "Collect-work" "Collects all work into a folder" \
+    "Extra-software" "Easily add extra software and packages" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -682,6 +698,9 @@ case "$MENUEPT" in
     CollectWork
     
 	Menu
+    ;;
+    Extra-software) 
+    ExtraSoftware
     ;;
     *)
     Menu
@@ -761,6 +780,53 @@ case "$MENUEPT" in
 
 esac
 } #***************************************************************************************************
+
+ExtraSoftware() {
+
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 100 10 \
+    "Install-Libreoffice" "Libreoffice is a full free office suit, similar to Microsoft office " \
+    "Install-MinecraftPi" "Installs Minecraft Pi edition" \
+    "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
+    "Install-Scratch-gpio" "Installs Scratch GPIO, a special version of scratch for GPIO work" \
+    "Install-Python-hardware" "Installs python libraries for hardware board, e.g. pibrella" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Install-Libreoffice) 
+    ltsp-chroot --arch armhf apt-get -y install libreoffice
+	Menu
+    ;;
+    Install-MinecraftPi)
+    wget https://s3.amazonaws.com/assets.minecraft.net/pi/minecraft-pi-0.1.1.tar.gz -O /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz
+    tar -zxvf /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz -C /opt/ltsp/raspiLTSP/temp/
+    CopyToUsers /opt/ltsp/raspiLTSP/temp/mcpi
+    cp -r /opt/ltsp/raspiLTSP/temp/mcpi /etc/skel/mcpi
+    Menu
+	;;
+	Install-Arduino) 
+    ltsp-chroot --arch armhf apt-get -y install arduino
+	Menu
+    ;;
+    Install-Scratch-gpio) 
+    whiptail --title "Error" --infobox "ScratchGPIO installation support has not been added yet" 8 78
+    echo "ScratchGPIO support has not been added yet"
+    sleep 3
+	Menu
+    ;;
+    Install-Python-hardware) 
+    ltsp-chroot --arch armhf pip install pibrella
+	Menu
+    ;;
+    *)
+    Menu
+    ;;
+
+esac
+}
+
+#***************************************************************************************************
 
 
 
@@ -928,3 +994,4 @@ if [ "$(id -u)" != "0" ]; then
 fi
 VariablesSetup
 Menu
+
