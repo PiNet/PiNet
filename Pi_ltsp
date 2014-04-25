@@ -50,6 +50,8 @@ OneTimeFixes(){
 
 echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports
 mkdir /etc/skel/handin
+mkdir /opt/ltsp/raspiLTSP
+mkdir /opt/ltsp/raspiLTSP/temp
 
 }
 
@@ -406,7 +408,7 @@ AddSoftware(){
 
 ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
-ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio x2x sonic-pi wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
+ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip x2x sonic-pi wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask 
 
