@@ -113,19 +113,19 @@ rm -rf ~/piBoot
 exitstatus=$?
 	if [ $exitstatus = 0 ]; then
     	rm -rf ~/Downloads/piBoot
-		git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+		git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
 		#cp ~/Downloads/piBoot
 	fi
  
 	echo "(Exit status was $exitstatus)"
 else
 	rm -rf ~/Downloads/piBoot
-	git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+	git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
 	#cp ~/Downloads/piBoot
 
 fi
 #rm -rf ~/Downloads/piBoot
-#git clone https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+#git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
 #mount -o loop ~/Downloads/piBoot/boot.img /mnt
 
 
@@ -367,11 +367,12 @@ whiptail --title "Install complete" --msgbox "The client install is complete, a 
 
 }
 
+
 RaspiTheme(){
 #Grabs a copy of the custom Raspberry Pi login screen and applies it
 
 rm -rf RaspberryPi-LTSP
-git clone https://github.com/gbaman/RaspberryPi-LTSP.git
+git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git
 cp -r RaspberryPi-LTSP/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
 rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
@@ -604,7 +605,7 @@ chgrp teachers /srv/ftp/handin
 
 PiControlInstall(){
 rm -rf Pi_Connector
-git clone https://github.com/gbaman/Pi_Connector.git
+git clone --depth 1 https://github.com/gbaman/Pi_Connector.git
 cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer
 cp Pi_Connector/Server/piserver.sh /etc/init.d/piserver.sh
 cp Pi_Connector/Client/textclient.py /opt/ltsp/armhf/usr/local/bin/raspiClient
@@ -621,7 +622,7 @@ echo "Picontrol installed!"
 
 PiControlInstallNew(){
 rm -rf Pi_Connector
-git clone https://github.com/gbaman/Pi_Connector.git
+git clone --depth 1 https://github.com/gbaman/Pi_Connector.git
 python Pi_Connector/setup.py ltsp full
 }
 
@@ -942,7 +943,7 @@ case "$MENUOPT" in
 	AddSoftware
 	RaspiTheme
 	EnableNBDswap
-	#NBDSetup
+	NBDSetup
 	ipAddress 1
 	#FtpSetup
 	AddTeacher
@@ -971,7 +972,7 @@ Rebuild-OS)
     	AddSoftware
     	RaspiTheme
     	EnableNBDswap
-    	#NBDSetup
+    	NBDSetup
 		ipAddress 1
 	fi
 	Menu
