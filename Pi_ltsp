@@ -814,7 +814,7 @@ ExtraSoftware() {
 
   MENUEPT=$(whiptail --menu "What would you like to do?" 20 100 10 \
     "Install-Libreoffice" "Libreoffice is a full free office suit, similar to Microsoft office " \
-    "Install-MinecraftPi" "Installs Minecraft Pi edition" \
+    "Install-MinecraftPi" "Installs Minecraft Pi edition and Raspi2png (for screenshoting)" \
     "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
     "Install-Scratch-gpio" "Installs Scratch GPIO, a special version of scratch for GPIO work" \
     "Install-Python-hardware" "Installs python libraries for hardware board, e.g. pibrella" \
