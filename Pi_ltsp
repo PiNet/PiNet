@@ -9,6 +9,9 @@ VariablesSetup() {
 #Configures the global variables for PiLTSP.
 if [ -e "/opt/ltsp/.nbd" ]; then
 	NBD=$(head -n 1 /opt/ltsp/.nbd)
+	if [ -e "/opt/ltsp/.nbdUse" ]; then
+		NBDuse=$(head -n 1 /opt/ltsp/.nbdUse)
+	fi
 else
 	mkdir /opt/ltsp/
 	echo "false" > /opt/ltsp/.nbd
@@ -373,8 +376,13 @@ rm -rf RaspberryPi-LTSP
 }
 
 NBDRun() {
+VariablesSetup
 if [ "$NBD" = "true" ]; then
-	ltsp-update-image /opt/ltsp/armhf
+	if [ "$NBDuse" = "true" ]; then
+		ltsp-update-image /opt/ltsp/armhf
+	else
+		whiptail --title "WARNING" --msgbox "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
+	fi
 fi
 }
 
@@ -387,10 +395,12 @@ if [ $exitstatus = 0 ]; then
     /usr/sbin/ltsp-update-image --config-nbd /opt/ltsp/armhf
     service nbd-server restart
     echo "true" > /opt/ltsp/.nbd
-    NBD=true
+    echo "true" > /opt/ltsp/.nbdUse
+    VariablesSetup
 else
     echo "false" > /opt/ltsp/.nbd
-    NBD=false
+    echo "false" > /opt/ltsp/.nbdUse
+    VariablesSetup
 fi
 }
 
@@ -451,6 +461,7 @@ EpoptesMenu() {
 case "$MENUEPT" in
     Install) 
     EpoptesInstaller
+    NBDRun
 	Menu
     ;;
     Epoptes-launch)
@@ -464,6 +475,7 @@ case "$MENUEPT" in
     Remove-epoptes)
 	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
     ltsp-chroot --arch armhf apt-get -y autoremove
+    NBDRun
     whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
     Menu
     ;;
@@ -686,9 +698,11 @@ done
 #***************************************************************************************************
 OtherMenu() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 85 10 \
     "Collect-work" "Collects all work into a folder" \
     "Extra-software" "Easily add extra software and packages" \
+    "NBD-compress-disable" "Disable auto NBD recompression after every change" \
+    "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -702,11 +716,22 @@ case "$MENUEPT" in
     Extra-software) 
     ExtraSoftware
     ;;
+    NBD-compress-disable) 
+    echo "false" > /opt/ltsp/.nbdUse
+    VariablesSetup
+    Menu
+    ;;
+    NBD-compress-enable) 
+    echo "true" > /opt/ltsp/.nbdUse
+    VariablesSetup
+    Menu
+    ;;
     *)
     Menu
     ;;
 
 esac
+
 } #***************************************************************************************************
 
 
@@ -796,6 +821,7 @@ ExtraSoftware() {
 case "$MENUEPT" in
     Install-Libreoffice) 
     ltsp-chroot --arch armhf apt-get -y install libreoffice
+    NBDRun
 	Menu
     ;;
     Install-MinecraftPi)
@@ -803,10 +829,16 @@ case "$MENUEPT" in
     tar -zxvf /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz -C /opt/ltsp/raspiLTSP/temp/
     CopyToUsers /opt/ltsp/raspiLTSP/temp/mcpi
     cp -r /opt/ltsp/raspiLTSP/temp/mcpi /etc/skel/mcpi
+    ltsp-chroot --arch armhf apt-get install libpng12-dev
+    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /opt/ltsp/raspiLTSP/temp/raspi2png
+    cp -r /opt/ltsp/raspiLTSP/temp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
+    chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
+    NBDRun
     Menu
 	;;
 	Install-Arduino) 
     ltsp-chroot --arch armhf apt-get -y install arduino
+    NBDRun
 	Menu
     ;;
     Install-Scratch-gpio) 
@@ -817,6 +849,7 @@ case "$MENUEPT" in
     ;;
     Install-Python-hardware) 
     ltsp-chroot --arch armhf pip install pibrella
+    NBDRun
 	Menu
     ;;
     *)
@@ -842,11 +875,13 @@ PiControlmenu() {
 case "$MENUEPT" in
     Enable/update-Picontrol) 
     PiControlInstallNew
+    NBDRun
     
 	Menu
     ;;
     Disable-Picontrol)
     python Pi_Connector/setup.py ltsp remove
+    NBDRun
     Menu
 	;;
     *)
@@ -972,7 +1007,11 @@ NBD-options)
 	Menu
 	;;
 NBD-recompress)
+	local CurrentNBD=$(head -n 1 /opt/ltsp/.nbdUse)
+	echo "true" > /opt/ltsp/.nbdUse
 	NBDRun
+	echo "$CurrentNBD" > /opt/ltsp/.nbdUse
+	VariablesSetup
 	Menu
 	;;
 Other)
