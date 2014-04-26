@@ -829,10 +829,6 @@ case "$MENUEPT" in
     tar -zxvf /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz -C /opt/ltsp/raspiLTSP/temp/
     CopyToUsers /opt/ltsp/raspiLTSP/temp/mcpi
     cp -r /opt/ltsp/raspiLTSP/temp/mcpi /etc/skel/mcpi
-    ltsp-chroot --arch armhf apt-get install libpng12-dev
-    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /opt/ltsp/raspiLTSP/temp/raspi2png
-    cp -r /opt/ltsp/raspiLTSP/temp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
-    chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
     NBDRun
     Menu
 	;;
