@@ -671,7 +671,9 @@ done
 }
 
 SudoMenu(){
-whiptail --title "WARNING" --yesno 'Enabling Sudo access for pupils can be dangerous, they could do nasty stuff! Only enable if needed!! (Sudo is needed for GPIO work). Are you sure you want to enable it?' 9 78 
+#Used to enable Sudo on pupil accounts
+
+whiptail --title "WARNING" --yesno 'Would you like to enable Sudo use for pupils? Giving pupils access to Sudo can be dangerous, they could do nasty things! But Sudo is required for GPIO use. Only enable if needed! You can change your mind later the in user-groups submenu.' 10 78 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
@@ -977,6 +979,7 @@ case "$MENUOPT" in
 	ipAddress 1
 	#FtpSetup
 	AddTeacher
+	SudoMenu
 	Menu
     ;;
 Change-IP)
