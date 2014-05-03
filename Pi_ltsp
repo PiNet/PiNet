@@ -4,6 +4,7 @@
 
 #Written by gbaman1, based off the fantastic work by vagrantc and alksig from the LTSP community
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
+#Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
 
 VariablesSetup() {
 #Configures the global variables for PiLTSP.
@@ -29,6 +30,7 @@ apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed gi
 
 
 buildClient() {
+#Creates the custom config file needed to build Raspbian and grabs keychain. Then starts the build
 
 wget http://archive.raspbian.org/raspbian.public.key -O - | gpg --import
 gpg --export 90FDDD2E >> /etc/ltsp/raspbian.public.key.gpg
@@ -50,12 +52,13 @@ ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
 
 
 OneTimeFixes(){
+#A number of one off fixes needed to be run
 
-echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports
-echo "/home   *(rw,sync,no_subtree_check)" >> /etc/exports
+echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports #sets up OS exporting for NFS
+echo "/home   *(rw,sync,no_subtree_check)" >> /etc/exports #Sets up home folder exporting for NFS
 
 mkdir /etc/skel/handin
-mkdir /opt/ltsp/raspiLTSP
+mkdir /opt/ltsp/raspiLTSP #Config file storage folders
 mkdir /opt/ltsp/raspiLTSP/temp
 
 echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tftpd-hpa autostarts
@@ -67,17 +70,17 @@ service tftpd-hpa restart
 
 
 
-groupUpdate(){
+groupUpdate(){   #Outdates now
+#Adds users to groups required for the system.
 
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user    #Get all non system users
 do
         echo "$user"
-        #theGroup = 'video'
         if groups "$user" | grep -q -E ' video(\s|$)'; then
     		echo "True"
 		else
     		echo false
-    		usermod -a -G video $user
+    		usermod -a -G video $user     #Add user to the group
 fi
 done
 
@@ -98,6 +101,7 @@ done
 
 
 configFixes() {
+#Configuration file changes required after the client is built. These are not once off as they reside inside the Raspberry Pi OS
 
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
@@ -110,57 +114,43 @@ cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 
 
-ipAddress() {
-echo "$1"
+ipAddress() {  #If 0 is passed, ask if they have internet, if
+#Function for setting the IP address inside SD card image.
+
+#echo "$1"
 if [ $1 -eq 0 ]; then
 whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
 rm -rf ~/piBoot
 exitstatus=$?
 	if [ $exitstatus = 0 ]; then
     	rm -rf ~/Downloads/piBoot
-		git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+		git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot #Clones main repository, including boot files
 		#cp ~/Downloads/piBoot
 	fi
- 
-	echo "(Exit status was $exitstatus)"
 else
 	rm -rf ~/Downloads/piBoot
-	git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
+	git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot #Clones main repository, including boot files
 	#cp ~/Downloads/piBoot
 
 fi
-#rm -rf ~/Downloads/piBoot
-#git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot
-#mount -o loop ~/Downloads/piBoot/boot.img /mnt
 
+IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
 
-IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`;
-
-whiptail --title "Ip address" --yesno "Is this your planned server IP address? - "$IP 8 78
+whiptail --title "Ip address" --yesno "Is this your planned server IP address? - "$IP 8 78 #Check with this use that the IP address is correct
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
     echo "User selected Yes."
 else
     echo "User selected No."
-
-
-INIT=Blue
-IP=$(whiptail --inputbox "Please enter IP address" 8 78 $INIT --title "IP address" 3>&1 1>&2 2>&3)
- 
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-    echo "User selected Ok and entered " $IP
-else
-    echo "User selected Cancel."
-fi
-echo "(Exit status was $exitstatus)"
-fi
- 
-echo "(Exit status was $exitstatus)"
-
-#ls ~/Downloads/piBoot/boot/
-if [ "$NBD" = "true" ]; then
+	INIT=Blue
+	IP=$(whiptail --inputbox "Please enter IP address" 8 78 $INIT --title "IP address" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus = 0 ]; then
+    	echo "User selected Ok and entered " $IP
+	fi
+	fi
+if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
 	rm ~/Downloads/piBoot/boot/cmdline.txt
 	cp ~/Downloads/piBoot/boot/cmdlineNBD.txt ~/Downloads/piBoot/boot/cmdline.txt
 else
@@ -168,19 +158,19 @@ else
 	cp ~/Downloads/piBoot/boot/cmdlineNFS.txt ~/Downloads/piBoot/boot/cmdline.txt
 fi
 
-sudo sed -i 's/1.1.1.1/'$IP'/g' ~/Downloads/piBoot/boot/cmdline.txt
+sudo sed -i 's/1.1.1.1/'$IP'/g' ~/Downloads/piBoot/boot/cmdline.txt #Find 1.1.1.1 and replace with the IP address
 sleep 5
 
 
-service nfs-kernel-server restart
+service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 
-#cp ~/Downloads/piBoot/boot.img ~/boot.img
 cp -r ~/Downloads/piBoot/boot/ ~/piBoot
-#rm -rf ~/Downloads/piBoot
 
 }
 
+
 EnableNBDswap(){
+#Enables NBD swap system. Allows the Raspberry Pis to use NBD partition as swap
 
 rm /etc/nbd-server/conf.d/swap.conf
 cat <<EOF > /etc/nbd-server/conf.d/swap.conf
@@ -195,6 +185,7 @@ service nbd-server restart
 
 
 FixRepo() {
+#Adds the repositories used by Raspbian. They public keys are included
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 echo "deb http://archive.raspberrypi.org/debian/ wheezy main" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
@@ -326,17 +317,22 @@ EOF1
 ltsp-chroot --arch armhf debconf-set-selections <<SELEOF
 wolfram-engine shared/accepted-wolfram-eula boolean true
 SELEOF
+#Auto accepts wolfram eula
 
 echo deb http://mirrordirector.raspbian.org/raspbian/ wheezy main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
+#Adds the repos to apt-get
 
 ltsp-chroot --arch armhf apt-get update
+#Fetches most recent package lists
 
 }
 
 InstallProgram() {
+#Installing custom programs into the chroot
 INSTALLP=$(whiptail --inputbox "What program would you like to install?" 8 78 $INIT --title "You can enter multiple programs by leaving a space between each" 3>&1 1>&2 2>&3)
  
 exitstatus=$?
+
 clear
 echo "------------------------------------------------------"
 echo "Am about to try and install " $INSTALLP
@@ -367,6 +363,7 @@ fi
 
 
 Finished() {
+#Function performing any actions that should happen after the boot image has been created
 whiptail --title "Install complete" --msgbox "The client install is complete, a boot.img file has been placed in /root folder, write this to an sd card" 16 78
 
 
@@ -386,10 +383,11 @@ rm -rf RaspberryPi-LTSP
 }
 
 NBDRun() {
+#Checks if it should be auto NBD compressing or not, if it should be, it recompresses the image
 VariablesSetup
-if [ "$NBD" = "true" ]; then
-	if [ "$NBDuse" = "true" ]; then
-		ltsp-update-image /opt/ltsp/armhf
+if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
+	if [ "$NBDuse" = "true" ]; then  #If temporarily NBD is disable
+		ltsp-update-image /opt/ltsp/armhf  #If NBD is enabled, recompress the image
 	else
 		whiptail --title "WARNING" --msgbox "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
 	fi
@@ -397,6 +395,7 @@ fi
 }
 
 NBDSetup() {
+#Setup function for NBD, asks user if they wish to use it, if not it defaults to NFS
 
 whiptail --title "NBD" --yesno "Would you like to enable NBD? It is twice as fast as old NFS but requires 5 min compression after each change to the OS" 8 78
  
@@ -417,6 +416,7 @@ fi
 
 
 AddSoftware(){
+#All the software not included in normal base Debian that has been added to Raspbian normally by Spindle
 
 #------------------------------------------------------------------------------------------
 #******************************************************************************************
@@ -448,6 +448,7 @@ ltsp-chroot --arch armhf apt-get install -y sonic-pi
 
 
 PiConfigFixes(){
+#Configuration changes to Raspberry Pi files, mostly to do with LXDE instead of Raspbian itself
 
 ltsp-chroot --arch armhf sed /etc/xdg/lxsession/LXDE/desktop.conf -i -e "s|sNet/ThemeName.*|sNet/ThemeName=Mist|"
 ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e \
@@ -461,51 +462,8 @@ ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^su_cmd.*/su_cmd=gksu %s/'
 }
 
 
-EpoptesMenu() {
-
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
-    "Install" "Install epoptes to server and pis" \
-    "Epoptes-launch" "Launches epoptes, it must be installed first though" \
-    "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
-    "Remove-epoptes" "Uninstall epoptes from the pi clients" \
-    3>&1 1>&2 2>&3)
-
-#<<COMMENT1
-#if [$MENUOPT -eq 0]; then
-case "$MENUEPT" in
-    Install) 
-    EpoptesInstaller
-    NBDRun
-	Menu
-    ;;
-    Epoptes-launch)
-    EpoptesRun
-    Menu
-    	;;
-    Epoptes-admin)
-    EpoptesAddAdmin
-    Menu
-    	;;
-    Remove-epoptes)
-	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
-    ltsp-chroot --arch armhf apt-get -y autoremove
-    NBDRun
-    whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
-    Menu
-    ;;
-    *)
-    Menu
-    ;;
-
-esac
-#COMMENT1
-}
-    
-    
-     
-
-
 EpoptesInstaller() {
+#Installs Epoptes, classroom management software
 whiptail --title "Install complete" --msgbox "Epoptes is classroom management for remote controlling and viewing everyone in the classes screen. You must enter a linux user" 16 78
 INIT=Username
 ADMIN=$(whiptail --inputbox "Please enter the admin account you wish to use with epoptes, this account can control other users." 8 78 $INIT --title "Epoptes Admin" 3>&1 1>&2 2>&3)
@@ -513,7 +471,7 @@ exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	apt-get update
 	apt-get install -y epoptes
-    gpasswd -a $ADMIN epoptes
+    gpasswd -a $ADMIN epoptes  #Adds admin user to epoptes group.
     gpasswd -a root epoptes
     ltsp-chroot --arch armhf apt-get update
     ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends
@@ -529,6 +487,7 @@ fi
 }
 
 EpoptesRun() {
+#Runs epoptes using the supplied username
 INIT=""
 ADMIN=$(whiptail --inputbox "Please enter your eopotes username" 8 78 $INIT --title "Epoptes username" 3>&1 1>&2 2>&3)
 exitstatus=$?
@@ -538,6 +497,7 @@ fi
 }
 
 EpoptesAddAdmin(){
+#Adds a new admin to epoptes
 ADMIN=$(whiptail --inputbox "Please enter an admin account you wish to use with epoptes, this account can control other users." 8 78 $INIT --title "Epoptes Admin" 3>&1 1>&2 2>&3)
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
@@ -550,8 +510,9 @@ fi
 
 
 fixGroups(){
+#Adds users to correct needed groups
 
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
 do
         #echo "$user"
         #theGroup = 'video'
@@ -580,6 +541,7 @@ done
 
 
 #SetNetwork() {
+#Setting up fixed IP address, WIP
 
 #IP=$(/sbin/ip route | awk '/default/ { print $3 }') <br>
 #echo $IP
@@ -588,6 +550,7 @@ done
 #}
 
 AddTeacher() {
+#Adding users to "teachers" group
 ADMIN=$(whiptail --inputbox "Please enter a new teacher user. Teacher users have access to the handin folder" 8 78 $INIT --title "Teacher" 3>&1 1>&2 2>&3)
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
@@ -601,7 +564,7 @@ fi
 }
 
 
-FtpSetup(){
+FtpSetup(){ #FTP system is no longer used
 apt-get install -y vsftpd
 sed -i 's/#write_enable=YES/''write_enable=YES''/g' /etc/vsftpd.conf
 sed -i 's/#anon_upload_enable=YES/''anon_upload_enable=YES''/g' /etc/vsftpd.conf 
@@ -612,7 +575,7 @@ chgrp teachers /srv/ftp/handin
 
 }
 
-PiControlInstall(){
+PiControlInstall(){ #No longer used, now includes a setup.py file
 rm -rf Pi_Connector
 git clone --depth 1 https://github.com/gbaman/Pi_Connector.git
 cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer
@@ -630,12 +593,14 @@ echo "Picontrol installed!"
 }
 
 PiControlInstallNew(){
+#Installs picontrol software using the new setup.py
 rm -rf Pi_Connector
 git clone --depth 1 https://github.com/gbaman/Pi_Connector.git
 python Pi_Connector/setup.py ltsp full
 }
 
 CollectWork(){
+#A work collection system. It grabs files from students "handin" folders, copies them to "submitted" folder on the server and changes their owner
 INIT=""
 USERHAND=$(whiptail --inputbox "Enter the user you want the files to go to" 8 78 $INIT --title "User selection" 3>&1 1>&2 2>&3)
  
@@ -684,7 +649,9 @@ if [ $exitstatus = 0 ]; then
 fi
 
 }
-CopyToUsers(){ #Path-to-folder
+CopyToUsers(){ #(Path-to-folder)
+#Used to copy files out to every user, plus to the skel folder for new users
+
 whiptail --title "WARNING" --yesno "This involves copying a folder to the users home folder, if it already exists should we delete it?" 8 78
 local delete=$?
 local filepath=$1
@@ -743,7 +710,45 @@ esac
 
 } #***************************************************************************************************
 
+EpoptesMenu() {
 
+  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+    "Install" "Install epoptes to server and pis" \
+    "Epoptes-launch" "Launches epoptes, it must be installed first though" \
+    "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
+    "Remove-epoptes" "Uninstall epoptes from the pi clients" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Install) 
+    EpoptesInstaller
+    NBDRun
+	Menu
+    ;;
+    Epoptes-launch)
+    EpoptesRun
+    Menu
+    	;;
+    Epoptes-admin)
+    EpoptesAddAdmin
+    Menu
+    	;;
+    Remove-epoptes)
+	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
+    ltsp-chroot --arch armhf apt-get -y autoremove
+    NBDRun
+    whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
+    Menu
+    ;;
+    *)
+    Menu
+    ;;
+
+esac
+#COMMENT1
+}
 
 #***************************************************************************************************
 ##### WIP ##########################
