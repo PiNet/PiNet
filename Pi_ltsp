@@ -58,6 +58,11 @@ mkdir /etc/skel/handin
 mkdir /opt/ltsp/raspiLTSP
 mkdir /opt/ltsp/raspiLTSP/temp
 
+echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tftpd-hpa autostarts
+echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
+chmod 755 /etc/network/if-up.d/tftpd-hpa
+service tftpd-hpa restart
+
 }
 
 
