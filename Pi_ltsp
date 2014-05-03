@@ -670,6 +670,17 @@ do
 done
 }
 
+SudoMenu(){
+whiptail --title "WARNING" --yesno "Enabling Sudo access for pupils can be dangerous, in theory they could do nasty stuff! Only enable if needed!! Are you sure you want to enable it?" 8 78 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
+	touch /opt/ltsp/armhf/etc/sudoers.d/01pupil
+	chmod 440 /opt/ltsp/armhf/etc/sudoers.d/01pupil
+	echo '%pupil ALL=NOPASSWD: ALL' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+fi
+}
+
 
 #***************************************************************************************************
 OtherMenu() {
@@ -799,6 +810,8 @@ UserGroups() {
   MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
     "Add-teacher" "Add user to the teachers permission group" \
     "Graphics-fix" "Fixes graphically accelerated applications (e.g. MCPI)" \
+    "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
+    "Disable-Sudo" "Disables the use of sudo for pupils" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -811,6 +824,14 @@ case "$MENUEPT" in
     ;;
     Graphics-fix)
     fixGroups
+    Menu
+	;;
+	Enable-Sudo)
+    SudoMenu
+    Menu
+	;;
+	Disable-Sudo)
+    rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
     Menu
 	;;
     *)
