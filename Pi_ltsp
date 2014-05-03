@@ -671,7 +671,7 @@ done
 }
 
 SudoMenu(){
-whiptail --title "WARNING" --yesno "Enabling Sudo access for pupils can be dangerous, in theory they could do nasty stuff! Only enable if needed!! Are you sure you want to enable it?" 8 78 
+whiptail --title "WARNING" --yesno 'Enabling Sudo access for pupils can be dangerous, they could do nasty stuff! Only enable if needed!! (Sudo is needed for GPIO work). Are you sure you want to enable it?' 9 78 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
