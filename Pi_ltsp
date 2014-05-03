@@ -424,7 +424,7 @@ AddSoftware(){
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde
+ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv man-db
@@ -954,18 +954,15 @@ Menu() {
 case "$MENUOPT" in 
     Full)
     if [ -d /opt/ltsp/armhf ]; then
-    whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
- 
-	exitstatus=$?
-	if [ $exitstatus = 0 ]; then
-    	echo "User selected Yes."
-	else
-    #echo "User selected No."
-    Menu
+    	whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
+		exitstatus=$?
+		if [ $exitstatus = 0 ]; then
+    		echo "User selected Yes."
+		else
+    	#echo "User selected No."
+    	Menu
+		fi
 	fi
-	fi
- 
-    
     installLTSP
 	buildClient
 	OneTimeFixes
