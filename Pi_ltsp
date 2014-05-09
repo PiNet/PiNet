@@ -977,10 +977,12 @@ case "$MENUOPT" in
 	#FtpSetup
 	AddTeacher
 	SudoMenu
+	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 16 78
 	Menu
     ;;
 Change-IP)
-	ipAddress 0 
+	ipAddress 0
+	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/root/piboot to the root of an SD card." 16 78
 	Menu
 	;;
 Install-Program)
@@ -1004,6 +1006,8 @@ Rebuild-OS)
     	EnableNBDswap
     	NBDSetup
 		ipAddress 1
+		SudoMenu
+		whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 	fi
 	Menu
 	;;
@@ -1025,6 +1029,7 @@ Update-All)
 	AddSoftware
 	RaspiTheme
 	NBDRun
+	whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
 	Menu
 	;;
 Epoptes-Menu)
