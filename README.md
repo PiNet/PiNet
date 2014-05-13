@@ -40,11 +40,12 @@ Select full install to set everything up. This can take anywhere form 30 mins to
 
 When asked about NBD or NFS. It is recommended to use NBD. NBD uses 40% of the network bandwidth that NFS uses, but must be recompressed every time a change is made. It is easy to later switch back and forth with ```NBD-options```
 
-Next create your users with ```Manage-users```
+Next create your users with ```Manage-users``` or using ```adduser``` in the commandline   
 
 Finally run ```Graphics-fix``` in ```user-groups``` to fix all newly added user accounts
-
-
+   
+The script will generate an SD card boot folder in /root/piboot. Copy these files onto root of an SD card formated as FAT. Or just drop on top of a Raspbian SD card image boot folder. Put your SD card into your Raspberry Pi, plug in ethernet and other required connectors and power it up, it should connect to the server and boot.   
+   
 To switch to the Raspberry Pi virtual OS at any time, use ```ltsp-chroot --arch armhf```   
 This will change the shell to the Raspberry Pi OS. Make any changes and type ```exit``` to return to normal shell.   
    
@@ -69,6 +70,9 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 **NBD-recompress** - Forces a NBD OS recompression. Run this if you make a change to the OS and using NBD.   
 **Other** - Submenu for miscellaneous options.   
 ---**Collect-work** - Collects work from students ```handin``` folders. See below.   
+---**Extra-Software** - A collection of software options that can be really easy installed with hit of button.   
+---**NBD-compress-disable** - Disables NBD recompressing temporarily without disabling NBD overall.   
+---**NBD-compress-enable** - Enables NBD recompressing again after being temporarily disabled.   
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
 
 
