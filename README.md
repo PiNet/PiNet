@@ -20,13 +20,12 @@ Also included is a custom Raspberry Pi theme and some custom config files for bo
 It is currently pre-alpha quality so I take no responsibility for deleted data or damage caused by it.   
 
 Use at your own risk   
-
-
-
+   
+__More information can be found on the blog post http://pi.gbaman.info/?p=256__
 
 ###How to install
 
-
+__A full userguide can be found at http://pi.gbaman.info/wp-content/uploads/2014/05/small_Userguide-pi-ltsp-full-size.pdf__   
 
 To use, first install Debian wheezy onto your server and download the ```Pi_ltsp``` file.
 
