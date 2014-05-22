@@ -28,7 +28,7 @@ installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server
 }
 
 
@@ -48,6 +48,7 @@ DIST=wheezy
 MIRROR=http://mirrordirector.raspbian.org/raspbian
 SECURITY_MIRROR=none
 UPDATES_MIRROR=none
+LOCALE=en_GB.UTF8
 KERNEL_PACKAGES=linux-image-3.2.0-4-rpi
 EOF
 
