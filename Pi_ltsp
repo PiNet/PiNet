@@ -1,4 +1,8 @@
 #! /bin/bash
+
+
+#Raspi-LTSP
+#Pi_LTSP
 #Version 0.02
 #UpdateLoc = "https://raw.github.com/gbaman/RaspberryPi-LTSP/master/UPDATE"
 
@@ -43,10 +47,11 @@ DIST=wheezy
 # For alternate raspbian mirrors, see: http://www.raspbian.org/RaspbianMirrors
 MIRROR=http://mirrordirector.raspbian.org/raspbian
 SECURITY_MIRROR=none
+UPDATES_MIRROR=none
 KERNEL_PACKAGES=linux-image-3.2.0-4-rpi
 EOF
 
-ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
+VENDOR=Debian ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
 }
 
 
