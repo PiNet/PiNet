@@ -967,6 +967,26 @@ esac
 
 #***************************************************************************************************
 
+FullInstall(){
+	whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
+	installLTSP
+	buildClient
+	OneTimeFixes
+	#PiConfigFixes
+	configFixes
+	FixRepo
+	AddSoftware
+	RaspiTheme
+	EnableNBDswap
+	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+	ExtraSoftware
+	NBDSetup
+	ipAddress 1
+	#FtpSetup
+	#AddTeacher
+	SudoMenu
+	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+}
 
 Menu() {
 
@@ -1000,23 +1020,7 @@ case "$MENUOPT" in
     	Menu
 		fi
 	fi
-    installLTSP
-	buildClient
-	OneTimeFixes
-	#PiConfigFixes
-	configFixes
-	FixRepo
-	AddSoftware
-	RaspiTheme
-	EnableNBDswap
-	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
-	ExtraSoftware
-	NBDSetup
-	ipAddress 1
-	#FtpSetup
-	#AddTeacher
-	SudoMenu
-	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+    FullInstall
 	Menu
     ;;
 Change-IP)
@@ -1108,15 +1112,30 @@ Update-Pi-LTSP)
 	esac
 
 #fi
-} #***************************************************************************************************
+} 
+
+
+
+#***************************************************************************************************
 
 if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
    exit 1
 fi
 
-
+if [ -d /opt/ltsp/armhf ]; then
+    	Menu
+else
+    	whiptail --title "Welcome" --yesno "Welcome to Raspi-LTSP. We have detected Raspi-LTSP is not installed, would you like to run the full install?" 8 78
+		exitstatus=$?
+		if [ $exitstatus = 0 ]; then
+    		FullInstall
+		else
+    		Menu
+		fi
+	fi
 
 VariablesSetup
+
 Menu
 
