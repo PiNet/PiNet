@@ -981,7 +981,7 @@ case "$MENUOPT" in
 	NBDSetup
 	ipAddress 1
 	#FtpSetup
-	AddTeacher
+	#AddTeacher
 	SudoMenu
 	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 16 78
 	Menu
