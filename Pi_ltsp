@@ -148,9 +148,9 @@ whiptail --title "Ip address" --yesno "Is this your planned server IP address? -
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-    echo "User selected Yes."
+    echo " "
 else
-    echo "User selected No."
+    echo " "
 	INIT=Blue
 	IP=$(whiptail --inputbox "Please enter IP address" 8 78 $INIT --title "IP address" 3>&1 1>&2 2>&3)
 	exitstatus=$?
@@ -167,11 +167,16 @@ else
 fi
 
 sudo sed -i 's/1.1.1.1/'$IP'/g' ~/Downloads/piBoot/boot/cmdline.txt #Find 1.1.1.1 and replace with the IP address
-sleep 5
+sleep 2
 
 
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
-
+if [ "$SUDO_USER" = "" ]; then
+        cp -r ~/Downloads/piBoot/boot/ ~/piBoot
+else
+        cp -r ~/Downloads/piBoot/boot/ "/home/$SUDO_USER/piBoot"
+        chown "$SUDO_USER" "/home/$SUDO_USER/piBoot"
+fi
 cp -r ~/Downloads/piBoot/boot/ ~/piBoot
 
 }
@@ -1025,7 +1030,7 @@ case "$MENUOPT" in
     ;;
 Change-IP)
 	ipAddress 0
-	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/root/piboot to the root of an SD card." 16 78
+	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in the piboot folder to the root of an SD card." 16 78
 	Menu
 	;;
 Install-Program)
