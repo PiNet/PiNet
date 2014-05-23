@@ -1,7 +1,7 @@
 RaspberryPi-LTSP
 ================
 
-Linux Termal Server Project is a collection of pieces of software for running fat and thin clients from a linux based server.
+Linux Termal Server Project is a collection of pieces of software for running fat and thin clients from a Linux based server.
 
 This can also be done on the Raspberry Pi. It allows a master pi image to be created which is then booted by each pi. This means no more flashing 100s of sd cards with large Raspberry Pi OS's, just load the 30mb image produced by the server when it is installed onto all your pis and you are good to go.
 It brings 3 main advantages to schools.
@@ -23,9 +23,35 @@ Use at your own risk
    
 __More information can be found on the blog post http://pi.gbaman.info/?p=256__
 
-###How to install
+###Hardware Requirements
++ Old computer with at least 2gb of ram, 30gb of hard drive space and a gigabit ethernet port (10/100/1000mb port)   
++ Network switch or router   
++ Wired (Ethernet) Raspberry Pi   
++ An SD card of at least 32mb
 
-__A full userguide can be found at http://pi.gbaman.info/wp-content/uploads/2014/05/small_Userguide-pi-ltsp-full-size.pdf__   
+##Installation
+
+
+###Ubuntu (Recommended)
+
+Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr). Other versions are very likely to work, but at not supported.
+
+1. Download and install Ubuntu 14.04 on an old computer. This is a great guide to follow http://www.ubuntu.com/download/desktop/install-ubuntu-desktop .
+2. Open a terminal and grab Raspi-LTSP with ```wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp```.
+3. Run Raspi-LTSP with ```sudo Pi_ltsp```.
+4. Raspi-LTSP should now ask if you want to run a full install, select yes.
+5. Go make a few cups of tea, will take 1-2 hours.
+6. Select any additional packages you want for your install from the menu, you can rerun this menu later if you want.
+7. Select yes for enabling NBD unless you intend to make changes often to the operating system.
+8. Verify your IP address is correct (important for machines with 2 NICs).
+9. Decide whether to enable sudo support, if you aren't going to use GPIO no need to enable it, can be changed later.
+10. Installation should now be complete on the server!
+11. Copy the contents of the piboot folder (found in ```/home/YouUserName/piboot```) to a blank fat32 formatted SD card of at least 32mb.
+12. Plug in keyboard, mouse, ethernet and power to your Raspberry Pi with your newly created SD card in it. It should boot up, find your server and present a login screen. If it fails to load, check _Connection timed out errors on boot_ section below.
+
+###Debian (Guide slightly out of date)
+
+__A full userguide for Debian can be found at http://pi.gbaman.info/wp-content/uploads/2014/05/small_Userguide-pi-ltsp-full-size.pdf__   
 
 To use, first install Debian wheezy onto your server and download the ```Pi_ltsp``` file.
 
@@ -50,12 +76,12 @@ This will change the shell to the Raspberry Pi OS. Make any changes and type ```
    
 If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NBD-recompress``` to recompress the image again or the changes wont push out to the Pis when they boot.   
 
-###Menu options
+##Menu options
 
 
 **Full** - Full installs a full version of the system. Run this first. Should only be run once.   
 **Change-IP** - Run this if your servers IP address changes or want to update your SD card image.   
-**Install-Program** - Use if you want to install new package, enter full package name.   
+**Install-Program** - Use to install new packages for your Raspbian image.   
 **Update-All** - Runs apt-get update && apt-get upgrade on server and Raspberry Pi OS to update everything.   
 **Manage-Users** - Launches the graphical user management system to add users, remove users and reset passwords.  
 **Epoptes-Menu** - Use for install epoptes classroom management software, for adding a new "teacher" account.   
@@ -69,24 +95,33 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 **NBD-recompress** - Forces a NBD OS recompression. Run this if you make a change to the OS and using NBD.   
 **Other** - Submenu for miscellaneous options.   
 ---**Collect-work** - Collects work from students ```handin``` folders. See below.   
----**Extra-Software** - A collection of software options that can be really easy installed with hit of button.   
 ---**NBD-compress-disable** - Disables NBD recompressing temporarily without disabling NBD overall.   
 ---**NBD-compress-enable** - Enables NBD recompressing again after being temporarily disabled.   
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
 
 
-###Handin system   
+##Handin system   
    
 A simple handin system is included with Pi_ltsp. Each user account is created with a handin folder in their home folder. E.g. ```/home/andrew/handin```   
 It goes through all users (in the ```pupil``` group) and grabs their handin folder. It then copies this to the provided teacher account into a new folder called ```submitted```.   
 Each students handin folder is renamed to that students name in the submitted folder.   
    
-###New Features   
+
+##Common issues
+###Connection timed out errors on boot
+
+This normally occures if the IP address in the cmdline.txt file that the Raspberry Pi uses to connect to the server is wrong. It is automatically set when Raspi-LTSP builds the SD card. To change it, open the cmdline.txt file on the SD card and set ```nbdroot= ``` to the IP address of your server.   
+You can find your servers IP address with ```ifconfig```   
+Or the easier way ```ifconfig | perl -nle'/dr:(\S+)/ && print $1'```   
+
+Remember to ignore ```127.0.0.1``` as this is the reserved local address.
+
+##New Features   
 If you have an idea for a new feature that your school would find useful for this project, please feel free to open an issue at tag it with feature.   
 Issues can be found on the right side of the page.   
 
 
-###WARNING
+##WARNING
 
 The software included should work but is not heavily tested with every new code change. Consider it Alpha quality software.   
 It is recommended, if you are interested in bringing this into your school, to drop a tweet to @gbaman1 (twitter).   
