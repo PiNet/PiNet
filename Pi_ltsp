@@ -879,7 +879,7 @@ ExtraSoftware() {
     "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
     "Install-Scratch-gpio" "Installs Scratch GPIO, a special version of scratch for GPIO work" \
     "Install-Python-hardware" "Installs python libraries for hardware board, e.g. pibrella" \
-    "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repositary" \
+    "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repository" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
