@@ -16,12 +16,27 @@ if [ -e "/opt/ltsp/.nbd" ]; then
 	NBD=$(head -n 1 /opt/ltsp/.nbd)
 	if [ -e "/opt/ltsp/.nbdUse" ]; then
 		NBDuse=$(head -n 1 /opt/ltsp/.nbdUse)
+	else
+		echo "false" > /opt/ltsp/.nbdUse
+		VariablesSetup
+	fi
+	if [ -e "/opt/ltsp/.NBDBuildNeeded" ]; then
+		NBDBuildNeeded=$(head -n 1 /opt/ltsp/.NBDBuildNeeded)
+	else
+		echo "false" > /opt/ltsp/.NBDBuildNeeded
+		VariablesSetup
 	fi
 else
 	mkdir /opt/ltsp/
 	echo "false" > /opt/ltsp/.nbd
 	VariablesSetup
 fi
+} 
+
+SetVar(){
+echo "$2" > "/opt/ltsp/.$1"
+VariablesSetup
+
 }
 
 installLTSP() {
@@ -82,24 +97,11 @@ groupUpdate(){   #Outdates now
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user    #Get all non system users
 do
         echo "$user"
-        if groups "$user" | grep -q -E ' video(\s|$)'; then
+        if groups "$user" | grep -q -E ' $1(\s|$)'; then
     		echo "True"
 		else
-    		echo false
-    		usermod -a -G video $user     #Add user to the group
-fi
-done
-
-
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
-do
-        echo "$user"
-        if groups "$user" | grep -q -E ' pupil(\s|$)'; then
-    		echo "True"
-		else
-    		echo false
-    		usermod -a -G pupil $user
-    
+    		#echo false
+    		usermod -a -G $1 $user     #Add user to the group
 fi
 done
 }
@@ -351,6 +353,7 @@ if [ "$RESULT" = "y" ]; then
 	ltsp-chroot --arch armhf apt-get update
 	ltsp-chroot --arch armhf apt-get -y install $INSTALLP
 	if [ $? -eq 0 ]; then
+		SetVar NBDBuildNeeded true
 		echo "-----------------------------"
 		echo $INSTALLP " was installed correctly"
 		echo "-----------------------------"
@@ -393,7 +396,11 @@ NBDRun() {
 VariablesSetup
 if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
 	if [ "$NBDuse" = "true" ]; then  #If temporarily NBD is disable
+		echo "--------------------------------------------------------"
+		echo "Compressing the image, this will take roughly 5 minutes"
+		echo "--------------------------------------------------------"
 		ltsp-update-image /opt/ltsp/armhf  #If NBD is enabled, recompress the image
+		SetVar NBDBuildNeeded false
 	else
 		whiptail --title "WARNING" --msgbox "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
 	fi
@@ -411,10 +418,12 @@ if [ $exitstatus = 0 ]; then
     service nbd-server restart
     echo "true" > /opt/ltsp/.nbd
     echo "true" > /opt/ltsp/.nbdUse
+    echo "false" > /opt/ltsp/.NBDBuildNeeded
     VariablesSetup
 else
     echo "false" > /opt/ltsp/.nbd
     echo "false" > /opt/ltsp/.nbdUse
+    echo "false" > /opt/ltsp/.NBDBuildNeeded
     VariablesSetup
 fi
 }
@@ -689,13 +698,26 @@ if [ $exitstatus = 0 ]; then
 fi
 }
 
+FinishedInstallingSoftware(){
+whiptail --title "Finished?" --yesno 'Are you finished installing software?' 10 78 
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+	if [ "$NBDBuildNeeded" = "true" ]; then
+		NBDRun
+	fi
+	Menu
+else
+	ExtraSoftware
+fi
+	
+}
+
 
 #***************************************************************************************************
 OtherMenu() {
 
   MENUEPT=$(whiptail --menu "What would you like to do?" 20 85 10 \
     "Collect-work" "Collects all work into a folder" \
-    "Extra-software" "Easily add extra software and packages" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
     "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
     3>&1 1>&2 2>&3)
@@ -857,6 +879,7 @@ ExtraSoftware() {
     "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
     "Install-Scratch-gpio" "Installs Scratch GPIO, a special version of scratch for GPIO work" \
     "Install-Python-hardware" "Installs python libraries for hardware board, e.g. pibrella" \
+    "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repositary" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -864,7 +887,8 @@ ExtraSoftware() {
 case "$MENUEPT" in
     Install-Libreoffice) 
     ltsp-chroot --arch armhf apt-get -y install libreoffice
-    NBDRun
+    SetVar NBDBuildNeeded true
+    FinishedInstallingSoftware
 	Menu
     ;;
     Install-MinecraftPi)
@@ -876,27 +900,34 @@ case "$MENUEPT" in
     wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /opt/ltsp/raspiLTSP/temp/raspi2png
     cp -r /opt/ltsp/raspiLTSP/temp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
-    NBDRun
+    SetVar NBDBuildNeeded true
+    FinishedInstallingSoftware
     Menu
 	;;
 	Install-Arduino) 
     ltsp-chroot --arch armhf apt-get -y install arduino
-    NBDRun
+    SetVar NBDBuildNeeded true
+    FinishedInstallingSoftware
 	Menu
     ;;
     Install-Scratch-gpio) 
     whiptail --title "Error" --infobox "ScratchGPIO installation support has not been added yet" 8 78
     echo "ScratchGPIO support has not been added yet"
     sleep 3
-	Menu
+	ExtraSoftware
     ;;
     Install-Python-hardware) 
     ltsp-chroot --arch armhf pip install pibrella
-    NBDRun
-	Menu
+    SetVar NBDBuildNeeded true
+    FinishedInstallingSoftware
+    ;;
+    Install-Custom-package)
+    InstallProgram
+    
+    FinishedInstallingSoftware
     ;;
     *)
-    Menu
+    FinishedInstallingSoftware
     ;;
 
 esac
@@ -978,12 +1009,14 @@ case "$MENUOPT" in
 	AddSoftware
 	RaspiTheme
 	EnableNBDswap
+	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+	ExtraSoftware
 	NBDSetup
 	ipAddress 1
 	#FtpSetup
 	#AddTeacher
 	SudoMenu
-	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 16 78
+	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	Menu
     ;;
 Change-IP)
@@ -992,9 +1025,7 @@ Change-IP)
 	Menu
 	;;
 Install-Program)
-	InstallProgram
-	NBDRun
-	Menu
+	ExtraSoftware
 	;;
 Rebuild-OS)
 	#echo rebuilding
@@ -1010,6 +1041,8 @@ Rebuild-OS)
     	AddSoftware
     	RaspiTheme
     	EnableNBDswap
+    	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+		ExtraSoftware
     	NBDSetup
 		ipAddress 1
 		SudoMenu
@@ -1069,7 +1102,11 @@ Update-Pi-LTSP)
 	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp
 	sh Pi_ltsp
 	;;
+	*)
+    exit
+    ;;
 	esac
+
 #fi
 } #***************************************************************************************************
 
@@ -1077,6 +1114,9 @@ if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
    exit 1
 fi
+
+
+
 VariablesSetup
 Menu
 
