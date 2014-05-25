@@ -887,7 +887,7 @@ BackupMenu() {
 
   MENUEPT=$(whiptail --title "Backup Submenu" --menu "What would you like to do?" 20 80 10 \
     "Configure-backup" "Configure and enable backups. Also use to make changes" \
-    "Disable-backup" "Launches epoptes, it must be installed first though" \
+    "Disable-backup" "Disables backup daemon, old backups will not be deleted" \
     "Display-Logs" "Displays logs for the backup daemon, check these regularly!" \
     3>&1 1>&2 2>&3)
 
