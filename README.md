@@ -38,7 +38,7 @@ Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr).
 
 1. Download and install Ubuntu 14.04 on an old computer. This is a great guide to follow http://www.ubuntu.com/download/desktop/install-ubuntu-desktop .
 2. Open a terminal and grab Raspi-LTSP with ```wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp```.
-3. Run Raspi-LTSP with ```sudo Pi_ltsp```.
+3. Run Raspi-LTSP with ```sudo bash Pi_ltsp```.
 4. Raspi-LTSP should now ask if you want to run a full install, select yes.
 5. Go make a few cups of tea, will take 1-2 hours.
 6. Select any additional packages you want for your install from the menu, you can rerun this menu later if you want.
@@ -57,7 +57,7 @@ To use, first install Debian wheezy onto your server and download the ```Pi_ltsp
 
 Change to root with the command   ```su```   (or run a root terminal)
 
-Now run the script with     ```sh Pi_ltsp```
+Now run the script with     ```bash Pi_ltsp```
 
 The script will launch and you will be presented with a few options. 
 
