@@ -752,19 +752,19 @@ currentTime=`date +"%H:%M"`
 if [ -e "/opt/ltsp/.backup" ]; then
         LOCATION=$(head -n 1 /opt/ltsp/.backup)
         if [ -d "$LOCATION" ]; then
-                tar -zcvf "$LOCATION$currentDate--Raspi-Users-Backup.tar.gz" /home
+                tar -zcvf "$LOCATION$currentDate--$currentTime--Raspi-Users-Backup.tar.gz" /home
                 #echo "$LOCATION$currentDate--Raspi-Users-Backup.tar.gz"
                 exitstatus=$?
                 if [ $exitstatus = 0 ]; then
-                        logger -s "Backup of users files was successful at $currentDate - $currentTime" 2>> /var/log/Raspi-backup.log
+                        logger -s "$currentDate $currentTime - Backup of users files was successful" 2>> /var/log/Raspi-backup.log
                 else
-                        logger -s "Backup failed with tar errorcode $exitstatus at $currentDate - $currentTime" 2>> /var/log/Raspi-backup$
+                        logger -s "$currentDate $currentTime - Backup failed with tar errorcode $exitstatus" 2>> /var/log/Raspi-backup.log
                 fi
         else
-                logger -s "Backup folder unavailable! $currentDate - $currentTime" 2>> /var/log/Raspi-backup.log
+                logger -s "$currentDate $currentTime - Backup folder unavailable!" 2>> /var/log/Raspi-backup.log
         fi
 else
-        logger -s "No backup location specified! $currentDate - $currentTime" 2>> /var/log/Raspi-backup.log
+        logger -s "$currentDate $currentTime - No backup location specified!" 2>> /var/log/Raspi-backup.log
 fi' >> /usr/local/bin/Raspi-LTSP-backup.sh
 chmod +x /usr/local/bin/Raspi-LTSP-backup.sh
 }
@@ -902,9 +902,13 @@ case "$MENUEPT" in
     	Menu
     else
     	rm -rf /opt/ltsp/.backup
-    	echo "$location" >> /opt/ltsp/.backup
+    	echo "$location/" >> /opt/ltsp/.backup
     	createBackupScript
     	backupFrequency
+    	currentDate=`date +"%d-%m-%y"`
+		currentTime=`date +"%H:%M"`
+    	#echo "Hello $location $currentDate-$currentTime" >> /var/log/Raspi-backup.log
+    	logger -s "$currentDate $currentTime - Backup configured. Folder chosen is $location" 2>> /var/log/Raspi-backup.log
     	whiptail --title "Backup setup" --msgbox 'The backup is now configured, the logs can be viewed at any time by checking /var/log/Raspi-backup.log' 12 78
     fi
 	Menu
@@ -912,6 +916,9 @@ case "$MENUEPT" in
     Disable-backup)
     rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
     removeAnacronLines
+    currentDate=`date +"%d-%m-%y"`
+	currentTime=`date +"%H:%M"`
+    logger -s "$currentDate $currentTime - Backup disabled from Raspi-LTSP" 2>> /var/log/Raspi-backup.log
     whiptail --title "Backup disabled" --msgbox 'The backup daemon has now been disabled, no more backups will be performed till it is enabled again with Configure-backup. All old backups have been kept.' 12 78
     Menu
     ;;
@@ -920,7 +927,9 @@ case "$MENUEPT" in
     echo "-------------------"
     echo "Raspi-LTSP log file"
     echo "-------------------"
+    echo " "
     echo "$(cat /var/log/Raspi-backup.log)"
+    echo " "
     echo "Hit enter to continue"
     read 
     Menu
