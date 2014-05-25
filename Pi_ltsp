@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 
 #Raspi-LTSP
@@ -717,11 +717,96 @@ fi
 	
 }
 
+fileSelect(){
+
+results=$(whiptail --title "Current location $(pwd)"  --menu "Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `for x in $(ls -pa | grep "/"); do echo $x "-"; done` 2>&1 >/dev/tty)
+exitstatus=$?
+#echo $exitstatus
+if [ "$exitstatus" = "1" ]; then
+        echo "The user canceled :( "
+        return "1"
+else
+        if [ "$results" = "./" ]; then
+                location=$(pwd)
+                echo "chosen location is $location"
+        else
+                cd "$results"
+                fileSelect
+        fi
+fi
+
+}
+
+removeAnacronLines() {
+sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
+sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
+sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
+
+}
+
+createBackupScript(){
+rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+
+echo 'currentDate=`date +"%d-%m-%y"`
+currentTime=`date +"%H:%M"`
+if [ -e "/opt/ltsp/.backup" ]; then
+        LOCATION=$(head -n 1 /opt/ltsp/.backup)
+        if [ -d "$LOCATION" ]; then
+                tar -zcvf "$LOCATION$currentDate--Raspi-Users-Backup.tar.gz" /home
+                #echo "$LOCATION$currentDate--Raspi-Users-Backup.tar.gz"
+                exitstatus=$?
+                if [ $exitstatus = 0 ]; then
+                        logger -s "Backup of users files was successful at $currentDate - $currentTime" 2>> /var/log/Raspi-backup.log
+                else
+                        logger -s "Backup failed with tar errorcode $exitstatus at $currentDate - $currentTime" 2>> /var/log/Raspi-backup$
+                fi
+        else
+                logger -s "Backup folder unavailable! $currentDate - $currentTime" 2>> /var/log/Raspi-backup.log
+        fi
+else
+        logger -s "No backup location specified! $currentDate - $currentTime" 2>> /var/log/Raspi-backup.log
+fi' >> /usr/local/bin/Raspi-LTSP-backup.sh
+chmod +x /usr/local/bin/Raspi-LTSP-backup.sh
+}
+
+
+#***************************************************************************************************
+backupFrequency(){
+  MENUEPT=$(whiptail --menu "How often should I create a backup?" 20 85 10 \
+    "Every-day" "Will create a new backup every day" \
+    "Twice-weekly" "Will create a backup on Tuesday and Thursday" \
+    "Once-a-week" "Will create a backup every Friday" \
+    3>&1 1>&2 2>&3)
+
+case "$MENUEPT" in
+    Every-day) 
+    removeAnacronLines
+    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
+	
+    ;;
+    Every-3-days)
+    removeAnacronLines 
+    echo "3       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
+    ;;
+    Once-a-week)
+    removeAnacronLines 
+    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
+    ;;
+    *)
+    removeAnacronLines
+    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    Menu
+    ;;
+
+esac
+}
+
+
 
 #***************************************************************************************************
 OtherMenu() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 85 10 \
+  MENUEPT=$(whiptail --title "Other Submenu" --menu "What would you like to do?" 20 85 10 \
     "Collect-work" "Collects all work into a folder" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
     "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
@@ -758,7 +843,7 @@ esac
 
 EpoptesMenu() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "Epoptes Submenu" --menu "What would you like to do?" 20 80 10 \
     "Install" "Install epoptes to server and pis" \
     "Epoptes-launch" "Launches epoptes, it must be installed first though" \
     "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
@@ -800,33 +885,44 @@ esac
 ##### WIP ##########################
 BackupMenu() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
-    "Enable-backup" "Install epoptes to server and pis" \
+  MENUEPT=$(whiptail --title "Backup Submenu" --menu "What would you like to do?" 20 80 10 \
+    "Configure-backup" "Configure and enable backups. Also use to make changes" \
     "Disable-backup" "Launches epoptes, it must be installed first though" \
-    "Backup-frequency" "Add a new epoptes admin. Admins can control other clients" \
-    "Backup-location" "Uninstall epoptes from the pi clients" \
+    "Display-Logs" "Displays logs for the backup daemon, check these regularly!" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
 #if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
-    Enable-backup) 
-    rm -rf /usr/local/bin/ltspBackup.sh
-    
+    Configure-backup) 
+    whiptail --title "Select Location" --msgbox 'Select the location where you wish to save the backups. An external hard drive is highly recommended! Even a large (16gb+) pendrive should be sufficient. In Linux external drives are attached in /media so you will start there. Do not save backups on the same hard drive as the /home folder!' 12 78
+    cd /media
+    fileSelect
+    if [ "$location" = "1" ]; then
+    	Menu
+    else
+    	rm -rf /opt/ltsp/.backup
+    	echo "$location" >> /opt/ltsp/.backup
+    	createBackupScript
+    	backupFrequency
+    	whiptail --title "Backup setup" --msgbox 'The backup is now configured, the logs can be viewed at any time by checking /var/log/Raspi-backup.log' 12 78
+    fi
 	Menu
     ;;
     Disable-backup)
-    EpoptesRun
+    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    removeAnacronLines
+    whiptail --title "Backup disabled" --msgbox 'The backup daemon has now been disabled, no more backups will be performed till it is enabled again with Configure-backup. All old backups have been kept.' 12 78
     Menu
-    	;;
-    Backup-frequency)
-    EpoptesAddAdmin
-    Menu
-    	;;
-    Backup-location)
-	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
-    ltsp-chroot --arch armhf apt-get -y autoremove
-    whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
+    ;;
+    Display-Logs)
+    clear
+    echo "-------------------"
+    echo "Raspi-LTSP log file"
+    echo "-------------------"
+    echo "$(cat /var/log/Raspi-backup.log)"
+    echo "Hit enter to continue"
+    read 
     Menu
     ;;
     *)
@@ -842,7 +938,7 @@ esac
 #***************************************************************************************************
 UserGroups() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "User-groups Submenu" --menu "What would you like to do?" 20 80 10 \
     "Add-teacher" "Add user to the teachers permission group" \
     "Graphics-fix" "Fixes graphically accelerated applications (e.g. MCPI)" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
@@ -878,7 +974,7 @@ esac
 
 ExtraSoftware() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 100 10 \
+  MENUEPT=$(whiptail --title "Extra Software Submenu" --menu "What would you like to do?" 20 100 10 \
     "Install-Libreoffice" "Libreoffice is a full free office suit, similar to Microsoft office " \
     "Install-MinecraftPi" "Installs Minecraft Pi edition and Raspi2png (for screenshoting)" \
     "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
@@ -944,7 +1040,7 @@ esac
 
 PiControlmenu() {
 
-  MENUEPT=$(whiptail --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "Pi-Control Submenu" --menu "What would you like to do?" 20 80 10 \
     "Enable/update-Picontrol" "Enables or updates Pi-control " \
     "Disable-Picontrol" "Disables Pi-control" \
     3>&1 1>&2 2>&3)
@@ -997,12 +1093,13 @@ Menu() {
 
 
 
-  MENUOPT=$(whiptail --menu "What would you like to do?" 20 80 13 \
+  MENUOPT=$(whiptail --title "Raspi-LTSP Main Menu" --menu "What would you like to do?" 21 80 14 \
     "Full" "Full install of the Pi LTSP server" \
     "Change-IP" "Update or change the IP address sd card image" \
     "Install-Program" "Install a new program on the Raspberry Pi's" \
     "Update-All" "Run an automatic update on server and pi image" \
     "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
+    "Backup-Menu" "User files backup submenu" \
     "Manage-Users" "Management of users on the network. Also change passwords" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
     "User-groups" "Functions for adding users to groups" \
@@ -1059,6 +1156,10 @@ Rebuild-OS)
 	fi
 	Menu
 	;;
+Backup-Menu)
+	whiptail --title "WARNING" --msgbox 'WARNING - The backup system in Raspi-LTSP is currently in alpha, you are responsible to check backups are correctly being made and checking the log file frequently. To check the log file, select Display-Logs in the Backup submenu!' 12 78
+	BackupMenu
+	;;	
 Manage-Users)
 	#whiptail --title "User management" --msgbox "I have installed a program called users and groups on your server. It is much easier to use it. Any user added in it will be able to log in to any of the networked clients, they don't have sudo by default!" 16 78
 	su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
