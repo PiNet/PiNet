@@ -1229,6 +1229,12 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
+if [ ! "$BASH_VERSION" ] ; then
+	whiptail --title "Shell error" --msgbox "Please do not run Raspi-LTSP with sudo sh $0. Please run it with bash using     sudo bash $0" 8 78
+    echo "Please do not run Raspi-LTSP with sh $0. Please run it with bash using     sudo bash $0" 1>&2
+    exit 1
+fi
+
 if [ -d /opt/ltsp/armhf ]; then
     	Menu
 else
