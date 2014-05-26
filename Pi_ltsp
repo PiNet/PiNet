@@ -86,6 +86,8 @@ echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tft
 echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
+groupadd pupil
+groupadd teacher
 
 }
 
@@ -534,29 +536,15 @@ fixGroups(){
 
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
 do
-        #echo "$user"
-        #theGroup = 'video'
-        if groups "$user" | grep -q -E ' video(\s|$)'; then
-                echo "True"
-                else
-                #echo false
+        if ! groups "$user" | grep -q -E ' video(\s|$)'; then
                 usermod -a -G video $user
-
-fi
-done
-
-
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
-do
-        #echo "$user"
-        if groups "$user" | grep -q -E ' pupil(\s|$)'; then
-                echo "True"
-                else
-                #echo false
+        fi
+                
+        if ! groups "$user" | grep -q -E ' pupil(\s|$)'; then
                 usermod -a -G pupil $user
-
-fi
+		fi
 done
+
 }
 
 
@@ -1079,22 +1067,23 @@ esac
 
 FullInstall(){
 	whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
-	installLTSP
-	buildClient
-	OneTimeFixes
-	#PiConfigFixes
-	configFixes
-	FixRepo
-	AddSoftware
-	RaspiTheme
-	EnableNBDswap
+	installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
+	buildClient   #Creates config file to build Raspbian with LTSP and builds it
+	OneTimeFixes   #Runs some one off config changes, these are not repeated at any time later
+	#PiConfigFixes   #Adds configuration changes to LXDE and installs Raspi artwork
+	configFixes   #Main configuration changes that are run on the the LTSP chroot (/opt/ltsp/armhf). These must be run every time the image is generated
+	FixRepo   #Adds additional repositories to the Raspbian build
+	AddSoftware   #Adds all the custom software on top of a normal Armhf Debian Wheezy build
+	RaspiTheme   #Installs the Raspi-LTSP theme which can be seen at login
+	EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
-	ExtraSoftware
-	NBDSetup
-	ipAddress 1
+	ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+	NBDSetup   #Runs NBDSetup utility to allow the user to enable or disable NBD.
+	ipAddress 1   #Runs the IP address selector and builds the SD card image
 	#FtpSetup
 	#AddTeacher
-	SudoMenu
+	SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
+	fixGroups   #Adds all current users to the pupil and video group
 	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 }
 
@@ -1246,7 +1235,7 @@ if [ ! "$BASH_VERSION" ] ; then
 fi
 
 if [ -d /opt/ltsp/armhf ]; then
-    	Menu
+		fixGroups
 else
     	whiptail --title "Welcome" --yesno "Welcome to Raspi-LTSP. We have detected Raspi-LTSP is not installed, would you like to run the full install?" 8 78
 		exitstatus=$?
