@@ -3,6 +3,8 @@ RaspberryPi-LTSP
 
 ![Main Menu](https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/images/Raspi-LTSP-Menu.png "Raspi-LTSP Main Menu")
 
+Raspi-LTSP is a configuration utility to facilitate using Raspberry Pis in a permanent classroom environment through setup as LTSP fat clients. It is based heavily on the Linux Terminal Server Project (LTSP)   
+   
 Linux Termal Server Project is a collection of pieces of software for running fat and thin clients from a Linux based server.
 
 This can also be done on the Raspberry Pi. It allows a master pi image to be created which is then booted by each pi. This means no more flashing 100s of sd cards with large Raspberry Pi OS's, just load the 30mb image produced by the server when it is installed onto all your pis and you are good to go.
