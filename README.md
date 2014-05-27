@@ -79,27 +79,6 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 
 ##Menu options
 
-
-**Full-Install** - Full installs a full version of the system. Run this first. Should only be run once.   
-**Change-IP** - Run this if your servers IP address changes or want to update your SD card image.   
-**Install-Program** - Use to install new packages for your Raspbian image.   
-**Update-All** - Runs apt-get update && apt-get upgrade on server and Raspberry Pi OS to update everything.   
-**Manage-Users** - Launches the graphical user management system to add users, remove users and reset passwords.  
-**Epoptes-Menu** - Use for install epoptes classroom management software, for adding a new "teacher" account.   
-**User-groups** - Functions for fixing users permissions.   
----**Add-teacher** - Used to add a teacher to the teacher group, a group able to access file uploads.  
----**Graphics-fix** - Fixes all the graphically accelerated applications for all users, e.g. MCPI.  
-**Pi-control-menu** - Use for installing Picontrol classroom management software.   
----**Enable/update-Picontrol** - Installs Picontrol or runs an update on it, fetching most recent version.  
----**Disable-Picontrol** - Uninstalls Picontrol.   
-**NBD-options** - Displays NBD dialog allowing you to switch between NBD and NFS.   
-**NBD-recompress** - Forces a NBD OS recompression. Run this if you make a change to the OS and using NBD.   
-**Other** - Submenu for miscellaneous options.   
----**Collect-work** - Collects work from students ```handin``` folders. See below.   
----**NBD-compress-disable** - Disables NBD recompressing temporarily without disabling NBD overall.   
----**NBD-compress-enable** - Enables NBD recompressing again after being temporarily disabled.   
-**Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
-
 **Install-Program** - Use to install new packages for your Raspbian image.   
 **Manage-Users** - A submenu with tools for adding, removing and changing passwords of users.  
 ---**Add-user** - Tool for adding new users to Linux.   
