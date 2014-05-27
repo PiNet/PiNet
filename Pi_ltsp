@@ -179,6 +179,8 @@ else
         cp -r ~/Downloads/piBoot/boot/ "/home/$SUDO_USER/piBoot"
         chown "$SUDO_USER" "/home/$SUDO_USER/piBoot"
 fi
+
+
 cp -r ~/Downloads/piBoot/boot/ ~/piBoot
 
 }
@@ -417,16 +419,11 @@ fi
 NBDSetup() {
 #Setup function for NBD, asks user if they wish to use it, if not it defaults to NFS
 
-whiptail --title "NBD" --yesno "Would you like to enable NBD? It is twice as fast as old NFS but requires 5 min compression after each change to the OS" 8 78
+whiptail --title "Network technology" --yesno  "2 network technologies are available for Raspi-LTSP. NBD and NFS. NBD uses compression dramatically improving application loading times. The tradeoff though is after every modification to the operating system, the image must be recompressed which can take around 5 minutes. NFS is slower but does not need compressed, all changes run live. If in doubt, select NBD." --yes-button "NBD" --no-button "NFS" 11 78
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-    /usr/sbin/ltsp-update-image --config-nbd /opt/ltsp/armhf
-    service nbd-server restart
-    echo "true" > /opt/ltsp/.nbd
-    echo "true" > /opt/ltsp/.nbdUse
-    echo "false" > /opt/ltsp/.NBDBuildNeeded
-    VariablesSetup
+    EnableNBD
 else
     echo "false" > /opt/ltsp/.nbd
     echo "false" > /opt/ltsp/.nbdUse
@@ -435,7 +432,15 @@ else
 fi
 }
 
+EnableNBD() {
+	/usr/sbin/ltsp-update-image --config-nbd /opt/ltsp/armhf
+    service nbd-server restart
+    echo "true" > /opt/ltsp/.nbd
+    echo "true" > /opt/ltsp/.nbdUse
+    echo "false" > /opt/ltsp/.NBDBuildNeeded
+    VariablesSetup
 
+}
 
 AddSoftware(){
 #All the software not included in normal base Debian that has been added to Raspbian normally by Spindle
@@ -609,8 +614,8 @@ python Pi_Connector/setup.py ltsp full
 
 CollectWork(){
 #A work collection system. It grabs files from students "handin" folders, copies them to "submitted" folder on the server and changes their owner
-INIT=""
-USERHAND=$(whiptail --inputbox "Enter the user you want the files to go to" 8 78 $INIT --title "User selection" 3>&1 1>&2 2>&3)
+INIT="$SUDO_USER"
+USERHAND=$(whiptail --inputbox "Enter the username of the user account you want to save the collected work to. This is usually your own account name" 8 78 $INIT --title "User selection" 3>&1 1>&2 2>&3)
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
@@ -795,7 +800,8 @@ esac
 OtherMenu() {
 
   MENUEPT=$(whiptail --title "Other Submenu" --menu "What would you like to do?" 20 85 10 \
-    "Collect-work" "Collects all work into a folder" \
+    "Network-technology" "Select your preferred network technology, NBD or NFS" \
+    "NBD-recompress" "Force an NBD compress if changes are made outside Raspi-LTSP" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
     "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
     3>&1 1>&2 2>&3)
@@ -805,7 +811,6 @@ OtherMenu() {
 case "$MENUEPT" in
     Collect-work) 
     CollectWork
-    
 	Menu
     ;;
     Extra-software) 
@@ -821,6 +826,20 @@ case "$MENUEPT" in
     VariablesSetup
     Menu
     ;;
+    Network-technology)
+	NBDSetup
+	ipAddress 0 
+	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/piboot folder to the root of an SD card." 16 78
+	Menu
+	;;
+	NBD-recompress)
+	local CurrentNBD=$(head -n 1 /opt/ltsp/.nbdUse)
+	echo "true" > /opt/ltsp/.nbdUse
+	NBDRun
+	echo "$CurrentNBD" > /opt/ltsp/.nbdUse
+	VariablesSetup
+	Menu
+	;;
     *)
     Menu
     ;;
@@ -1078,13 +1097,13 @@ FullInstall(){
 	EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 	ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
-	NBDSetup   #Runs NBDSetup utility to allow the user to enable or disable NBD.
+	EnableNBD   #Enables NBD compression
 	ipAddress 1   #Runs the IP address selector and builds the SD card image
 	#FtpSetup
 	#AddTeacher
 	SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 	fixGroups   #Adds all current users to the pupil and video group
-	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 }
 
 Menu() {
@@ -1093,17 +1112,16 @@ Menu() {
 
   MENUOPT=$(whiptail --title "Raspi-LTSP Main Menu" --menu "What would you like to do?" 21 80 14 \
     "Full" "Full install of the Pi LTSP server" \
-    "Change-IP" "Update or change the IP address sd card image" \
+    "Change-IP" "Update or change the IP address of the server on SD card" \
     "Install-Program" "Install a new program on the Raspberry Pi's" \
-    "Update-All" "Run an automatic update on server and pi image" \
-    "Rebuild-OS" "Rebuilds the LTSP image from scratch again" \
+    "Update-All" "Run an automatic update on server and Raspberry Pi image" \
+    "Rebuild-OS" "Rebuilds the LTSP Raspberry Pi image from scratch again" \
     "Backup-Menu" "User files backup submenu" \
     "Manage-Users" "Management of users on the network. Also change passwords" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
     "User-groups" "Functions for adding users to groups" \
     "Pi-control-menu" "Pi-control classroom management submenu" \
-    "NBD-options" "Enable or disable NBD" \
-    "NBD-recompress" "Run if using NBD and change is made outside of script" \
+    "Collect-work" "Collects students work in a single folder" \
     "Other" "Other options and utilities for management" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
@@ -1125,7 +1143,7 @@ case "$MENUOPT" in
     ;;
 Change-IP)
 	ipAddress 0
-	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in the piboot folder to the root of an SD card." 16 78
+	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/piboot folder to the root of an SD card." 16 78
 	Menu
 	;;
 Install-Program)
@@ -1147,10 +1165,10 @@ Rebuild-OS)
     	EnableNBDswap
     	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware
-    	NBDSetup
+    	EnableNBD
 		ipAddress 1
 		SudoMenu
-		whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/root/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+		whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 	fi
 	Menu
 	;;
@@ -1188,19 +1206,10 @@ User-groups)
 Pi-control-menu)
 	PiControlmenu
 	;;
-NBD-options)
-	NBDSetup
-	ipAddress 0 
+Collect-work) 
+    CollectWork
 	Menu
-	;;
-NBD-recompress)
-	local CurrentNBD=$(head -n 1 /opt/ltsp/.nbdUse)
-	echo "true" > /opt/ltsp/.nbdUse
-	NBDRun
-	echo "$CurrentNBD" > /opt/ltsp/.nbdUse
-	VariablesSetup
-	Menu
-	;;
+    ;;
 Other)
 	OtherMenu
 	
