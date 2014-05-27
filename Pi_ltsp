@@ -1214,13 +1214,13 @@ Menu() {
     "Rebuild-OS" "Rebuilds the LTSP Raspberry Pi image from scratch again" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
     "Pi-control-Menu" "Pi-control classroom management submenu" \
-    "Full" "Full install of Raspi-LTSP server" \
+    "Full-Install" "Full install of Raspi-LTSP server" \
     "Other" "Other options and utilities for management" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
 case "$MENUOPT" in 
-    Full)
+    Full-Install)
     if [ -d /opt/ltsp/armhf ]; then
     	whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
 		exitstatus=$?
