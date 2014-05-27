@@ -1,6 +1,8 @@
 RaspberryPi-LTSP
 ================
 
+![Main Menu](https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/images/Raspi-LTSP-Menu.png "Raspi-LTSP Main Menu")
+
 Linux Termal Server Project is a collection of pieces of software for running fat and thin clients from a Linux based server.
 
 This can also be done on the Raspberry Pi. It allows a master pi image to be created which is then booted by each pi. This means no more flashing 100s of sd cards with large Raspberry Pi OS's, just load the 30mb image produced by the server when it is installed onto all your pis and you are good to go.
@@ -48,6 +50,7 @@ Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr).
 10. Installation should now be complete on the server!
 11. Copy the contents of the piboot folder (found in ```/home/YouUserName/piboot```) to a blank fat32 formatted SD card of at least 32mb.
 12. Plug in keyboard, mouse, ethernet and power to your Raspberry Pi with your newly created SD card in it. It should boot up, find your server and present a login screen. If it fails to load, check _Connection timed out errors on boot_ section below.
+13. You may wish to add some new users. The user management tools can be found in ```Manage-Users```
 
 ###Debian (Guide slightly out of date)
 
@@ -66,8 +69,6 @@ Select full install to set everything up. This can take anywhere form 30 mins to
 When asked about NBD or NFS. It is recommended to use NBD. NBD uses 40% of the network bandwidth that NFS uses, but must be recompressed every time a change is made. It is easy to later switch back and forth with ```NBD-options```
 
 Next create your users with ```Manage-users``` or using ```adduser``` in the commandline   
-
-Finally run ```Graphics-fix``` in ```user-groups``` to fix all newly added user accounts
    
 The script will generate an SD card boot folder in /root/piboot. Copy these files onto root of an SD card formated as FAT. Or just drop on top of a Raspbian SD card image boot folder. Put your SD card into your Raspberry Pi, plug in ethernet and other required connectors and power it up, it should connect to the server and boot.   
    
@@ -79,7 +80,7 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 ##Menu options
 
 
-**Full** - Full installs a full version of the system. Run this first. Should only be run once.   
+**Full-Install** - Full installs a full version of the system. Run this first. Should only be run once.   
 **Change-IP** - Run this if your servers IP address changes or want to update your SD card image.   
 **Install-Program** - Use to install new packages for your Raspbian image.   
 **Update-All** - Runs apt-get update && apt-get upgrade on server and Raspberry Pi OS to update everything.   
@@ -98,6 +99,39 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 ---**NBD-compress-disable** - Disables NBD recompressing temporarily without disabling NBD overall.   
 ---**NBD-compress-enable** - Enables NBD recompressing again after being temporarily disabled.   
 **Update-Pi-LTSP** - Fetches the most recent version of the control script from github.  
+
+**Install-Program** - Use to install new packages for your Raspbian image.   
+**Manage-Users** - A submenu with tools for adding, removing and changing passwords of users.  
+---**Add-user** - Tool for adding new users to Linux.   
+---**Remove-user** - Tool for removing users from Linux.   
+---**Change-password** - Tool for changing Linux user passwords.   
+---**Launch-graphical** - Launches graphical user management panel.   
+---**Add-teacher** - Used to add users to the teacher group.   
+---**Enable-Sudo** - Enable the use of Sudo for students. Required for GPIO work.   
+---**Disable-Sudo** - Disables use of Sudo for students.   
+**Update-All** - Runs apt-get upgrade on server and Raspberry Pi OS to update everything.   
+**Backup-Menu** - A submenu containing automatic backup setup wizard and options for backups.   
+---**Configure-backup** - Launches backup configuration tool to setup backups for students work.   
+---**Disable-Backup** - Disables backup. Old backups are not deleted.   
+---**Display-Logs** - Displays the log file for the backup system. Should be checked regularly!   
+**Collect-work** - Collects work from students ```handin``` folders. See below.   
+**Change-IP** - Run this if your servers IP address changes or want to update your SD card image.   
+**Rebuild-OS** - Run this to rebuild the Raspberry Pi operating system if something goes wrong.   
+**Epoptes-Menu** - Use to manage Epoptes classroom management software.   
+---**Install** - Install Epoptes for the server and the Raspberry Pis.   
+---**Epoptes-launch** - Launches the Epoptes admin console.   
+---**Epoptes-admin** - Allows user to add a new admin account for Epoptes.   
+---**Remove-Epoptes** - Removes Epoptes from server and Raspberry Pis.   
+**Pi-control-menu** - Use for installing Picontrol classroom management software.   
+---**Enable/update-Picontrol** - Installs Picontrol or runs an update on it.  
+---**Disable-Picontrol** - Uninstalls Picontrol.   
+**Full-Install** - Runs a full install of Raspi-LTSP. Also useful if full reinstall is required.   
+**Other** - Submenu for miscellaneous options.   
+---**Network-technology** - Allows the user to switch between NBD and NFS network technologies.   
+---**NBD-recompress** - Forces a NBD OS recompression.    
+---**NBD-compress-disable** - Disables NBD recompressing temporarily without disabling NBD overall.   
+---**NBD-compress-enable** - Enables NBD recompressing again after being temporarily disabled.  
+
 
 
 ##Handin system   
