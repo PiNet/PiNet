@@ -741,7 +741,7 @@ createBackupScript(){
 rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
 
 echo 'currentDate=`date +"%d-%m-%y"`
-currentTime=`date +"%H:%M"`
+currentTime=`date +"%H_%M"`
 if [ -e "/opt/ltsp/.backup" ]; then
         LOCATION=$(head -n 1 /opt/ltsp/.backup)
         if [ -d "$LOCATION" ]; then
