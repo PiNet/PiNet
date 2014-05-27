@@ -762,7 +762,82 @@ fi' >> /usr/local/bin/Raspi-LTSP-backup.sh
 chmod +x /usr/local/bin/Raspi-LTSP-backup.sh
 }
 
+AddUsers(){
 
+	username=$(whiptail --inputbox "Enter new username" 8 78 $INIT --title "Username" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ "$exitstatus" = "0" ]; then
+		password=$(whiptail --inputbox "Enter new password" 8 78 $INIT --title "Password" 3>&1 1>&2 2>&3)
+		exitstatus=$?
+		if [ "$exitstatus" = "0" ]; then
+			egrep "^$username" /etc/passwd >/dev/null
+			if [ $? -eq 0 ]; then
+				whiptail --title "Error" --msgbox "Username already exists!" 8 78
+			else
+				pass=$(perl -e 'print crypt($ARGV[0], "password")' $password)
+				useradd -m -s /bin/bash -p $pass $username
+			[ $? -eq 0 ] && echo "$username has been added to system!" || echo "Failed to add a user!"
+			fi
+			whiptail --title "Another user" --yesno "Would you like to add another user?" 8 78
+			if [ $? -eq 0 ]; then
+				AddUsers
+			fi
+		fi
+	fi
+}
+
+RemoveUser(){
+	username=$(whiptail --inputbox "Enter the username to be removed" 8 78 $INIT --title "Username" 3>&1 1>&2 2>&3)
+	if [ $? -eq 0 ]; then
+		if ! [ "$username" = "" ]; then
+			egrep "^$username" /etc/passwd >/dev/null
+			if [ $? -eq 0 ]; then
+					whiptail --title "Are you sure?" --yesno "Are you sure you want to delete $username and all $username's user files?" 8 78
+					if [ $? -eq 0 ]; then
+						deluser $username
+						rm -rf "/home/$username"
+						whiptail --title "Successful" --msgbox "User successfully removed" 8 78
+					fi
+			else
+				whiptail --title "Error" --msgbox "Username does not exist!" 8 78
+			fi
+		else
+			whiptail --title "Error" --msgbox "Username does not exist!" 8 78
+		fi
+	whiptail --title "Another user" --yesno "Would you like to delete another user?" 8 78
+		if [ $? -eq 0 ]; then
+			RemoveUser
+		fi
+	fi
+	
+}
+
+ChangeUserPassword(){
+	username=$(whiptail --inputbox "Enter the username to change password of" 8 78 $INIT --title "Username" 3>&1 1>&2 2>&3)
+	if [ $? -eq 0 ]; then
+		if ! [ "$username" = "" ]; then
+			egrep "^$username" /etc/passwd >/dev/null
+			if [ $? -eq 0 ]; then
+				password=$(whiptail --inputbox "Enter the new password" 8 78 $INIT --title "Password" 3>&1 1>&2 2>&3)
+				if ! [ "$password" = "" ]; then
+					echo -e "$password\n$password" | passwd $username
+					whiptail --title "Successful" --msgbox "Password successfully changed" 8 78
+				else
+					whiptail --title "Error" --msgbox "Password not valid" 8 78
+				fi
+			else
+				whiptail --title "Error" --msgbox "Username does not exist!" 8 78
+			fi
+		else
+			whiptail --title "Error" --msgbox "Username isn't valid" 8 78
+		fi
+		whiptail --title "Another user" --yesno "Would you like to change another users password?" 8 78
+		if [ $? -eq 0 ]; then
+			ChangeUserPassword
+		fi
+	fi				
+			
+}			
 #***************************************************************************************************
 backupFrequency(){
   MENUEPT=$(whiptail --menu "How often should I create a backup?" 20 85 10 \
@@ -955,6 +1030,10 @@ esac
 UserGroups() {
 
   MENUEPT=$(whiptail --title "User-groups Submenu" --menu "What would you like to do?" 20 80 10 \
+  	"Add-user" "Add a new Linux user" \
+  	"Remove-user" "Remove a Linux user" \
+  	"Change-password" "Change password of a user" \
+  	"Launch-graphical" "Launch a graphical user management panel" \
     "Add-teacher" "Add user to the teachers permission group" \
     "Graphics-fix" "Fixes graphically accelerated applications (e.g. MCPI)" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
@@ -964,9 +1043,24 @@ UserGroups() {
 #<<COMMENT1
 #if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
+	Add-user) 
+    AddUsers
+	Menu
+    ;;
+    Remove-user) 
+    RemoveUser
+	Menu
+    ;;
+    Change-password) 
+    ChangeUserPassword
+	Menu
+    ;;
+    Launch-graphical) 
+    su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
+	Menu
+    ;;
     Add-teacher) 
     AddTeacher
-    
 	Menu
     ;;
     Graphics-fix)
@@ -1110,18 +1204,17 @@ Menu() {
 
 
 
-  MENUOPT=$(whiptail --title "Raspi-LTSP Main Menu" --menu "What would you like to do?" 21 80 14 \
-    "Full" "Full install of the Pi LTSP server" \
-    "Change-IP" "Update or change the IP address of the server on SD card" \
-    "Install-Program" "Install a new program on the Raspberry Pi's" \
+  MENUOPT=$(whiptail --title "Raspi-LTSP Main Menu" --menu "What would you like to do?" 22 80 13 \
+  	"Install-Program" "Install a new program on the Raspberry Pi's" \
+    "Manage-Users" "Add new users, change passwords and delete users" \
     "Update-All" "Run an automatic update on server and Raspberry Pi image" \
-    "Rebuild-OS" "Rebuilds the LTSP Raspberry Pi image from scratch again" \
     "Backup-Menu" "User files backup submenu" \
-    "Manage-Users" "Management of users on the network. Also change passwords" \
-    "Epoptes-Menu" "Epoptes classroom management submenu" \
-    "User-groups" "Functions for adding users to groups" \
-    "Pi-control-menu" "Pi-control classroom management submenu" \
     "Collect-work" "Collects students work in a single folder" \
+    "Change-IP" "Update or change the IP address of the server on SD card" \
+    "Rebuild-OS" "Rebuilds the LTSP Raspberry Pi image from scratch again" \
+    "Epoptes-Menu" "Epoptes classroom management submenu" \
+    "Pi-control-Menu" "Pi-control classroom management submenu" \
+    "Full" "Full install of Raspi-LTSP server" \
     "Other" "Other options and utilities for management" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
@@ -1177,12 +1270,9 @@ Backup-Menu)
 	BackupMenu
 	;;	
 Manage-Users)
-	#whiptail --title "User management" --msgbox "I have installed a program called users and groups on your server. It is much easier to use it. Any user added in it will be able to log in to any of the networked clients, they don't have sudo by default!" 16 78
-	su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
-	#sleep 2
+	UserGroups
 	Menu
-;;	
-	
+	;;	
 Install-Epoptes)
 	EpoptesInstaller
 	Menu
@@ -1200,10 +1290,7 @@ Update-All)
 Epoptes-Menu)
 	EpoptesMenu
 	;;
-User-groups)
-	UserGroups
-	;;
-Pi-control-menu)
+Pi-control-Menu)
 	PiControlmenu
 	;;
 Collect-work) 
