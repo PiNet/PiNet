@@ -777,6 +777,7 @@ AddUsers(){
 				pass=$(perl -e 'print crypt($ARGV[0], "password")' $password)
 				useradd -m -s /bin/bash -p $pass $username
 			[ $? -eq 0 ] && echo "$username has been added to system!" || echo "Failed to add a user!"
+			fixGroups
 			fi
 			whiptail --title "Another user" --yesno "Would you like to add another user?" 8 78
 			if [ $? -eq 0 ]; then
@@ -1035,7 +1036,6 @@ UserGroups() {
   	"Change-password" "Change password of a user" \
   	"Launch-graphical" "Launch a graphical user management panel" \
     "Add-teacher" "Add user to the teachers permission group" \
-    "Graphics-fix" "Fixes graphically accelerated applications (e.g. MCPI)" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
     3>&1 1>&2 2>&3)
