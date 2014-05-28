@@ -465,7 +465,7 @@ ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 
 #Leave sonic-pi to end as it installs jackd2, which brings up dialog box
-ltsp-chroot --arch armhf apt-get install -y sonic-pi
+ltsp-chroot --arch armhf DEBIAN_FRONTEND=noninteractive apt-get install -y sonic-pi
 
 
 #******************************************************************************************
