@@ -46,7 +46,6 @@ Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr).
 4. Raspi-LTSP should now ask if you want to run a full install, select yes.
 5. Go make a few cups of tea, will take 1-2 hours.
 6. Select any additional packages you want for your install from the menu, you can rerun this menu later if you want.
-7. Select yes for enabling NBD unless you intend to make changes often to the operating system.
 8. Verify your IP address is correct (important for machines with 2 NICs).
 9. Decide whether to enable sudo support, if you aren't going to use GPIO no need to enable it, can be changed later.
 10. Installation should now be complete on the server!
@@ -67,8 +66,6 @@ Now run the script with     ```bash Pi_ltsp```
 The script will launch and you will be presented with a few options. 
 
 Select full install to set everything up. This can take anywhere form 30 mins to 3 hours   
-
-When asked about NBD or NFS. It is recommended to use NBD. NBD uses 40% of the network bandwidth that NFS uses, but must be recompressed every time a change is made. It is easy to later switch back and forth with ```NBD-options```
 
 Next create your users with ```Manage-users``` or using ```adduser``` in the commandline   
    
