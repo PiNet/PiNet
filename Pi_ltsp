@@ -703,7 +703,6 @@ if [ $exitstatus = 0 ]; then
 	if [ "$NBDBuildNeeded" = "true" ]; then
 		NBDRun
 	fi
-	Menu
 else
 	ExtraSoftware
 fi
@@ -1100,7 +1099,6 @@ case "$MENUEPT" in
     ltsp-chroot --arch armhf apt-get -y install libreoffice
     SetVar NBDBuildNeeded true
     FinishedInstallingSoftware
-	Menu
     ;;
     Install-MinecraftPi)
     wget https://s3.amazonaws.com/assets.minecraft.net/pi/minecraft-pi-0.1.1.tar.gz -O /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz
@@ -1113,13 +1111,11 @@ case "$MENUEPT" in
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
     SetVar NBDBuildNeeded true
     FinishedInstallingSoftware
-    Menu
 	;;
 	Install-Arduino) 
     ltsp-chroot --arch armhf apt-get -y install arduino
     SetVar NBDBuildNeeded true
     FinishedInstallingSoftware
-	Menu
     ;;
     Install-Scratch-gpio) 
     whiptail --title "Error" --infobox "ScratchGPIO installation support has not been added yet" 8 78
@@ -1241,6 +1237,7 @@ Change-IP)
 	;;
 Install-Program)
 	ExtraSoftware
+	Menu
 	;;
 Rebuild-OS)
 	#echo rebuilding
