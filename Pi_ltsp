@@ -393,6 +393,13 @@ rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
 rm -rf RaspberryPi-LTSP
 
+
+
+   cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/raspi-LTSP.png
+   sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/raspi-LTSP.png 100
+
+
+
 }
 
 NBDRun() {
@@ -1116,7 +1123,7 @@ esac
 ExtraSoftware() {
 
   MENUEPT=$(whiptail --title "Extra Software Submenu" --menu "What would you like to do?" 20 100 10 \
-    "Install-Libreoffice" "Libreoffice is a full free office suit, similar to Microsoft office " \
+    "Install-Libreoffice" "Libreoffice is a full free office suite, similar to Microsoft office " \
     "Install-MinecraftPi" "Installs Minecraft Pi edition and Raspi2png (for screenshoting)" \
     "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
     "Install-Scratch-gpio" "Installs Scratch GPIO, a special version of scratch for GPIO work" \
