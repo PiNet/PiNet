@@ -153,8 +153,7 @@ if [ $exitstatus = 0 ]; then
     echo " "
 else
     echo " "
-	INIT=Blue
-	IP=$(whiptail --inputbox "Please enter IP address" 8 78 $INIT --title "IP address" 3>&1 1>&2 2>&3)
+	IP=$(whiptail --inputbox "Please enter IP address" 8 78 $IP --title "IP address" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
     	echo "User selected Ok and entered " $IP
@@ -168,20 +167,16 @@ else
 	cp ~/Downloads/piBoot/boot/cmdlineNFS.txt ~/Downloads/piBoot/boot/cmdline.txt
 fi
 
-sudo sed -i 's/1.1.1.1/'$IP'/g' ~/Downloads/piBoot/boot/cmdline.txt #Find 1.1.1.1 and replace with the IP address
-sleep 2
-
-
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 if [ "$SUDO_USER" = "" ]; then
         cp -r ~/Downloads/piBoot/boot/ ~/piBoot
+        sudo sed -i 's/1.1.1.1/'$IP'/g' ~/piBoot/cmdline.txt
 else
         cp -r ~/Downloads/piBoot/boot/ "/home/$SUDO_USER/piBoot"
         chown "$SUDO_USER" "/home/$SUDO_USER/piBoot"
+        sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/piBoot/cmdline.txt"
 fi
 
-
-cp -r ~/Downloads/piBoot/boot/ ~/piBoot
 
 }
 
@@ -588,6 +583,43 @@ chgrp teachers /srv/ftp/handin
 
 }
 
+FixDesktopIcons(){
+rm -rf /etc/skel/Desktop
+cd /opt/ltsp/armhf/usr/share/applications
+mkdir /etc/skel/Desktop
+sudo cp -a scratch.desktop midori.desktop idle.desktop idle3.desktop lxterminal.desktop debian-reference-common.desktop wolfram-mathematica.desktop wolfram-language.desktop /etc/skel/Desktop
+cd /etc/skel
+wget "https://github.com/KenT2/python-games/tarball/master" -O python_games.tar.gz
+tar -xvf python_games.tar.gz
+mv KenT2-python-games* python_games
+chmod +x python_games/launcher.sh
+rm python_games.tar.gz
+cd /etc/skel/Desktop
+cat <<\EOF2 > python-games.desktop
+[Desktop Entry]
+Name=Python Games
+Comment=From http://inventwithpython.com/pygame/
+Exec=sh -c $HOME/python_games/launcher.sh
+Icon=/usr/share/pixmaps/python.xpm
+Terminal=false
+Type=Application
+Categories=Application;Games;
+StartupNotify=true
+EOF2
+
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+        mkdir /home/$user/Desktop
+        cd /home/$user/Desktop/
+    	cp -R  /etc/skel/Desktop/* /home/$user/Desktop/
+        chown -R "$user" *
+        cp -R /etc/skel/python_games /home/$user/python_games
+
+done
+
+
+}
+
 PiControlInstall(){ #No longer used, now includes a setup.py file
 rm -rf Pi_Connector
 git clone --depth 1 https://github.com/gbaman/Pi_Connector.git
@@ -686,7 +718,7 @@ done
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
 
-whiptail --title "WARNING" --yesno 'Would you like to enable Sudo use for pupils? Giving pupils access to Sudo can be dangerous, they could do nasty things! But Sudo is required for GPIO use. Only enable if needed! You can change your mind later the in user-groups submenu.' 10 78 
+whiptail --title "WARNING" --yesno 'Would you like to enable Sudo use for pupils? Giving pupils access to Sudo can be dangerous, they could do nasty things! But Sudo is required for GPIO use. It should only be enabled if needed. You can change your mind later the in Manage-Users submenu.' 10 78 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
@@ -1184,9 +1216,11 @@ FullInstall(){
 	FixRepo   #Adds additional repositories to the Raspbian build
 	AddSoftware   #Adds all the custom software on top of a normal Armhf Debian Wheezy build
 	RaspiTheme   #Installs the Raspi-LTSP theme which can be seen at login
+	FixDesktopIcons   #Adds desktop icons
 	EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 	ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+	whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 	EnableNBD   #Enables NBD compression
 	ipAddress 1   #Runs the IP address selector and builds the SD card image
 	#FtpSetup
@@ -1255,6 +1289,7 @@ Rebuild-OS)
     	EnableNBDswap
     	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware
+		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     	EnableNBD
 		ipAddress 1
 		SudoMenu
