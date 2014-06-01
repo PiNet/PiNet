@@ -119,6 +119,26 @@ echo 'NFS_HOME=/home' >> /opt/ltsp/armhf/etc/lts.conf
 
 cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
+apt-get install -y raspi-copies-and-fills
+mv /etc/ld.so.preload /etc/ld.so.preload.disable
+printf 'snd-bcm2835\n' >> /etc/modules
+
+cat <<\EOF1 > /etc/asound.conf
+pcm.mmap0 {
+    type mmap_emul;
+    slave {
+      pcm "hw:0,0";
+    }
+}
+
+pcm.!default {
+  type plug;
+  slave {
+    pcm mmap0;
+  }
+}
+EOF1
+
 #ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
 }
 
@@ -392,11 +412,8 @@ cp -r RaspberryPi-LTSP/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
 rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
 rm -rf RaspberryPi-LTSP
-
-
-
-   cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/raspi-LTSP.png
-   sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/raspi-LTSP.png 100
+cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/raspi-LTSP.png
+sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/raspi-LTSP.png 100
 
 
 
@@ -541,15 +558,20 @@ fi
 fixGroups(){
 #Adds users to correct needed groups
 
+for ugroup in adm dialout cdrom audio users sudo video games plugdev input; do
+	egrep -i "^$ugroup" /etc/group >> /dev/null
+	if [ $? = 1 ]; then
+		groupadd $ugroup
+	fi
+done
+
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
 do
-        if ! groups "$user" | grep -q -E ' video(\s|$)'; then
-                usermod -a -G video $user
-        fi
-                
-        if ! groups "$user" | grep -q -E ' pupil(\s|$)'; then
-                usermod -a -G pupil $user
+	for ugroup in adm dialout cdrom audio users video games plugdev input; do
+		if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
+			usermod -a -G $ugroup $user
 		fi
+	done
 done
 
 }
