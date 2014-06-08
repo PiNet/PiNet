@@ -1431,8 +1431,12 @@ Other)
 	
 	;;
 Update-Pi-LTSP)
+	rm /home/$SUDO_USER/Pi_ltsp
 	rm Pi_ltsp
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp
+	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
+	cp -f /tmp/Pi_ltsp "/home/$SUDO_USER/Pi_ltsp"
+	cp -f /tmp/Pi_ltsp ~/Pi_ltsp
+	rm -rf /tmp/Pi_ltsp
 	exec /bin/bash Pi_ltsp
 	exit
 	;;
