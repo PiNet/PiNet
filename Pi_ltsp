@@ -974,7 +974,7 @@ case "$MENUEPT" in
     echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
 	
     ;;
-    Every-3-days)
+    Twice-weekly)
     removeAnacronLines 
     echo "3       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
     ;;
