@@ -906,6 +906,21 @@ RestoreBackup() {
 
 }
 
+DisplayUsers(){
+clear
+echo "-------------------"
+echo "Current Linux users"
+echo "-------------------"
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+	do
+		echo "$user"
+	done
+echo "---------------"
+echo "Press enter to continue"
+read
+
+}
+
 #***************************************************************************************************
 backupDeleteTime(){
   MENUEPT=$(whiptail --menu "How long would you like to store backups? Note this only runs when a backup runs." 20 85 10 \
@@ -1134,6 +1149,7 @@ UserGroups() {
   	"Add-user" "Add a new Linux user" \
   	"Remove-user" "Remove a Linux user" \
   	"Change-password" "Change password of a user" \
+  	"Display-users" "List all the users on the system" \
   	"Launch-graphical" "Launch a graphical user management panel" \
     "Add-teacher" "Add user to the teachers permission group" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
@@ -1148,13 +1164,18 @@ case "$MENUEPT" in
 	Menu
     ;;
     Remove-user) 
+    DisplayUsers
     RemoveUser
 	Menu
     ;;
     Change-password) 
+    DisplayUsers
     ChangeUserPassword
 	Menu
     ;;
+    Display-users) 
+    DisplayUsers
+	;;
     Launch-graphical) 
     su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
 	Menu
