@@ -565,7 +565,7 @@ fi
 fixGroups(){
 #Adds users to correct needed groups
 
-for ugroup in adm dialout cdrom audio users sudo video games plugdev input; do
+for ugroup in adm dialout cdrom audio users sudo video games plugdev input pupil; do
 	egrep -i "^$ugroup" /etc/group >> /dev/null
 	if [ $? = 1 ]; then
 		groupadd $ugroup
@@ -574,7 +574,7 @@ done
 
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
 do
-	for ugroup in adm dialout cdrom audio users video games plugdev input; do
+	for ugroup in adm dialout cdrom audio users video games plugdev input pupil; do
 		if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
 			usermod -a -G $ugroup $user
 		fi
