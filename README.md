@@ -38,6 +38,7 @@ __More information can be found on the blog post http://pi.gbaman.info/?p=256__
 
 ###Ubuntu (Recommended)
 
+####For a full draft userguide designed for complete beginners, see here http://bit.ly/1l26rti  
 Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr). Other versions are very likely to work, but at not supported.
 
 1. Download and install Ubuntu 14.04 on an old computer. This is a great guide to follow http://www.ubuntu.com/download/desktop/install-ubuntu-desktop .
