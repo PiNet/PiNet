@@ -908,10 +908,58 @@ ChangeUserPassword(){
 
 RestoreBackup() {
 	whiptail --title "Select backup" --msgbox "Please select a backup file. They are normally the date, time followed by Raspi-Users-Backup.tar.gz" 8 78
-	
-
 
 }
+TroubleShooter(){
+
+	whiptail --title "Troubleshooter" --msgbox "Welcome to Raspi-LTSP troubleshooter. The troubleshooter goes over a few possible issues you may be having with your setup and offers advice.
+	WARNING - This troubleshooter is experimental, feel free to open issue reports at https://github.com/gbaman/RaspberryPi-LTSP/issues if you have any additional issues." 16 78
+	whiptail --title "Boot" --yesno "Have you got as far as your Raspberry Pi starting up?" 8 78
+	if [ $? -eq 0 ]; then
+		whiptail --title "Login screen" --yesno "Have you got as far as the login screen displaying?" 8 78
+		if [ $? -eq 0 ]; then
+			whiptail --title "Login screen" --yesno "Are you having login issues?" 8 78
+			if [ $? -eq 0 ]; then
+				whiptail --title "Login" --msgbox "LDM (login screen) does not handle incorrect passwords very well. If you enter an incorrect set of credentials, it just restarts itself. Don't worry about this.
+				If you are unsure about your password, remember you can easily change it in the Manage-users submenu" 16 78
+			else
+				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78
+			fi
+		else
+			whiptail --title "Connection refused" --yesno "Are you getting connection refused or connection timed out error?" 8 78
+			if [ $? -eq 0 ]; then
+				IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
+				whiptail --title "Troubleshooter" --msgbox "This is a common error, it occurs when the IP address of the server on the SD card is incorrect. Insert the SD card into a computer and open the cmdline.txt file. Find NBDRoot= (or NFSRoot=) and make sure the address that follows it is $IP 
+				If it isn't, change it so it is.
+				If it is currently 1.1.1.1 the server was unable to get your current address when it created the SD card.
+				If it is a different address, your server may have been assigned a new IP address. It would be a good idea to assign a static IP address to your server. Talk to your technician about this." 16 78
+			
+			else
+				whiptail --title "Giving up" --yesno "Are you getting a number of 'giving up' errors?" 8 78
+				if [ $? -eq 0 ]; then
+					whiptail --title "Giving up" --msgbox "This usually means the Raspberry Pi isn't physically connected to the network, check the ethernet cable is correctly plugged in (wifi is not supported) and is connected to your main switch." 16 78
+				else
+					whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78		
+				fi
+			fi
+		fi
+	else
+		whiptail --title "SD card" --yesno "Are you having issues with loading the files onto the SD card?" 8 78
+		if [ $? -eq 0 ]; then
+			whiptail --title "Partitions" --yesno "Are you having issues with there being 2-3 partitions on the SD card?" 8 78
+			if [ $? -eq 0 ]; then
+				whiptail --title "Formating partitions" --msgbox "When flashing Raspbian or another Raspberry Pi operating system onto SD cards, a number of partitions are created. Raspi-LTSP only needs a single partition, the boot partition.
+				This is usually a small (~50mb) partition which is formatted as fat32. If you wish to format the entire SD card (which if you are having issues, you may want to), please refer to the userguide section on formatting SD cards. " 16 78	
+			else
+				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78	
+			fi
+		else
+			whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78
+		fi
+	fi
+}
+
+
 
 DisplayUsers(){
 clear
@@ -1343,6 +1391,7 @@ Menu() {
     "Pi-control-Menu" "Pi-control classroom management submenu" \
     "Full-Install" "Full install of Raspi-LTSP server" \
     "Other" "Other options and utilities for management" \
+    "Troubleshooter" "Having issues? Try running the troubleshooter" \
     "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
     3>&1 1>&2 2>&3)
 
@@ -1429,6 +1478,10 @@ Collect-work)
 Other)
 	OtherMenu
 	
+	;;
+Troubleshooter)
+	TroubleShooter
+	Menu
 	;;
 Update-Pi-LTSP)
 	rm /home/$SUDO_USER/Pi_ltsp
