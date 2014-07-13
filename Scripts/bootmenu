@@ -1,0 +1,122 @@
+#!/bin/sh
+
+AddBootmenuToSD(){
+
+echo "Adding bootmenu"
+cp /scripts/bootmenu /mainOS/usr/local/bin/bootmenu.sh
+chmod 755 /mainOS/usr/local/bin/bootmenu.sh
+chmod u+x /mainOS/usr/local/bin/bootmenu.sh
+sed -i '/order/ a bash /usr/local/bin/bootmenu.sh' /mainOS/etc/init.d/rcS 
+umount /mainOS > /dev/null 2>&1
+#sleep 1
+}
+
+timerCountDown2(){
+i=4; while [ $i -ge 0 ]; do echo -ne "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b $i seconds left"; sleep 1; i=$(($i-1)); done; echo
+echo " "
+}
+
+if [ -d "/opt" ]; then
+        OSbooted=1
+        #echo "Note the main OS has not been mounted!"
+        mount /dev/mmcblk0p1 /boot
+        mainOSv=""
+        if [ ! -f /boot/kernel.img ]; then
+			umount /boot
+    		return 0
+		fi
+else
+        OSbooted=0
+        mkdir /boot
+        mount /dev/mmcblk0 /boot
+        if [ $? -eq 0 ]; then
+                echo ""
+        else
+                mount /dev/mmcblk0p1 /boot
+        fi
+        if [ ! -f /boot/kernel.img ]; then
+			umount /boot
+    		return 0
+		fi
+        mkdir /mainOS
+        mount /dev/mmcblk0p2 /mainOS
+        #echo "I have just successfully mounted main OS!"
+        #echo ""
+        mainOSv="/mainOS"
+fi
+
+if [ ! -f /boot/kernel.img ]; then
+	umount /boot
+    exit 0
+fi
+
+sleep 2
+
+echo ""
+echo ""
+echo ""
+echo "-------------------------------------------"
+grep -w "vmlinuz" /boot/config.txt >/dev/null
+if [ $? -eq 0 ]; then
+   localSD=0
+   echo "Current OS loaded is booting off the network"
+else
+   localSD=1
+   echo "Current OS loaded is the local SD card image"
+fi
+if [ ! -f $mainOSv/usr/local/bin/bootmenu.sh ]; then
+        echo "No bootmenu script on Raspbian, I will add one"
+        NeedBootMenu=1
+else
+        NeedBootMenu=0
+fi
+
+echo "To switch OS, hit ENTER now"
+
+echo "-------------------------------------------"
+echo " "
+timerCountDown2 &
+read -t 5
+
+if [ $? -ne 0 ]; then
+        if [ $OSbooted -eq 0 ]; then
+                umount /boot
+                umount /mainOS
+        fi
+        echo "Continuing"
+else
+        #ls /boot
+     echo "Switching OS"
+
+     if [ $localSD = 1 ]; then
+        rm -f /boot/config.txt
+                cp -rf /boot/config-LTSP.txt /boot/config.txt
+     else
+                if [ $localSD = 0 ]; then
+                        rm -f /boot/config.txt
+                        cp -rf /boot/config-Local.txt /boot/config.txt
+                fi
+         fi
+        if [ $NeedBootMenu = 1 ]; then
+                rm -f /boot/config.txt
+                cp -rf /boot/config-Local.txt /boot/config.txt
+                AddBootmenuToSD
+    fi
+
+#if [ "$data" = "r" ]; then
+#	echo "Rewriting configuration files"
+#	rm -rf /mainOS/usr/local/bin/bootmenu.sh
+#	cp /scripts/bootmenu /mainOS/usr/local/bin/bootmenu.sh
+#	chmod 755 /mainOS/usr/local/bin/bootmenu.sh
+#	chmod u+x /mainOS/usr/local/bin/bootmenu.sh
+#	sleep 2
+#fi
+	
+
+if [ $OSbooted -eq 0 ]; then
+	umount /mainOS > /dev/null 2>&1
+	/bin/reboot
+else
+	/sbin/reboot
+fi
+fi
