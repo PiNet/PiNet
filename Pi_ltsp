@@ -70,7 +70,7 @@ MIRROR=http://mirrordirector.raspbian.org/raspbian
 SECURITY_MIRROR=none
 UPDATES_MIRROR=none
 LOCALE="$LANG UTF-8"
-KERNEL_PACKAGES=linux-image-3.2.0-4-rpi
+KERNEL_PACKAGES=linux-image-3.10-3-rpi
 EOF
 
 VENDOR=Debian ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
@@ -492,6 +492,8 @@ ltsp-chroot --arch armhf update-rc.d rpcbind disable
 
 #Leave sonic-pi to end as it installs jackd2, which brings up dialog box
 ltsp-chroot --arch armhf DEBIAN_FRONTEND=noninteractive apt-get install -y sonic-pi
+
+ltsp-chroot --arch armhf apt-get install linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
 
 
 #******************************************************************************************
