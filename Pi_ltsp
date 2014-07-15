@@ -1,14 +1,14 @@
 #!/bin/bash
-
+version=0.7.1
 
 #Raspi-LTSP
 #Pi_LTSP
-#Version 0.02
-#UpdateLoc = "https://raw.github.com/gbaman/RaspberryPi-LTSP/master/UPDATE"
 
 #Written by gbaman1, based off the fantastic work by vagrantc and alksig from the LTSP community
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 #Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
+#
+#Raspi-LTSP is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
 
 VariablesSetup() {
 #Configures the global variables for PiLTSP.
@@ -1381,7 +1381,7 @@ Menu() {
 
 
 
-  MENUOPT=$(whiptail --title "Raspi-LTSP Main Menu" --menu "What would you like to do?" 22 80 13 \
+  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu" --menu "What would you like to do?" 22 80 13 \
   	"Install-Program" "Install a new program on the Raspberry Pi's" \
     "Manage-Users" "Add new users, change passwords and delete users" \
     "Update-All" "Run an automatic update on server and Raspberry Pi image" \

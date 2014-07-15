@@ -39,6 +39,5 @@
 start_x=1
 
 # for more options see http://elinux.org/RPi_config.txt
-kernel vmlinuz-3.10-3-rpi
-ramfsfile initrd.img-3.10-3-rpi
-ramfsaddr 0x00800000
+kernel vmlinuz-3.12-1-rpi
+initramfs initrd.img-3.12-1-rpi
