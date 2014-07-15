@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.7.1
+version=0.7.2
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -493,7 +493,7 @@ ltsp-chroot --arch armhf update-rc.d rpcbind disable
 #Leave sonic-pi to end as it installs jackd2, which brings up dialog box
 ltsp-chroot --arch armhf DEBIAN_FRONTEND=noninteractive apt-get install -y sonic-pi
 
-ltsp-chroot --arch armhf apt-get install linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
+ltsp-chroot --arch armhf apt-get install -y linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
 
 
 #******************************************************************************************
