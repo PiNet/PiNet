@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.7.2
+version=0.8.1
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -9,6 +9,12 @@ version=0.7.2
 #Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
 #
 #Raspi-LTSP is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
+
+#Constants
+#------------------------
+ConfigFileLoc=/etc/raspi-ltsp
+
+#------------------------
 
 VariablesSetup() {
 #Configures the global variables for PiLTSP.
@@ -33,9 +39,59 @@ else
 fi
 } 
 
-SetVar(){
-echo "$2" > "/opt/ltsp/.$1"
-VariablesSetup
+
+ConfigFileRead(){
+	#Taken from - http://wiki.bash-hackers.org/howto/conffile
+	configfile_secured="/tmp/raspi-config"
+	#touch $configfile_secured
+	#echo "reading $ConfigFileLoc"
+
+	if egrep -q -v '^#|^[^ ]*=[^;]*' "$ConfigFileLoc"; then
+  		# filter the original to a new file
+  		egrep '^#|^[^ ]*=[^;&]*'  "$ConfigFileLoc" > "$configfile_secured"
+  		ConfigFileLoc="$configfile_secured"
+  		source "$ConfigFileLoc"
+	fi
+	#echo config read
+}
+
+UpdateConfig(){
+	local configName=$1
+	local configValue=$2
+	egrep -i "^$configName" $ConfigFileLoc >> /dev/null
+	if [ $? = 0 ]; then
+		sed -i "s/$configName.*/$configName=$configValue/g" $ConfigFileLoc
+	else
+		echo "$configName=$configValue" >> $ConfigFileLoc
+	fi	
+ConfigFileRead
+}
+
+LegacyConfig(){
+
+if [ ! -e "$ConfigFileLoc" ]; then
+		touch $ConfigFileLoc
+fi
+
+if [ -e "/opt/ltsp/.nbd" ]; then
+	UpdateConfig NBD $(head -n 1 /opt/ltsp/.nbd)
+	rm -f /opt/ltsp/.nbd
+	if [ -e "/opt/ltsp/.nbdUse" ]; then
+		UpdateConfig NBDuse $(head -n 1 /opt/ltsp/.nbdUse)
+		rm -rf /opt/ltsp/.nbdUse
+	fi
+	if [ -e "/opt/ltsp/.NBDBuildNeeded" ]; then
+		UpdateConfig NBDBuildNeeded $(head -n 1 /opt/ltsp/.NBDBuildNeeded)
+		rm -rf /opt/ltsp/.NBDBuildNeeded
+	fi
+fi
+if [ -e "/opt/ltsp/raspiLTSP" ]; then
+		rm -rf /opt/ltsp/raspiLTSP
+fi
+if [ -e "/opt/ltsp/.backup" ]; then
+		UpdateConfig backupLoc $(head -n 1 /opt/ltsp/.backup)
+		rm -rf /opt/ltsp/.backup
+	fi
 
 }
 
@@ -85,8 +141,6 @@ echo "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)" >> /etc/exports #se
 echo "/home   *(rw,sync,no_subtree_check)" >> /etc/exports #Sets up home folder exporting for NFS
 
 mkdir /etc/skel/handin
-mkdir /opt/ltsp/raspiLTSP #Config file storage folders
-mkdir /opt/ltsp/raspiLTSP/temp
 
 echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tftpd-hpa autostarts
 echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
@@ -382,7 +436,7 @@ if [ "$RESULT" = "y" ]; then
 	ltsp-chroot --arch armhf apt-get update
 	ltsp-chroot --arch armhf apt-get -y install $INSTALLP
 	if [ $? -eq 0 ]; then
-		SetVar NBDBuildNeeded true
+		UpdateConfig NBDBuildNeeded true
 		echo "-----------------------------"
 		echo $INSTALLP " was installed correctly"
 		echo "-----------------------------"
@@ -426,14 +480,14 @@ sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/de
 
 NBDRun() {
 #Checks if it should be auto NBD compressing or not, if it should be, it recompresses the image
-VariablesSetup
+ConfigFileRead
 if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
 	if [ "$NBDuse" = "true" ]; then  #If temporarily NBD is disable
 		echo "--------------------------------------------------------"
 		echo "Compressing the image, this will take roughly 5 minutes"
 		echo "--------------------------------------------------------"
 		ltsp-update-image /opt/ltsp/armhf  #If NBD is enabled, recompress the image
-		SetVar NBDBuildNeeded false
+		UpdateConfig NBDBuildNeeded false
 	else
 		whiptail --title "WARNING" --msgbox "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
 	fi
@@ -449,20 +503,20 @@ exitstatus=$?
 if [ $exitstatus = 0 ]; then
     EnableNBD
 else
-    echo "false" > /opt/ltsp/.nbd
-    echo "false" > /opt/ltsp/.nbdUse
-    echo "false" > /opt/ltsp/.NBDBuildNeeded
-    VariablesSetup
+	UpdateConfig NBD false
+	UpdateConfig NBDuse false
+	UpdateConfig NBDBuildNeeded false
+    ConfigFileRead
 fi
 }
 
 EnableNBD() {
 	/usr/sbin/ltsp-update-image --config-nbd /opt/ltsp/armhf
     service nbd-server restart
-    echo "true" > /opt/ltsp/.nbd
-    echo "true" > /opt/ltsp/.nbdUse
-    echo "false" > /opt/ltsp/.NBDBuildNeeded
-    VariablesSetup
+	UpdateConfig NBD true
+	UpdateConfig NBDuse true
+	UpdateConfig NBDBuildNeeded false
+    ConfigFileRead
 
 }
 
@@ -809,8 +863,8 @@ rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
 
 echo 'currentDate=`date +"%d-%m-%y"`
 currentTime=`date +"%H_%M"`
-if [ -e "/opt/ltsp/.backup" ]; then
-        LOCATION=$(head -n 1 /opt/ltsp/.backup)
+if [ ! $backupLoc = "" ]; then
+        LOCATION=$backupLoc
         if [ -d "$LOCATION" ]; then
         		find "$LOCATION" -name "*Raspi-Users-Backup.tar.gz" -ctime +"$DELETETIME" | xargs rm -rf
                 tar -zcvf "$LOCATION$currentDate--$currentTime--Raspi-Users-Backup.tar.gz" /home
@@ -1064,13 +1118,13 @@ case "$MENUEPT" in
     ExtraSoftware
     ;;
     NBD-compress-disable) 
-    echo "false" > /opt/ltsp/.nbdUse
-    VariablesSetup
+    UpdateConfig NBDuse false
+    ConfigFileRead
     Menu
     ;;
     NBD-compress-enable) 
-    echo "true" > /opt/ltsp/.nbdUse
-    VariablesSetup
+    UpdateConfig NBDuse true
+    ConfigFileRead
     Menu
     ;;
     Network-technology)
@@ -1080,11 +1134,11 @@ case "$MENUEPT" in
 	Menu
 	;;
 	NBD-recompress)
-	local CurrentNBD=$(head -n 1 /opt/ltsp/.nbdUse)
-	echo "true" > /opt/ltsp/.nbdUse
+	local CurrentNBD=$NBDuse
+	UpdateConfig NBDuse true
 	NBDRun
-	echo "$CurrentNBD" > /opt/ltsp/.nbdUse
-	VariablesSetup
+	UpdateConfig NBDuse $CurrentNBD
+	ConfigFileRead
 	Menu
 	;;
     *)
@@ -1155,8 +1209,7 @@ case "$MENUEPT" in
     if [ "$location" = "1" ]; then
     	Menu
     else
-    	rm -rf /opt/ltsp/.backup
-    	echo "$location/" >> /opt/ltsp/.backup
+    	updateConfig backupLoc "$location/"
     	backupFrequency
     	backupDeleteTime
     	createBackupScript
@@ -1276,24 +1329,25 @@ ExtraSoftware() {
 case "$MENUEPT" in
     Install-Libreoffice) 
     ltsp-chroot --arch armhf apt-get -y install libreoffice
-    SetVar NBDBuildNeeded true
+    UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
     Install-MinecraftPi)
-    wget https://s3.amazonaws.com/assets.minecraft.net/pi/minecraft-pi-0.1.1.tar.gz -O /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz
-    tar -zxvf /opt/ltsp/raspiLTSP/temp/minecraft.tar.gz -C /opt/ltsp/raspiLTSP/temp/
-    CopyToUsers /opt/ltsp/raspiLTSP/temp/mcpi
-    cp -r /opt/ltsp/raspiLTSP/temp/mcpi /etc/skel/mcpi
+    mkdir /tmp/raspiLTSP
+    wget https://s3.amazonaws.com/assets.minecraft.net/pi/minecraft-pi-0.1.1.tar.gz -O /tmp/raspiLTSP/minecraft.tar.gz
+    tar -zxvf /tmp/raspiLTSP/minecraft.tar.gz -C /tmp/raspiLTSP
+    CopyToUsers /tmp/raspiLTSP/mcpi
+    cp -r /tmp/raspiLTSP/mcpi /etc/skel/mcpi
     ltsp-chroot --arch armhf apt-get install libpng12-dev
-    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /opt/ltsp/raspiLTSP/temp/raspi2png
-    cp -r /opt/ltsp/raspiLTSP/temp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
+    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /tmp/raspiLTSP/raspi2png
+    cp -r /tmp/raspiLTSP/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
-    SetVar NBDBuildNeeded true
+    UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
 	;;
 	Install-Arduino) 
     ltsp-chroot --arch armhf apt-get -y install arduino
-    SetVar NBDBuildNeeded true
+    UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
     Install-Scratch-gpio) 
@@ -1304,7 +1358,7 @@ case "$MENUEPT" in
     ;;
     Install-Python-hardware) 
     ltsp-chroot --arch armhf pip install pibrella
-    SetVar NBDBuildNeeded true
+    UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
     Install-Custom-package)
@@ -1530,7 +1584,8 @@ else
 		fi
 	fi
 
-VariablesSetup
-
+LegacyConfig
+ConfigFileRead
+#VariablesSetup
 Menu
 
