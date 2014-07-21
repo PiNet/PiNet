@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.8.1
+version=0.9.1
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -99,7 +99,7 @@ installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2
 exitstatus=$?
 if ! [ $exitstatus = 0 ]; then
 	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
@@ -1032,6 +1032,68 @@ read
 
 }
 
+Updater(){
+	rm -rf /tmp/Pi_ltsp > /dev/null 2>&1
+	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
+	if [ $? -eq 0 ]; then 
+		rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
+		rm Pi_ltsp > /dev/null 2>&1
+		if [ $SUDO_USER == "" ]; then
+			cp -f /tmp/Pi_ltsp ~/Pi_ltsp
+		else		
+			sudo -u $SUDO_USER cp -f /tmp/Pi_ltsp "/home/$SUDO_USER/Pi_ltsp" > /dev/null 2>&1
+			cp -f /tmp/Pi_ltsp ~/Pi_ltsp > /dev/null 2>&1
+			cp -f /tmp/Pi_ltsp Pi_ltsp > /dev/null 2>&1
+		fi
+		rm -rf /tmp/Pi_ltsp
+		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
+$checkRelease" 8 78
+		exec /bin/bash Pi_ltsp
+		exit
+	else
+		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading Raspi-LTSP again manually." 8 78
+		exec /bin/bash Pi_ltsp
+	fi
+}
+
+CheckReleases(){
+#echo checking xml
+echo "Checking for updates"
+xml2 -v > /dev/null 2>&1
+if [ $? -eq 2 ]; then 
+	#echo downloading
+	rm -f /tmp/master.atom > /dev/null 2>&1
+	wget https://github.com/gbaman/RaspberryPi-LTSP/commits/master.atom -O /tmp/master.atom > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		checkRelease=$(xml2 < /tmp/master.atom  | grep /feed/entry/title= | sed 's/.*=//' | sed 's/^ *//; s/ *$//; /^$/d' | head -n 1)
+		#echo $checkRelease
+		checkVersion=$(cut -d " " -f 2 <<< "$checkRelease")
+		#checkRelease=xml2 < master.atom  | grep /feed/entry/title= | sed 's/.*=//' | sed 's/^ *//; s/ *$//; /^$/d' | head -n 1
+		#echo "comparing"
+		#echo "Currently running $version.  $checkVersion $version"
+		if [ ! "$checkVersion" == "$version" ]; then
+			whiptail --title "Update Detected" --yesno "An update titled $checkRelease is available for Raspi-LTSP. You are currently running Release $version. Would you like to update?" 8 78
+			exitstatus=$?
+			if [ $exitstatus = 0 ]; then
+		    	Updater
+	    	fi
+		fi
+	fi
+else
+	whiptail --title "Missing Library" --yesno "I have noticed you are missing a tiny library we use for automatic updates, want me to quickly install it? An internet connection is required." 8 78	
+	exitstatus=$?
+	if [ $exitstatus = 0 ]; then
+		sudo apt-get install xml2
+		if [ $? -eq 100 ]; then
+			whiptail --title "Error" --msgbox "The install of additional library failed. Are you connected to the internet?" 8 78
+		else
+			CheckReleases
+		fi
+	fi
+fi
+}
+
+
 #***************************************************************************************************
 backupDeleteTime(){
   MENUEPT=$(whiptail --menu "How long would you like to store backups? Note this only runs when a backup runs." 20 85 10 \
@@ -1448,7 +1510,7 @@ Menu() {
     "Full-Install" "Full install of Raspi-LTSP server" \
     "Other" "Other options and utilities for management" \
     "Troubleshooter" "Having issues? Try running the troubleshooter" \
-    "Update-Pi-LTSP" "Redownloads the Pi-LTSP script" \
+    "Update-Pi-LTSP" "Forces Raspi-LTSP to update itself" \
     3>&1 1>&2 2>&3)
 
 case "$MENUOPT" in 
@@ -1540,14 +1602,7 @@ Troubleshooter)
 	Menu
 	;;
 Update-Pi-LTSP)
-	rm /home/$SUDO_USER/Pi_ltsp
-	rm Pi_ltsp
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
-	cp -f /tmp/Pi_ltsp "/home/$SUDO_USER/Pi_ltsp"
-	cp -f /tmp/Pi_ltsp ~/Pi_ltsp
-	rm -rf /tmp/Pi_ltsp
-	exec /bin/bash Pi_ltsp
-	exit
+	Updater
 	;;
 	*)
     exit
@@ -1586,6 +1641,7 @@ else
 
 LegacyConfig
 ConfigFileRead
+CheckReleases
 #VariablesSetup
 Menu
 
