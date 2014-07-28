@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.9.5
+version=0.9.6
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1049,6 +1049,7 @@ Updater(){
 		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
 $checkRelease" 8 78
 		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 		    exec /bin/bash Pi_ltsp Update-All
 		    exit
