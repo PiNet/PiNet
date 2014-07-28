@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.9.3
+version=0.9.5
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1048,8 +1048,14 @@ Updater(){
 		rm -rf /tmp/Pi_ltsp
 		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
 $checkRelease" 8 78
-		exec /bin/bash Pi_ltsp
-		exit
+		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+		if [ $exitstatus = 0 ]; then
+		    exec /bin/bash Pi_ltsp Update-All
+		    exit
+		else
+			exec /bin/bash Pi_ltsp
+			exit
+		fi
 	else
 		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading Raspi-LTSP again manually." 8 78
 		exec /bin/bash Pi_ltsp
@@ -1093,6 +1099,16 @@ else
 fi
 }
 
+UpdateAll(){
+	apt-get update && apt-get upgrade -y
+	ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
+	#FtpSetup
+	AddSoftware
+	RaspiTheme
+	NBDRun
+	whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
+
+}
 
 #***************************************************************************************************
 backupDeleteTime(){
@@ -1574,13 +1590,7 @@ Install-Epoptes)
 	Menu
 	;;
 Update-All)
-	apt-get update && apt-get upgrade -y
-	ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
-	#FtpSetup
-	AddSoftware
-	RaspiTheme
-	NBDRun
-	whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
+	UpdateAll
 	Menu
 	;;
 Epoptes-Menu)
@@ -1626,6 +1636,12 @@ if [ ! "$BASH_VERSION" ] ; then
     echo "Please do not run Raspi-LTSP with sh $0. Please run it with bash using     sudo bash $0" 1>&2
     exit 1
 fi
+
+case "$1" in 
+Update-All)
+	UpdateAll
+	;;
+esac
 
 if [ -d /opt/ltsp/armhf ]; then
 		fixGroups
