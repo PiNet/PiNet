@@ -99,7 +99,7 @@ installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server
 exitstatus=$?
 if ! [ $exitstatus = 0 ]; then
 	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
