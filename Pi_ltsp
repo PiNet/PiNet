@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.9.6
+version=0.10.1
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -53,6 +53,17 @@ ConfigFileRead(){
   		source "$ConfigFileLoc"
 	fi
 	#echo config read
+}
+
+ReplaceTextLine(){
+# ReplaceTextLine /textfile bob brian
+	egrep -i "^$2" $1 >> /dev/null
+	if [ $? = 0 ]; then
+		sed -i "s/$2.*/$3/g" $1
+	else
+		echo "$3" >> $1
+	fi	
+
 }
 
 UpdateConfig(){
@@ -147,7 +158,7 @@ echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
 groupadd pupil
-groupadd teacher
+groupadd teachers
 
 }
 
@@ -651,14 +662,14 @@ done
 
 AddTeacher() {
 #Adding users to "teachers" group
-ADMIN=$(whiptail --inputbox "Please enter a new teacher user. Teacher users have access to the handin folder" 8 78 $INIT --title "Teacher" 3>&1 1>&2 2>&3)
+ADMIN=$(whiptail --inputbox "Please enter a new teacher user. Teacher users have access to the handin folder and read/write on all shared folders" 8 78 $SUDO_USER --title "Teacher" 3>&1 1>&2 2>&3)
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	INIT=""
 	groupadd teachers
 	usermod -a -G teachers $ADMIN
 else
-	whiptail --title "Failed" --msgbox "No teacher user was added" 16 78
+	whiptail --title "Failed" --msgbox "No teacher user was added" 8 78
 fi
 
 }
@@ -786,26 +797,39 @@ if [ $exitstatus = 0 ]; then
 fi
 
 }
-CopyToUsers(){ #(Path-to-folder)
+
+CopyToUsers(){ #(Path-to-folder, path-in-home, skel? warning?)
 #Used to copy files out to every user, plus to the skel folder for new users
 
-whiptail --title "WARNING" --yesno "This involves copying a folder to the users home folder, if it already exists should we delete it?" 8 78
-local delete=$?
-local filepath=$1
-local filename=$(basename "$filepath")
+if [ $4 == "True" ]; then
+	whiptail --title "WARNING" --yesno "This involves copying a folder to the users home folder, if it already exists should we delete it?" 8 78
+	local delete=$?
+else
+	local delete=0
+fi
+local CurrentFilepath=$1
+local NewFilepath=$2
+local filename=$(basename "$NewFilepath")
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 do
 	if [ $delete = 0 ] ; then
-		rm -rf "/home/$user/$filename"
+		rm -rf "/home/$user/$NewFilepath"
 	fi
-		echo "$filename"
-		echo "/home/$user/$filename"
 		
-		cp -r  "$filepath" "/home/$user/$filename"
-		chown -R "$user" "/home/$user/$filename"
+		#echo "$filename"
+		#echo "/home/$user/$NewFilepath"
+		
+		mkdir -p "/home/$user/"$(dirname ${NewFilepath})
+		cp -r  "$CurrentFilepath" "/home/$user/$NewFilepath"
+		chown -R "$user" "/home/$user/$NewFilepath"
 
 done
+if [ $3 == "True" ]; then
+	mkdir -p "/etc/skel/"$(dirname ${NewFilepath})
+	cp -r  "$CurrentFilepath" "/etc/skel/$NewFilepath"
+fi
 }
+
 
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
@@ -935,6 +959,7 @@ RemoveUser(){
 	
 }
 
+
 ChangeUserPassword(){
 	username=$(whiptail --inputbox "Enter the username to change password of" 8 78 $INIT --title "Username" 3>&1 1>&2 2>&3)
 	if [ $? -eq 0 ]; then
@@ -1032,6 +1057,21 @@ read
 
 }
 
+SetupSambaServer(){
+	apt-get install samba libpam-smbpass -y
+	
+
+}
+
+SetupSambaPi(){
+	mkdir /opt/ltsp/armhf/media/school-share
+	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf FSTAB 'FSTAB_0="//server/School-Share  /media/school-share  cifs  guest,uid=1000,iocharset=utf8  0  0"'
+	echo "file:///media/school-share School-Share" >>/tmp/.gtk-bookmarks
+	CopyToUsers /tmp/.gtk-bookmarks .gtk-bookmarks True False
+	rm -rf /tmp/.gtk-bookmarks
+	
+}
+
 Updater(){
 	rm -rf /tmp/Pi_ltsp > /dev/null 2>&1
 	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
@@ -1100,6 +1140,43 @@ else
 fi
 }
 
+AddSambaUser(){
+	whiptail --title "Samaba" --msgbox "Samba uses a seperate user system than Linux. It can though share users, but to add a new user to samba you must change your password. You can change it to the exact same thing as it was before and you only need to do this once." 10 78
+	whiptail --title "Samaba" --msgbox "Samba users will be able to edit the school-share folder available on all Raspberry Pis. It is not recommended to add students to this." 8 78
+	username=$(whiptail --inputbox "Enter the username to add to samaba" 8 78 $INIT --title "Username" 3>&1 1>&2 2>&3)
+	if [ $? -eq 0 ]; then
+		if ! [ "$username" = "" ]; then
+			egrep "^$username" /etc/passwd >/dev/null
+			if [ $? -eq 0 ]; then
+				smbpasswd -a "$username"
+				password=$(whiptail --inputbox "Please enter your password again, it must be correct!" 8 78 $INIT --title "Password" 3>&1 1>&2 2>&3)
+				if ! [ "$password" = "" ]; then
+					echo -e "$password\n$password" | passwd $username
+					whiptail --title "Successful" --msgbox "User added to Samba" 8 78
+				else
+					whiptail --title "Error" --msgbox "Password not valid" 8 78
+				fi
+			else
+				whiptail --title "Error" --msgbox "Username does not exist!" 8 78
+			fi
+		else
+			whiptail --title "Error" --msgbox "Username isn't valid" 8 78
+		fi
+		whiptail --title "Another user" --yesno "Would you like to add another Samaba user" 8 78
+		if [ $? -eq 0 ]; then
+			AddSambaUser
+		fi
+	fi				
+			
+}		
+
+SambaTeacherScript(){
+echo WIP
+
+
+}	
+
+
 UpdateAll(){
 	apt-get update && apt-get upgrade -y
 	ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
@@ -1109,6 +1186,270 @@ UpdateAll(){
 	NBDRun
 	whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
 
+}
+
+
+SetupShared(){
+	echo "Setting up shared folders"
+	mkdir /home/shared
+	#ls -l /home/shared
+	sudo chown :teachers /home/shared
+	sudo chmod 775 /home/shared
+	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf LOCAL_APPS_EXTRAMOUNTS 'LOCAL_APPS_EXTRAMOUNTS=/home/shared'
+	AddSharedFolderScript
+}
+
+CreateSharedFolder(){
+	mkdir /home/shared/$1
+	if [ ! $? -eq 0 ]; then
+		whiptail --title "Error" --msgbox "The shared folder at /home/shared/$1 could not be created. It may already exist." 8 78
+		return 1
+	else
+		#ls -l /home/shared
+		chmod 775 /home/shared/$1
+		echo "Teachers now own /home/shared/$1"
+		sudo chown :teachers /home/shared/$1
+		#ls -l /home/shared
+		return 0
+	fi	
+}
+
+RebuildGTKBookmarks(){
+FILES=/home/shared/*
+	for f in $FILES 
+		do
+		local FolderName=$(basename "$f")
+  		echo "file://$f $FolderName" >> /tmp/.gtk-bookmarks
+	done
+	CopyToUsers /tmp/.gtk-bookmarks .gtk-bookmarks True False
+	rm -rf /tmp/.gtk-bookmarks
+}
+
+CreateSharedFoldersDialog(){
+	whiptail --title "Create shared folder" --yesno "Shared folders are accessible on all the Raspberry Pis and appear on the left in the file manager. Would you like to add one?" 8 78	
+	if [ $? -eq 0 ]; then
+		if [ ! -d /home/shared ]; then 
+			SetupShared
+		fi
+		clear
+		echo ""
+		echo "----------------------"
+		echo "Current shared folders"
+		echo "----------------------"
+		echo ""
+		ls /home/shared -1
+		echo ""
+		echo "Hit enter to continue"
+		read
+		FolderName=$(whiptail --inputbox "Enter the name of the new shared folder" 8 78 $INIT --title "Shared folder" 3>&1 1>&2 2>&3)
+		if [ $? -eq 0 ]; then
+			if ! [ "$FolderName" = "" ]; then
+				CreateSharedFolder "$FolderName"
+				if [ $? -eq 0 ]; then
+					whiptail --title "Pupil write access" --yesno 'Should pupils have read/write access to this shared folder or just read access? (Default read only)' --yes-button "Read" --no-button "Read/Write" 8 78
+					if [ ! $? -eq 0 ]; then 
+						chmod -R 777 "/home/shared/$FolderName"
+						chown -R :pupil "/home/shared/$FolderName"
+					fi
+					RebuildGTKBookmarks
+					whiptail --title "Complete" --msgbox "The shared folder at /home/shared/$FolderName has been created! To access it reboot your Raspberry Pis" 8 78
+					
+				fi
+			else
+				whiptail --title "Error" --msgbox "Folder name can not be blank!" 8 78
+			fi
+		fi
+	fi		
+			
+
+}
+
+RemoveSharedFolder(){
+	whiptail --title "Warning!" --yesno "Warning! If you delete a shared folder, you must reboot all Raspberry Pis currently on as they may get confused. Would you like to continue?" 8 78
+	if [ $? -eq 0 ]; then
+		clear
+		echo ""
+		echo "------------------------------------------------------"
+		echo "Current shared folders"
+		echo "Please enter the name of the folder you want to delete"
+		echo "------------------------------------------------------"
+		echo ""
+		ls /home/shared -1
+		echo ""
+		read toDelete
+		if [ -d "/home/shared/$toDelete" ]; then
+			whiptail --title "Are you sure?" --yesno "Are you sure you want to permanently delete /home/shared/$toDelete ?" 8 78
+			if [ $? -eq 0 ]; then
+				rm -rf "/home/shared/$toDelete"
+				RebuildGTKBookmarks
+				whiptail --title "Success" --msgbox "The folder /home/shared/$toDelete has been successfully deleted." 8 78
+			fi
+		else
+			whiptail --title "Not found" --msgbox "The folder /home/shared/$toDelete does not exist" 8 78
+		fi
+	fi
+		
+}
+
+SharedFolderPerm(){
+	clear
+	echo ""
+	echo "------------------------------------------------------"
+	echo "Current shared folders"
+	echo "Please enter the name of the folder you want to modify"
+	echo "------------------------------------------------------"
+	echo ""
+	ls /home/shared -1
+	echo ""
+	read toModify
+	if [ -d "/home/shared/$toModify" ]; then
+		whiptail --title "Pupil write access" --yesno 'Should the folder be Read/Write access for students or read only?' --yes-button "Read" --no-button "Read/Write" 8 78
+			if [ ! $? -eq 0 ]; then 
+				chmod -R 777 "/home/shared/$toModify"
+				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read/write access in /home/shared/$toModify" 8 78	
+			else
+				chmod -R 775 "/home/shared/$toModify"
+				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read only access in /home/shared/$toModify" 8 78	
+			fi
+	else
+		whiptail --title "Not found" --msgbox "The folder /home/shared/$toDelete does not exist" 8 78	
+	fi
+
+
+}
+
+DisplaySharedFolders(){
+	clear
+	echo ""
+	echo "----------------------"
+	echo "Current shared folders"
+	echo "----------------------"
+	echo ""
+	ls /home/shared -1
+	echo ""
+	echo "Hit enter to continue"
+	read
+}
+
+
+AddSharedFolderScript(){
+if [ ! -f  /etc/init.d/SharedFolderUpdate.sh ]; then
+apt-get install inotify-tools
+
+rm -rf /tmp/SharedFolderUpdate.sh
+
+
+cat <<EOF1 >> /tmp/SharedFolderUpdate.sh
+### BEGIN INIT INFO
+# Provides: Shared folder watcher.
+# Required-Start: \$remote_fs \$syslog
+# Required-Stop: \$remote_fs \$syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Shared folder watcher
+# Description: Watches shared folders updating permissions
+### END INIT INFO
+
+
+#!/bin/bash
+# /etc/init.d/SharedFolderUpdate.sh
+
+case "\$1" in
+	start)
+	FILES="/home/shared/"
+	if [ ! "\$(ls \$FILES)"="" ]; then
+		for f in \$FILES 
+			do
+			FolderName=\$(basename "\$f")
+	  		chown --recursive --reference=\$FolderName \$FolderName && chmod --recursive --reference=\$FolderName \$FolderName
+	  		chmod --recursive --reference=\$FolderName \$FolderName && chmod --recursive --reference=\$FolderName \$FolderName
+		done
+	fi
+
+	while true; do
+		directory=\$(inotifywait -q -r --format %w -e create /home/shared/)  
+		if [ ! \$directory = "/home/shared/" ]; then
+			chown --recursive --reference=\$directory \$directory 
+			chmod --recursive --reference=\$directory \$directory
+		fi
+		sleep 0.1
+		if [ ! -d /home/shared ]; then
+			echo "Warning shared folder at /home/shared does not exist!"
+			exit 2
+		fi
+	done
+	;;
+	
+	stop)
+	echo "Stopping SharedFolders"
+	LCD_PID=\$(ps auxwww | grep SharedFolderUpdate.sh | head -1 | awk '{print \$2}')
+    kill -9 \$LCD_PID
+    ;;
+    *)
+    echo "Usage: /etc/init.d/SharedFolderUpdate.sh {start|stop}"
+    exit 1
+    ;;
+esac
+exit 0
+EOF1
+cp /tmp/SharedFolderUpdate.sh /etc/init.d/SharedFolderUpdate.sh
+chmod 755 /etc/init.d/SharedFolderUpdate.sh
+service SharedFolderUpdate.sh stop > /dev/null 2>&1
+update-rc.d SharedFolderUpdate.sh defaults
+service SharedFolderUpdate.sh start &
+fi
+
+}
+
+CheckOS(){
+	OS=$(lsb_release -si)
+	if [ ! $OS == "Ubuntu" ]; then
+		if [ $OS == "Debian" ]; then
+			whiptail --title "WARNING!!" --msgbox "Debian is no longer officially supported by Raspi-LTSP! Please use Ubuntu 14.04 or later. Mileage may vary with Debian and Raspi-LTSP..." 8 78	
+		else
+			whiptail --title "WARNING!!" --msgbox "I don't recognise this operating system. Please use Ubuntu 14.04 or later. Mileage will vary greatly with other distributions and no support will be provided." 8 78	
+		fi
+	fi
+}
+
+
+#***************************************************************************************************
+
+OverclockSet(){
+	whiptail --title "Overclocking" --msgbox "The Raspberry Pi supports a number of overclocking modes. Overclocking is used to run the Raspberry Pi CPU at a higher clock speed to provide faster performance. 
+	Older Raspberry Pis or low quality power supplies can have issues with a higher clock speed. If you are having boot issues, try standard. Turbo is recommended for most users.
+	You can easily change this later." 16 78
+	
+  MENUEPT=$(whiptail --nocancel --menu "Select the overclocking mode you wish to use. Turbo is recommended." 20 85 10 \
+    "Standard" "No overclocking is applied" \
+    "Medium" "Overclocks slightly for if turbo does not work" \
+    "Turbo" "For best performance, works for 90%+ of people" \
+    3>&1 1>&2 2>&3)
+
+case "$MENUEPT" in
+    Standard) 
+    rm ~/Downloads/piBoot/config.txt
+    cp ~/Downloads/piBoot/config_standard.txt ~/Downloads/piBoot/config.txt
+	echo "arm_freq=1000
+gpu_mem=128
+core_freq=500
+sdram_freq=600
+over_voltage=6
+	" >> ~/Downloads/piBoot/
+    ;;
+    Medium)
+    DELETETIME=30
+    ;;
+    Turbo)
+    DELETETIME=90
+    ;;
+    *)
+    removeAnacronLines
+    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    Menu
+    ;;
+
+esac
 }
 
 #***************************************************************************************************
@@ -1184,6 +1525,7 @@ OtherMenu() {
     "NBD-recompress" "Force an NBD compress if changes are made outside Raspi-LTSP" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
     "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
+    "Pi-control-Menu" "Pi-control classroom management submenu" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -1220,6 +1562,49 @@ case "$MENUEPT" in
 	ConfigFileRead
 	Menu
 	;;
+	Pi-control-Menu)
+	PiControlmenu
+	;;
+    *)
+    Menu
+    ;;
+
+esac
+
+} #***************************************************************************************************
+
+SharedFolderMenu() {
+
+  MENUEPT=$(whiptail --title "Shared folders" --menu "What would you like to do?" 20 85 10 \
+    "Create-Shared-Folder" "Create a new shared folder" \
+    "Remove-Shared-Folder" "Remove a shared folder" \
+    "Change-Permissions" "Changes shared folder permissions" \
+    "DisplayShared-Folders" "Display a list of all shared folders" \
+    "Add-Teacher" "Add a new account to the teacher group" \
+    3>&1 1>&2 2>&3)
+
+#<<COMMENT1
+#if [$MENUOPT -eq 0]; then
+case "$MENUEPT" in
+    Create-Shared-Folder) 
+    CreateSharedFoldersDialog
+	Menu
+    ;;
+    Remove-Shared-Folder) 
+    RemoveSharedFolder
+	Menu
+    ;;
+    Change-Permissions) 
+    SharedFolderPerm
+	Menu
+	;;
+	DisplayShared-Folders)
+	DisplaySharedFolders
+    ;;
+    Add-Teacher) 
+    AddTeacher
+	Menu
+    ;;
     *)
     Menu
     ;;
@@ -1385,6 +1770,16 @@ case "$MENUEPT" in
     rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
     Menu
 	;;
+	Add-Samab-user)
+    AddSambaUser
+    Menu
+	;;
+	Remove-Samab-user)
+    user=$(whiptail --inputbox "Enter the username of the user you wish to remove from Samba" 8 78 $INIT --title "Samba" 3>&1 1>&2 2>&3)
+    pdbedit -u "$user" -xl
+    whiptail --title "Samba" --msgbox 'User has been removed from samba. ' 12 78
+    Menu
+	;;
     *)
     Menu
     ;;
@@ -1415,7 +1810,7 @@ case "$MENUEPT" in
     mkdir /tmp/raspiLTSP
     wget https://s3.amazonaws.com/assets.minecraft.net/pi/minecraft-pi-0.1.1.tar.gz -O /tmp/raspiLTSP/minecraft.tar.gz
     tar -zxvf /tmp/raspiLTSP/minecraft.tar.gz -C /tmp/raspiLTSP
-    CopyToUsers /tmp/raspiLTSP/mcpi
+    CopyToUsers /tmp/raspiLTSP/mcpi mcpi True False
     cp -r /tmp/raspiLTSP/mcpi /etc/skel/mcpi
     ltsp-chroot --arch armhf apt-get install libpng12-dev
     wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /tmp/raspiLTSP/raspi2png
@@ -1507,26 +1902,29 @@ FullInstall(){
 	#AddTeacher
 	SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 	fixGroups   #Adds all current users to the pupil and video group
+	groupadd teachers
+	usermod -a -G teachers $SUDO_USER
+	
 	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 }
 
 Menu() {
 
+IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 
-
-  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu" --menu "What would you like to do?" 22 80 13 \
+  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --menu "What would you like to do?" 22 80 13 \
   	"Install-Program" "Install a new program on the Raspberry Pi's" \
     "Manage-Users" "Add new users, change passwords and delete users" \
     "Update-All" "Run an automatic update on server and Raspberry Pi image" \
     "Backup-Menu" "User files backup submenu" \
+    "Shared-Folders" "Manage and create shared folders" \
     "Collect-work" "Collects students work in a single folder" \
-    "Change-IP" "Update or change the IP address of the server on SD card" \
+    "Update-SD" "Update the SD card image. This includes IP address changes" \
     "Rebuild-OS" "Rebuilds the LTSP Raspberry Pi image from scratch again" \
     "Epoptes-Menu" "Epoptes classroom management submenu" \
-    "Pi-control-Menu" "Pi-control classroom management submenu" \
-    "Full-Install" "Full install of Raspi-LTSP server" \
-    "Other" "Other options and utilities for management" \
     "Troubleshooter" "Having issues? Try running the troubleshooter" \
+    "Other" "Other options and utilities for management" \
+    "Full-Install" "Full install of Raspi-LTSP server" \
     "Update-Pi-LTSP" "Forces Raspi-LTSP to update itself" \
     3>&1 1>&2 2>&3)
 
@@ -1545,13 +1943,17 @@ case "$MENUOPT" in
     FullInstall
 	Menu
     ;;
-Change-IP)
+Update-SD)
 	ipAddress 0
-	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/piboot folder to the root of an SD card." 16 78
+	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/$SUDO_USER/piboot folder to the root of an SD card." 16 78
 	Menu
 	;;
 Install-Program)
 	ExtraSoftware
+	Menu
+	;;
+Shared-Folders)
+	SharedFolderMenu
 	Menu
 	;;
 Rebuild-OS)
@@ -1597,9 +1999,6 @@ Update-All)
 Epoptes-Menu)
 	EpoptesMenu
 	;;
-Pi-control-Menu)
-	PiControlmenu
-	;;
 Collect-work) 
     CollectWork
 	Menu
@@ -1637,6 +2036,10 @@ if [ ! "$BASH_VERSION" ] ; then
     echo "Please do not run Raspi-LTSP with sh $0. Please run it with bash using     sudo bash $0" 1>&2
     exit 1
 fi
+CheckOS
+if [ "$SUDO_USER"=="" ]; then
+	SUDO_USER=$(whiptail --inputbox "No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 $INIT --title "Unsupported operating system" 3>&1 1>&2 2>&3)
+fi	
 
 case "$1" in 
 Update-All)
@@ -1647,9 +2050,10 @@ esac
 if [ -d /opt/ltsp/armhf ]; then
 		fixGroups
 else
-    	whiptail --title "Welcome" --yesno "Welcome to Raspi-LTSP. We have detected Raspi-LTSP is not installed, would you like to run the full install?" 8 78
+    	whiptail --title "Welcome" --yesno 'Welcome to Raspi-LTSP. We have detected Raspi-LTSP is not installed, would you like to run the full install?' 8 78 
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
+			UpdateConfig FirstUser $SUDO_USER
     		FullInstall
 		else
     		Menu
