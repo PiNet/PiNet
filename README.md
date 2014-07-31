@@ -56,29 +56,6 @@ Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr).
 12. Plug in keyboard, mouse, ethernet and power to your Raspberry Pi with your newly created SD card in it. It should boot up, find your server and present a login screen. If it fails to load, check _Connection timed out errors on boot_ section below.
 13. You may wish to add some new users. The user management tools can be found in ```Manage-Users```
 
-###Debian (Guide slightly out of date)
-
-__A full userguide for Debian can be found at http://pi.gbaman.info/wp-content/uploads/2014/05/small_Userguide-pi-ltsp-full-size.pdf__   
-
-To use, first install Debian wheezy onto your server and download the ```Pi_ltsp``` file.
-
-Change to root with the command   ```su```   (or run a root terminal)
-
-Now run the script with     ```bash Pi_ltsp```
-
-The script will launch and you will be presented with a few options. 
-
-Select full install to set everything up. This can take anywhere form 30 mins to 3 hours   
-
-Next create your users with ```Manage-users``` or using ```adduser``` in the commandline   
-   
-The script will generate an SD card boot folder in /root/piboot. Copy these files onto root of an SD card formated as FAT. Or just drop on top of a Raspbian SD card image boot folder. Put your SD card into your Raspberry Pi, plug in ethernet and other required connectors and power it up, it should connect to the server and boot.   
-   
-To switch to the Raspberry Pi virtual OS at any time, use ```ltsp-chroot --arch armhf```   
-This will change the shell to the Raspberry Pi OS. Make any changes and type ```exit``` to return to normal shell.   
-   
-If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NBD-recompress``` to recompress the image again or the changes wont push out to the Pis when they boot.   
-
 ##Menu options
 
 **Install-Program** - Use to install new packages for your Raspbian image.   
@@ -87,7 +64,7 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 ---**Remove-user** - Tool for removing users from Linux.   
 ---**Change-password** - Tool for changing Linux user passwords.   
 ---**Launch-graphical** - Launches graphical user management panel.   
----**Add-teacher** - Used to add users to the teacher group.   
+---**Add-teacher** - Used to add users to the teacher group which has write access to shared folders.   
 ---**Enable-Sudo** - Enable the use of Sudo for students. Required for GPIO work.   
 ---**Disable-Sudo** - Disables use of Sudo for students.   
 **Update-All** - Runs apt-get upgrade on server and Raspberry Pi OS to update everything.   
@@ -95,24 +72,31 @@ If you are using NBD and make a change outside of Pi-LTSP, remember to run ```NB
 ---**Configure-backup** - Launches backup configuration tool to setup backups for students work.   
 ---**Disable-Backup** - Disables backup. Old backups are not deleted.   
 ---**Display-Logs** - Displays the log file for the backup system. Should be checked regularly!   
+**Shared-Folders** - A submenu with tools for creating and managing shared network folders.   
+---**Create-Shared-Folder** - Utility for creating shared network folders.   
+---**Remove-Shared-Folder** - Utility for removing shared network folders.   
+---**Change-Permissions** - Use to change write permissions for shared folders.   
+---**Display-Shared-Folders** - Use to display all shared folders.   
+---**Add-teacher** - Used to add users to the teacher group which has write access to shared folders.      
 **Collect-work** - Collects work from students ```handin``` folders. See below.   
-**Change-IP** - Run this if your servers IP address changes or want to update your SD card image.   
+**Update-SD** - Run this if your servers IP address changes or want to update your SD card image.   
 **Rebuild-OS** - Run this to rebuild the Raspberry Pi operating system if something goes wrong.   
 **Epoptes-Menu** - Use to manage Epoptes classroom management software.   
 ---**Install** - Install Epoptes for the server and the Raspberry Pis.   
 ---**Epoptes-launch** - Launches the Epoptes admin console.   
 ---**Epoptes-admin** - Allows user to add a new admin account for Epoptes.   
 ---**Remove-Epoptes** - Removes Epoptes from server and Raspberry Pis.   
-**Pi-control-menu** - Use for installing Picontrol classroom management software.   
----**Enable/update-Picontrol** - Installs Picontrol or runs an update on it.  
----**Disable-Picontrol** - Uninstalls Picontrol.   
-**Full-Install** - Runs a full install of Raspi-LTSP. Also useful if full reinstall is required.   
+**TroubleShooter** - Use to troubleshoot possible issues with Raspi-LTSP   
 **Other** - Submenu for miscellaneous options.   
 ---**Network-technology** - Allows the user to switch between NBD and NFS network technologies.   
 ---**NBD-recompress** - Forces a NBD OS recompression.    
 ---**NBD-compress-disable** - Disables NBD recompressing temporarily without disabling NBD overall.   
 ---**NBD-compress-enable** - Enables NBD recompressing again after being temporarily disabled.  
-
+---**Pi-control-menu** - Use for installing Picontrol classroom management software.   
+------**Enable/update-Picontrol** - Installs Picontrol or runs an update on it.  
+------**Disable-Picontrol** - Uninstalls Picontrol.  
+**Full-Install** - Runs a full install of Raspi-LTSP. Also useful if full reinstall is required.   
+**Update-Pi-LTSP** - Checks if any Raspi-LTSP updates are available and downloads them
 
 
 ##Handin system   
