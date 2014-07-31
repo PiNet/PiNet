@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.3
+version=0.10.4
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1078,7 +1078,7 @@ Updater(){
 	if [ $? -eq 0 ]; then 
 		rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
 		rm Pi_ltsp > /dev/null 2>&1
-		if [ $SUDO_USER == "" ]; then
+		if [ $SUDO_USER = "" ]; then
 			cp -f /tmp/Pi_ltsp ~/Pi_ltsp
 		else		
 			sudo -u $SUDO_USER cp -f /tmp/Pi_ltsp "/home/$SUDO_USER/Pi_ltsp" > /dev/null 2>&1
@@ -1357,7 +1357,7 @@ cat <<EOF1 >> /tmp/SharedFolderUpdate.sh
 case "\$1" in
 	start)
 	FILES="/home/shared/"
-	if [ ! "\$(ls \$FILES)"="" ]; then
+	if [ ! "\$(ls \$FILES)" = "" ]; then
 		for f in \$FILES 
 			do
 			FolderName=\$(basename "\$f")
@@ -2037,7 +2037,7 @@ if [ ! "$BASH_VERSION" ] ; then
     exit 1
 fi
 CheckOS
-if [ "$SUDO_USER"=="" ]; then
+if [ "$SUDO_USER" = "" ]; then
 	SUDO_USER=$(whiptail --inputbox "No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 $INIT --title "Unsupported operating system" 3>&1 1>&2 2>&3)
 fi	
 
