@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.4
+version=0.10.5
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -50,6 +50,8 @@ ConfigFileRead(){
   		# filter the original to a new file
   		egrep '^#|^[^ ]*=[^;&]*'  "$ConfigFileLoc" > "$configfile_secured"
   		ConfigFileLoc="$configfile_secured"
+  		source "$ConfigFileLoc"
+  	else
   		source "$ConfigFileLoc"
 	fi
 	#echo config read
