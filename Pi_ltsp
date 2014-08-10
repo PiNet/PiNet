@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.5
+version=0.10.6
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -624,7 +624,7 @@ ADMIN=$(whiptail --inputbox "Please enter an admin account you wish to use with 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	INIT=""
-	usermod -a -G epoptes epoptes
+	usermod -a -G $ADMIN epoptes
 else
 	whiptail --title "Install complete" --msgbox "No admin user has been added" 16 78
 fi
@@ -1336,7 +1336,7 @@ DisplaySharedFolders(){
 
 AddSharedFolderScript(){
 if [ ! -f  /etc/init.d/SharedFolderUpdate.sh ]; then
-apt-get install inotify-tools
+apt-get install -y inotify-tools
 
 rm -rf /tmp/SharedFolderUpdate.sh
 
