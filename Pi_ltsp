@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.6
+version=0.10.7
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1080,13 +1080,7 @@ Updater(){
 	if [ $? -eq 0 ]; then 
 		rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
 		rm Pi_ltsp > /dev/null 2>&1
-		if [ $SUDO_USER = "" ]; then
-			cp -f /tmp/Pi_ltsp ~/Pi_ltsp
-		else		
-			sudo -u $SUDO_USER cp -f /tmp/Pi_ltsp "/home/$SUDO_USER/Pi_ltsp" > /dev/null 2>&1
-			cp -f /tmp/Pi_ltsp ~/Pi_ltsp > /dev/null 2>&1
-			cp -f /tmp/Pi_ltsp Pi_ltsp > /dev/null 2>&1
-		fi
+		cp -f /tmp/Pi_ltsp "/usr/local/bin/Pi_ltsp" > /dev/null 2>&1
 		rm -rf /tmp/Pi_ltsp
 		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
 $checkRelease" 8 78
@@ -1139,6 +1133,15 @@ else
 			CheckReleases
 		fi
 	fi
+fi
+}
+
+checkInstallLoc(){
+InstallLoc="${BASH_SOURCE[0]}"
+if [ ! "$InstallLoc" = "/usr/local/bin/Pi_ltsp" ]; then
+	whiptail --title "Wrong location" --msgbox "I have detected your Raspi-LTSP control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch Raspi-LTSP." 10 78
+	mv $InstallLoc /usr/local/bin/Pi_ltsp
+	exec /bin/bash Pi_ltsp
 fi
 }
 
@@ -2048,6 +2051,8 @@ Update-All)
 	UpdateAll
 	;;
 esac
+
+checkInstallLoc
 
 if [ -d /opt/ltsp/armhf ]; then
 		fixGroups
