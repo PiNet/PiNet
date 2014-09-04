@@ -295,10 +295,12 @@ service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 if [ "$SUDO_USER" = "" ]; then
         cp -r /opt/raspiLTSP/PiBootBackup/ ~/piBoot
         sudo sed -i 's/1.1.1.1/'$IP'/g' ~/piBoot/cmdline.txt
+        nautilus ~/piBoot > /dev/null 2>&1 &
 else
         cp -r /opt/raspiLTSP/PiBootBackup/ "/home/$SUDO_USER/piBoot"
         chown -R "$SUDO_USER" "/home/$SUDO_USER/piBoot"
         sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/piBoot/cmdline.txt"
+        nautilus "/home/$SUDO_USER/piBoot" > /dev/null 2>&1 &
 fi
 
 
@@ -590,7 +592,7 @@ ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 
 #Leave sonic-pi to end as it installs jackd2, which brings up dialog box
-ltsp-chroot --arch armhf DEBIAN_FRONTEND=noninteractive apt-get install -y sonic-pi
+sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi
 
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
 
@@ -1560,7 +1562,7 @@ esac
 #***************************************************************************************************
 OtherMenu() {
 
-  MENUEPT=$(whiptail --title "Other Submenu" --menu "What would you like to do?" 20 85 10 \
+  MENUEPT=$(whiptail --title "Other Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 85 10 \
     "Network-technology" "Select your preferred network technology, NBD or NFS" \
     "NBD-recompress" "Force an NBD compress if changes are made outside Raspi-LTSP" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
@@ -1615,7 +1617,7 @@ esac
 
 SharedFolderMenu() {
 
-  MENUEPT=$(whiptail --title "Shared folders" --menu "What would you like to do?" 20 85 10 \
+  MENUEPT=$(whiptail --title "Shared folders" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 85 10 \
     "Create-Shared-Folder" "Create a new shared folder" \
     "Remove-Shared-Folder" "Remove a shared folder" \
     "Change-Permissions" "Changes shared folder permissions" \
@@ -1655,7 +1657,7 @@ esac
 
 EpoptesMenu() {
 
-  MENUEPT=$(whiptail --title "Epoptes Submenu" --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "Epoptes Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
     "Install" "Install epoptes to server and pis" \
     "Epoptes-launch" "Launches epoptes, it must be installed first though" \
     "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
@@ -1701,7 +1703,7 @@ esac
 ##### WIP ##########################
 BackupMenu() {
 
-  MENUEPT=$(whiptail --title "Backup Submenu" --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "Backup Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
     "Configure-backup" "Configure and enable backups. Also use to make changes" \
     "Disable-backup" "Disables backup daemon, old backups will not be deleted" \
     "Display-Logs" "Displays logs for the backup daemon, check these regularly!" \
@@ -1763,7 +1765,7 @@ esac
 #***************************************************************************************************
 UserGroups() {
 
-  MENUEPT=$(whiptail --title "User-groups Submenu" --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "User-groups Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
   	"Add-user" "Add a new Linux user" \
   	"Remove-user" "Remove a Linux user" \
   	"Change-password" "Change password of a user" \
@@ -1961,7 +1963,7 @@ Menu() {
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 
-  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --menu "What would you like to do?" 22 80 13 \
+  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 13 \
   	"Install-Program" "Install a new program on the Raspberry Pi's" \
     "Manage-Users" "Add new users, change passwords and delete users" \
     "Update-All" "Run an automatic update on server and Raspberry Pi image" \
@@ -1995,7 +1997,7 @@ case "$MENUOPT" in
 Update-SD)
 	UpdateSD
 	if [ $? -eq 0 ]; then
-		whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/$SUDO_USER/piBoot folder onto a blank SD card." 8 78
+		whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/$SUDO_USER/piBoot folder (I also tried to just open the folder for you) onto a blank SD card." 9 78
 	fi
 	Menu
 	;;
