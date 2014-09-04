@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.7
+version=0.10.8
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -112,7 +112,7 @@ installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools
 exitstatus=$?
 if ! [ $exitstatus = 0 ]; then
 	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
@@ -211,46 +211,78 @@ pcm.!default {
 }
 EOF1
 
-#ltsp-chroot --arch armhf apt-get install -y lxde idle idle3 python-dev python3-dev scratch
+
+}
+
+checkInternet(){
+
+WGET="/usr/bin/wget"
+
+$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
+if [ ! -s /tmp/google.idx ]
+then
+    #return 1
+    echo 1
+else
+    echo 0
+fi
+
+}
+
+UpdateSD() { 
+#Function for updating the SD card images
+
+#echo "$1"
+#if [ $1 -eq 0 ]; then
+#whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
+local Internet=$(checkInternet)
+if [ $Internet -eq 0 ]; then
+	if [ ! -d "/opt/raspiLTSP" ]; then
+		mkdir /opt/raspiLTSP
+	fi
+	if [ ! -d "/opt/raspiLTSP/PiBootBackup" ]; then
+		mkdir /opt/raspiLTSP/PiBootBackup
+	fi
+	rm -rf /tmp/PiBoot
+	git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git /tmp/PiBoot #Clones main repository, including boot files
+	rm -rf /opt/raspiLTSP/PiBootBackup/*
+	cp /tmp/PiBoot/boot/* /opt/raspiLTSP/PiBootBackup/
+	UpdateIP
+	return 0
+	
+else
+	if [ ! -d "/opt/raspiLTSP/PiBootBackup" ]; then
+		whiptail --title "Error" --msgbox "You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
+		return 1
+	else
+		whiptail --title "Internet" --msgbox "I detected you are not connected to the internet. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
+		UpdateIP
+		return 0
+	fi
+fi
+
 }
 
 
 
-ipAddress() {  #If 0 is passed, ask if they have internet, if
-#Function for setting the IP address inside SD card image.
 
-#echo "$1"
-if [ $1 -eq 0 ]; then
-whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
-rm -rf ~/piBoot
-exitstatus=$?
-	if [ $exitstatus = 0 ]; then
-    	rm -rf ~/Downloads/piBoot
-		git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot #Clones main repository, including boot files
-		#cp ~/Downloads/piBoot
-	fi
-else
-	rm -rf ~/Downloads/piBoot
-	git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git ~/Downloads/piBoot #Clones main repository, including boot files
-	#cp ~/Downloads/piBoot
 
-fi
+UpdateIP(){
+
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
 
-whiptail --title "Ip address" --yesno "Is this your planned server IP address? - "$IP 8 78 #Check with this use that the IP address is correct
- 
+whiptail --title "Ip address" --yesno "Would you like to stick with the default IP address? (Recommended)" 8 78 #Check with this use that the IP address is correct
+
 exitstatus=$?
-if [ $exitstatus = 0 ]; then
-    echo " "
-else
-    echo " "
-	IP=$(whiptail --inputbox "Please enter IP address" 8 78 $IP --title "IP address" 3>&1 1>&2 2>&3)
+if [ ! $exitstatus = 0 ]; then
+	IP=$(whiptail --inputbox "Please enter an IP address to use on the SD cards" 8 78 $IP --title "IP address" 3>&1 1>&2 2>&3)
 	exitstatus=$?
-	if [ $exitstatus = 0 ]; then
-    	echo "User selected Ok and entered " $IP
-	fi
-	fi
+	#if [ $exitstatus = 0 ]; then
+    #	echo "User selected Ok and entered " $IP
+	#fi
+fi
+
 if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
 	rm ~/Downloads/piBoot/boot/cmdline.txt
 	cp ~/Downloads/piBoot/boot/cmdlineNBD.txt ~/Downloads/piBoot/boot/cmdline.txt
@@ -261,11 +293,11 @@ fi
 
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 if [ "$SUDO_USER" = "" ]; then
-        cp -r ~/Downloads/piBoot/boot/ ~/piBoot
+        cp -r /opt/raspiLTSP/PiBootBackup/ ~/piBoot
         sudo sed -i 's/1.1.1.1/'$IP'/g' ~/piBoot/cmdline.txt
 else
-        cp -r ~/Downloads/piBoot/boot/ "/home/$SUDO_USER/piBoot"
-        chown "$SUDO_USER" "/home/$SUDO_USER/piBoot"
+        cp -r /opt/raspiLTSP/PiBootBackup/ "/home/$SUDO_USER/piBoot"
+        chown -R "$SUDO_USER" "/home/$SUDO_USER/piBoot"
         sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/piBoot/cmdline.txt"
 fi
 
@@ -1183,13 +1215,16 @@ echo WIP
 
 
 UpdateAll(){
-	apt-get update && apt-get upgrade -y
-	ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
-	#FtpSetup
-	AddSoftware
-	RaspiTheme
-	NBDRun
-	whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
+	if [ $(checkInternet) -eq 0 ]; then
+		apt-get update && apt-get upgrade -y
+		ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
+		AddSoftware
+		RaspiTheme
+		NBDRun
+		whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
+	else
+		whiptail --title "Error" --msgbox "No internet connection, unable to update software..." 8 78
+	fi
 
 }
 
@@ -1339,7 +1374,6 @@ DisplaySharedFolders(){
 
 AddSharedFolderScript(){
 if [ ! -f  /etc/init.d/SharedFolderUpdate.sh ]; then
-apt-get install -y inotify-tools
 
 rm -rf /tmp/SharedFolderUpdate.sh
 
@@ -1416,6 +1450,7 @@ CheckOS(){
 		fi
 	fi
 }
+
 
 
 #***************************************************************************************************
@@ -1555,7 +1590,7 @@ case "$MENUEPT" in
     ;;
     Network-technology)
 	NBDSetup
-	ipAddress 0 
+	UpdateSD
 	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/piboot folder to the root of an SD card." 16 78
 	Menu
 	;;
@@ -1631,8 +1666,12 @@ EpoptesMenu() {
 #if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
     Install) 
-    EpoptesInstaller
-    NBDRun
+    if [ $(checkInternet) -eq 0 ]; then
+    	EpoptesInstaller
+    	NBDRun
+    else
+		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+	fi
 	Menu
     ;;
     Epoptes-launch)
@@ -1794,6 +1833,7 @@ esac
 
 ExtraSoftware() {
 
+if [ $(checkInternet) -eq 0 ]; then
   MENUEPT=$(whiptail --title "Extra Software Submenu" --cancel-button "Finished" --menu "What would you like to do?" 20 100 10 \
     "Install-Libreoffice" "Libreoffice is a full free office suite, similar to Microsoft office " \
     "Install-MinecraftPi" "Installs Minecraft Pi edition and Raspi2png (for screenshoting)" \
@@ -1803,8 +1843,6 @@ ExtraSoftware() {
     "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repository" \
     3>&1 1>&2 2>&3)
 
-#<<COMMENT1
-#if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
     Install-Libreoffice) 
     ltsp-chroot --arch armhf apt-get -y install libreoffice
@@ -1850,6 +1888,10 @@ case "$MENUEPT" in
     ;;
 
 esac
+
+else
+	whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+fi
 }
 
 #***************************************************************************************************
@@ -1887,30 +1929,32 @@ esac
 #***************************************************************************************************
 
 FullInstall(){
-	whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
-	installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
-	buildClient   #Creates config file to build Raspbian with LTSP and builds it
-	OneTimeFixes   #Runs some one off config changes, these are not repeated at any time later
-	#PiConfigFixes   #Adds configuration changes to LXDE and installs Raspi artwork
-	configFixes   #Main configuration changes that are run on the the LTSP chroot (/opt/ltsp/armhf). These must be run every time the image is generated
-	FixRepo   #Adds additional repositories to the Raspbian build
-	AddSoftware   #Adds all the custom software on top of a normal Armhf Debian Wheezy build
-	RaspiTheme   #Installs the Raspi-LTSP theme which can be seen at login
-	FixDesktopIcons   #Adds desktop icons
-	EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
-	ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
-	whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-	EnableNBD   #Enables NBD compression
-	ipAddress 1   #Runs the IP address selector and builds the SD card image
-	#FtpSetup
-	#AddTeacher
-	SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-	fixGroups   #Adds all current users to the pupil and video group
-	groupadd teachers
-	usermod -a -G teachers $SUDO_USER
+	if [ $(checkInternet) -eq 0 ]; then
+		whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
+		installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
+		buildClient   #Creates config file to build Raspbian with LTSP and builds it
+		OneTimeFixes   #Runs some one off config changes, these are not repeated at any time later
+		#PiConfigFixes   #Adds configuration changes to LXDE and installs Raspi artwork
+		configFixes   #Main configuration changes that are run on the the LTSP chroot (/opt/ltsp/armhf). These must be run every time the image is generated
+		FixRepo   #Adds additional repositories to the Raspbian build
+		AddSoftware   #Adds all the custom software on top of a normal Armhf Debian Wheezy build
+		RaspiTheme   #Installs the Raspi-LTSP theme which can be seen at login
+		FixDesktopIcons   #Adds desktop icons
+		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
+		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
+		EnableNBD   #Enables NBD compression
+		UpdateSD   #Runs the IP address selector and builds the SD card image
+		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
+		fixGroups   #Adds all current users to the pupil and video group
+		groupadd teachers
+		usermod -a -G teachers $SUDO_USER
 	
-	whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+		whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+	else
+		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+	fi
 }
 
 Menu() {
@@ -1949,8 +1993,10 @@ case "$MENUOPT" in
 	Menu
     ;;
 Update-SD)
-	ipAddress 0
-	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/$SUDO_USER/piboot folder to the root of an SD card." 16 78
+	UpdateSD
+	if [ $? -eq 0 ]; then
+		whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/$SUDO_USER/piBoot folder onto a blank SD card." 8 78
+	fi
 	Menu
 	;;
 Install-Program)
@@ -1967,21 +2013,25 @@ Rebuild-OS)
  
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
-    	rm -rf /opt/ltsp/armhf
-    	rm -rf /var/lib/tftpboot/ltsp/armhf
-    	buildClient
-    	configFixes
-    	FixRepo
-    	AddSoftware
-    	RaspiTheme
-    	EnableNBDswap
-    	whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
-		ExtraSoftware
-		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-    	EnableNBD
-		ipAddress 1
-		SudoMenu
-		whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+		if [ $(checkInternet) -eq 0 ]; then
+    		rm -rf /opt/ltsp/armhf
+    		rm -rf /var/lib/tftpboot/ltsp/armhf
+    		buildClient
+    		configFixes
+    		FixRepo
+    		AddSoftware
+    		RaspiTheme
+    		EnableNBDswap
+    		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+			ExtraSoftware
+			whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
+    		EnableNBD
+			UpdateSD
+			SudoMenu
+			whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+		else
+			whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+		fi
 	fi
 	Menu
 	;;
@@ -2069,7 +2119,9 @@ else
 
 LegacyConfig
 ConfigFileRead
-CheckReleases
+if [ $(checkInternet) -eq 0 ]; then
+	CheckReleases
+fi
 #VariablesSetup
 Menu
 
