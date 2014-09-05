@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.10
+version=0.10.11
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1453,6 +1453,21 @@ CheckOS(){
 	fi
 }
 
+CheckTerminalSize(){
+        eval `resize`
+        if [ "$LINES" -le "28" ]; then
+                a='\e[8;28;'
+                b='t'
+                printf "$a$COLUMNS$b"
+        fi
+        eval `resize`
+        if [ "$COLUMNS" -le "90" ]; then
+                a='\e[8;'
+                b=';90t'
+                printf "$a$LINES$b"
+        fi
+}
+
 
 
 #***************************************************************************************************
@@ -1945,10 +1960,10 @@ FullInstall(){
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		EnableNBD   #Enables NBD compression
 		UpdateSD   #Runs the IP address selector and builds the SD card image
-		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		fixGroups   #Adds all current users to the pupil and video group
 		groupadd teachers
 		usermod -a -G teachers $SUDO_USER
@@ -1960,13 +1975,12 @@ FullInstall(){
 }
 
 Menu() {
-
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 
   MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 13 \
   	"Install-Program" "Install a new program on the Raspberry Pi's" \
     "Manage-Users" "Add new users, change passwords and delete users" \
-    "Update-All" "Run an automatic update on server and Raspberry Pi image" \
+    "Update-All" "Run an automatic update on server and Raspbian" \
     "Backup-Menu" "User files backup submenu" \
     "Shared-Folders" "Manage and create shared folders" \
     "Collect-work" "Collects students work in a single folder" \
@@ -2011,7 +2025,7 @@ Shared-Folders)
 	;;
 Rebuild-OS)
 	#echo rebuilding
-	whiptail --title "About to delete entire client OS" --yesno "Are you sure? Users are not affected" 8 78
+	whiptail --title "WARNING!!" --yesno "Warning, you are about to delete the entire Raspbian OS from the server and rebuild it. Students files are not affected but any custom programs added will need to be re-added. This will take 1-2 hours. Are you sure?" 9 78
  
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
@@ -2026,10 +2040,10 @@ Rebuild-OS)
     		EnableNBDswap
     		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 			ExtraSoftware
+			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 			whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     		EnableNBD
 			UpdateSD
-			SudoMenu
 			whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 		else
 			whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
@@ -2118,7 +2132,7 @@ else
     		Menu
 		fi
 	fi
-
+CheckTerminalSize
 LegacyConfig
 ConfigFileRead
 if [ $(checkInternet) -eq 0 ]; then
