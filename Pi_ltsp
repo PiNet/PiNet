@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.11
+version=0.10.12
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -68,6 +68,19 @@ ReplaceTextLine(){
 
 }
 
+ReplaceAnyTextOnLine(){
+# ReplaceTextLine /textfile bob brian
+        egrep -i "^$2" $1 >> /dev/null
+        if [ $? = 0 ]; then
+                sed -i "s/.*$2.*/$3/g" $1
+                return 0
+        else
+                echo "$3" >> $1
+                return 1
+        fi
+
+}
+
 UpdateConfig(){
 	local configName=$1
 	local configValue=$2
@@ -112,7 +125,7 @@ installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools bindfs
 exitstatus=$?
 if ! [ $exitstatus = 0 ]; then
 	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
@@ -160,28 +173,9 @@ echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
 groupadd pupil
-groupadd teachers
+groupadd staff
 
 }
-
-
-
-groupUpdate(){   #Outdates now
-#Adds users to groups required for the system.
-
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user    #Get all non system users
-do
-        echo "$user"
-        if groups "$user" | grep -q -E ' $1(\s|$)'; then
-    		echo "True"
-		else
-    		#echo false
-    		usermod -a -G $1 $user     #Add user to the group
-fi
-done
-}
-
-
 
 configFixes() {
 #Configuration file changes required after the client is built. These are not once off as they reside inside the Raspberry Pi OS
@@ -263,12 +257,7 @@ fi
 
 }
 
-
-
-
-
 UpdateIP(){
-
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
 
@@ -581,21 +570,24 @@ ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc s
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv man-db
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
-#ltsp-chroot --arch armhf apt-get install -y raspi-copies-and-fills
-#mv /etc/ld.so.preload /etc/ld.so.preload.disable 
-
-
-ltsp-chroot apt-get install -y java-common oracle-java7-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek
-
-
+ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby
+ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
+ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser cgroup-bin
+ltsp-chroot apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
-
-#Leave sonic-pi to end as it installs jackd2, which brings up dialog box
-sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi
-
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
 
+sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi
+
+if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
+    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /tmp/raspi2png
+    cp -r /tmp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
+    chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
+fi
+
+#Server software
+apt-get install -y bindfs
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
@@ -619,51 +611,18 @@ ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^su_cmd.*/su_cmd=gksu %s/'
 
 
 EpoptesInstaller() {
-#Installs Epoptes, classroom management software
-whiptail --title "Install complete" --msgbox "Epoptes is classroom management for remote controlling and viewing everyone in the classes screen. You must enter a linux user" 16 78
-INIT=Username
-ADMIN=$(whiptail --inputbox "Please enter the admin account you wish to use with epoptes, this account can control other users." 8 78 $INIT --title "Epoptes Admin" 3>&1 1>&2 2>&3)
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
 	apt-get update
 	apt-get install -y epoptes
-    gpasswd -a $ADMIN epoptes  #Adds admin user to epoptes group.
-    gpasswd -a root epoptes
+    gpasswd -a root staff
     ltsp-chroot --arch armhf apt-get update
     ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends
     ltsp-chroot --arch armhf epoptes-client -c 
-else
-	echo "***** WARNING *****"
-	echo ""
-    echo "Epoptes not installed!"
-    echo ""
-    echo "***** WARNING *****"
-    sleep 5
-fi
+    ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP" "SOCKET_GROUP=staff"
 }
 
 EpoptesRun() {
-#Runs epoptes using the supplied username
-INIT=""
-ADMIN=$(whiptail --inputbox "Please enter your eopotes username" 8 78 $INIT --title "Epoptes username" 3>&1 1>&2 2>&3)
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-	su -c "epoptes &" $ADMIN > /dev/null 2>&1 &
-fi
+	su -c "epoptes &" $SUDO_USER > /dev/null 2>&1 &
 }
-
-EpoptesAddAdmin(){
-#Adds a new admin to epoptes
-ADMIN=$(whiptail --inputbox "Please enter an admin account you wish to use with epoptes, this account can control other users." 8 78 $INIT --title "Epoptes Admin" 3>&1 1>&2 2>&3)
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-	INIT=""
-	usermod -a -G $ADMIN epoptes
-else
-	whiptail --title "Install complete" --msgbox "No admin user has been added" 16 78
-fi
-}
-
 
 fixGroups(){
 #Adds users to correct needed groups
@@ -684,6 +643,18 @@ do
 	done
 done
 
+egrep -i "^staff" /etc/group >/dev/null
+if [ ! $? -eq 0 ]; then
+	groupadd staff
+fi	
+
+cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+do
+        if groups "$user" | grep -q -E 'teachers(\s|$)'; then
+                gpasswd -d $user teachers
+                gpasswd -a $user staff
+        fi
+done
 }
 
 
@@ -696,29 +667,17 @@ done
 
 #}
 
-AddTeacher() {
+AddStaff() {
 #Adding users to "teachers" group
-ADMIN=$(whiptail --inputbox "Please enter a new teacher user. Teacher users have access to the handin folder and read/write on all shared folders" 8 78 $SUDO_USER --title "Teacher" 3>&1 1>&2 2>&3)
+ADMIN=$(whiptail --inputbox "Please enter a new staff user. Staff users have access to the handin folder system, read/write on all shared folders and Epoptes access." 8 78 $SUDO_USER --title "Add Staff" 3>&1 1>&2 2>&3)
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	INIT=""
-	groupadd teachers
-	usermod -a -G teachers $ADMIN
+	groupadd staff
+	usermod -a -G staff $ADMIN
 else
-	whiptail --title "Failed" --msgbox "No teacher user was added" 8 78
+	whiptail --title "Failed" --msgbox "No staff user was added" 8 78
 fi
-
-}
-
-
-FtpSetup(){ #FTP system is no longer used
-apt-get install -y vsftpd
-sed -i 's/#write_enable=YES/''write_enable=YES''/g' /etc/vsftpd.conf
-sed -i 's/#anon_upload_enable=YES/''anon_upload_enable=YES''/g' /etc/vsftpd.conf 
-service vsftpd restart
-mkdir -m 2733 /srv/ftp/handin
-ln -s /svr/ftp/handin /home/ftp
-chgrp teachers /srv/ftp/handin 
 
 }
 
@@ -726,7 +685,7 @@ FixDesktopIcons(){
 rm -rf /etc/skel/Desktop
 cd /opt/ltsp/armhf/usr/share/applications
 mkdir /etc/skel/Desktop
-sudo cp -a scratch.desktop midori.desktop idle.desktop idle3.desktop lxterminal.desktop debian-reference-common.desktop wolfram-mathematica.desktop wolfram-language.desktop /etc/skel/Desktop
+sudo cp -a scratch.desktop idle.desktop idle3.desktop lxterminal.desktop debian-reference-common.desktop wolfram-mathematica.desktop epiphany-browser.desktop wolfram-language.desktop sonic-pi.desktop minecraft-pi.desktop /etc/skel/Desktop
 cd /etc/skel
 wget "https://github.com/KenT2/python-games/tarball/master" -O python_games.tar.gz
 tar -xvf python_games.tar.gz
@@ -759,23 +718,6 @@ done
 
 }
 
-PiControlInstall(){ #No longer used, now includes a setup.py file
-rm -rf Pi_Connector
-git clone --depth 1 https://github.com/gbaman/Pi_Connector.git
-cp Pi_Connector/Server/server.py /usr/local/bin/raspiServer
-cp Pi_Connector/Server/piserver.sh /etc/init.d/piserver.sh
-cp Pi_Connector/Client/textclient.py /opt/ltsp/armhf/usr/local/bin/raspiClient
-cp Pi_Connector/Pi/picontrol.py /opt/ltsp/armhf/usr/local/bin/picontrol.py
-cp Pi_Connector/Pi/picontrol.sh /etc/init.d/picontrol.sh
-chmod 755 /opt/ltsp/armhf/usr/local/bin/picontrol.py
-chmod 755 /opt/ltsp/armhf/usr/local/bin/raspiClient
-chmod 755 /usr/local/bin/raspiServer
-chmod 755 /opt/ltsp/armhf/etc/init.d/picontrol.sh
-chmod 755 /etc/init.d/piserver.sh
-echo "Picontrol installed!"
-
-}
-
 PiControlInstallNew(){
 #Installs picontrol software using the new setup.py
 rm -rf Pi_Connector
@@ -790,8 +732,6 @@ USERHAND=$(whiptail --inputbox "Enter the username of the user account you want 
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-    #echo "User selected Ok and entered " 
-
 	whiptail --title "WARNING" --yesno "The current submitted folder will be deleted, are you sure?" 8 78
  
 	exitstatus=$?
@@ -801,10 +741,6 @@ if [ $exitstatus = 0 ]; then
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 			if [ "$USERHAND" != "" ]; then
-			
-			#if [ "$USERHAND" = "" ]; then
-			#	whiptail --title "ERROR" --msgbox "The username must not be blank" 8 78
-			#else
     			cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 				do
         			if groups "$user" | grep -q -E ' pupil(\s|$)'; then
@@ -850,11 +786,7 @@ cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -
 do
 	if [ $delete = 0 ] ; then
 		rm -rf "/home/$user/$NewFilepath"
-	fi
-		
-		#echo "$filename"
-		#echo "/home/$user/$NewFilepath"
-		
+	fi	
 		mkdir -p "/home/$user/"$(dirname ${NewFilepath})
 		cp -r  "$CurrentFilepath" "/home/$user/$NewFilepath"
 		chown -R "$user" "/home/$user/$NewFilepath"
@@ -865,7 +797,6 @@ if [ $3 == "True" ]; then
 	cp -r  "$CurrentFilepath" "/etc/skel/$NewFilepath"
 fi
 }
-
 
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
@@ -928,7 +859,6 @@ if [ ! $backupLoc = "" ]; then
         if [ -d "$LOCATION" ]; then
         		find "$LOCATION" -name "*Raspi-Users-Backup.tar.gz" -ctime +"$DELETETIME" | xargs rm -rf
                 tar -zcvf "$LOCATION$currentDate--$currentTime--Raspi-Users-Backup.tar.gz" /home
-                #echo "$LOCATION$currentDate--Raspi-Users-Backup.tar.gz"
                 exitstatus=$?
                 if [ $exitstatus = 0 ]; then
                         logger -s "$currentDate $currentTime - Backup of users files was successful" 2>> /var/log/Raspi-backup.log
@@ -1023,7 +953,7 @@ ChangeUserPassword(){
 			
 }		
 
-RestoreBackup() {
+RestoreBackup() {  #Currently incomplete
 	whiptail --title "Select backup" --msgbox "Please select a backup file. They are normally the date, time followed by Raspi-Users-Backup.tar.gz" 8 78
 
 }
@@ -1075,7 +1005,6 @@ TroubleShooter(){
 		fi
 	fi
 }
-
 
 
 DisplayUsers(){
@@ -1143,11 +1072,7 @@ if [ $? -eq 2 ]; then
 	wget https://github.com/gbaman/RaspberryPi-LTSP/commits/master.atom -O /tmp/master.atom > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		checkRelease=$(xml2 < /tmp/master.atom  | grep /feed/entry/title= | sed 's/.*=//' | sed 's/^ *//; s/ *$//; /^$/d' | head -n 1)
-		#echo $checkRelease
 		checkVersion=$(cut -d " " -f 2 <<< "$checkRelease")
-		#checkRelease=xml2 < master.atom  | grep /feed/entry/title= | sed 's/.*=//' | sed 's/^ *//; s/ *$//; /^$/d' | head -n 1
-		#echo "comparing"
-		#echo "Currently running $version.  $checkVersion $version"
 		if [ ! "$checkVersion" == "$version" ]; then
 			whiptail --title "Update Detected" --yesno "An update titled $checkRelease is available for Raspi-LTSP. You are currently running Release $version. Would you like to update?" 8 78
 			exitstatus=$?
@@ -1209,12 +1134,6 @@ AddSambaUser(){
 			
 }		
 
-SambaTeacherScript(){
-echo WIP
-
-
-}	
-
 
 UpdateAll(){
 	if [ $(checkInternet) -eq 0 ]; then
@@ -1235,7 +1154,7 @@ SetupShared(){
 	echo "Setting up shared folders"
 	mkdir /home/shared
 	#ls -l /home/shared
-	sudo chown :teachers /home/shared
+	sudo chown :staff /home/shared
 	sudo chmod 775 /home/shared
 	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf LOCAL_APPS_EXTRAMOUNTS 'LOCAL_APPS_EXTRAMOUNTS=/home/shared'
 	AddSharedFolderScript
@@ -1248,10 +1167,8 @@ CreateSharedFolder(){
 		return 1
 	else
 		#ls -l /home/shared
-		chmod 775 /home/shared/$1
-		echo "Teachers now own /home/shared/$1"
-		sudo chown :teachers /home/shared/$1
-		#ls -l /home/shared
+		chown root: /home/shared/$1
+  		chmod 0700 /home/shared/$1
 		return 0
 	fi	
 }
@@ -1468,7 +1385,60 @@ CheckTerminalSize(){
         fi
 }
 
+listStatus(){
 
+while true; do
+dpkg-query -s epoptes > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	local EPOPTES="True"
+else
+	local EPOPTES="False"
+fi
+local STAFF=$(cat /etc/group | grep --regex "^staff:.*" | awk -F: '{print $4}')
+local RAM=$(top -bn1 | awk '/Mem/ { mem =  $5 / $3 * 100 }; END { print mem }')
+local CPU=$(bc <<< "scale=0; $(top -bn 1 | awk '{print $9}' | tail -n +8 | awk '{s+=$1} END {print s}') / $(grep -c ^processor /proc/cpuinfo)")
+clear
+Version=0.10.12
+
+IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
+echo "           RaspberryPi-LTSP System Status"
+echo "---------------------------------------------------"
+echo "Current version                        - $Version"
+echo "Server IP address                      - $IP"
+echo "---------------------------------------------------"
+#echo ""
+echo "Been running version $Version since     - $(stat -c %y /usr/local/bin/Pi_ltsp | cut -d ' ' -f1)"
+echo "Piboot folder last updated             - $(stat -c %y piBoot | cut -d ' ' -f1)"
+echo "Last system-wide update (update-all)   - $(stat -c %y /var/lib/apt/periodic/update-success-stamp | cut -d ' ' -f1)"
+#echo ""
+echo "----------------"
+echo "Hard Drive Usage"
+echo "----------------"
+echo "Total space                            - $(df -h | sed -n 2p | awk '{print $2}')"
+echo "Used space                             - $(df -h | sed -n 2p | awk '{print $3}')"
+echo "Free space                             - $(df -h | sed -n 2p | awk '{print $4}')"
+#echo ""
+echo "-----"
+echo "Other"
+echo "-----"
+echo "CPU usage                              - $CPU%"
+echo "RAM usage                              - $(free -tom | grep 'Total:' | awk '{print $4}')MB / $(free -tom | grep 'Total:' | awk '{print $2}')MB"
+echo "Epoptes installed                      - $EPOPTES"
+echo "Staff members                          - $STAFF"
+#echo ""
+echo "-----------------------"
+echo "Current active users"
+echo "-----------------------"
+netstat -tnpa | grep ESTABLISHED.*sshd | awk '{ print $5 " - " $8 } '
+echo ""
+echo "Hit enter to return to the main menu"
+read -t 2
+if [ $? -eq 0 ]; then
+   break
+fi
+done
+
+}
 
 #***************************************************************************************************
 
@@ -1637,7 +1607,7 @@ SharedFolderMenu() {
     "Remove-Shared-Folder" "Remove a shared folder" \
     "Change-Permissions" "Changes shared folder permissions" \
     "DisplayShared-Folders" "Display a list of all shared folders" \
-    "Add-Teacher" "Add a new account to the teacher group" \
+    "Add-Staff" "Add a new account to the staff group" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -1658,8 +1628,8 @@ case "$MENUEPT" in
 	DisplayShared-Folders)
 	DisplaySharedFolders
     ;;
-    Add-Teacher) 
-    AddTeacher
+    Add-Staff) 
+    AddStaff
 	Menu
     ;;
     *)
@@ -1672,20 +1642,22 @@ esac
 
 EpoptesMenu() {
 
-  MENUEPT=$(whiptail --title "Epoptes Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
-    "Install" "Install epoptes to server and pis" \
-    "Epoptes-launch" "Launches epoptes, it must be installed first though" \
-    "Epoptes-admin" "Add a new epoptes admin. Admins can control other clients" \
-    "Remove-epoptes" "Uninstall epoptes from the pi clients" \
+  MENUEPT=$(whiptail --title "Epoptes Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "Epoptes classroom management software is a free, open source and easy to use computer lab management and monitoring tool. What would you like to do?" 20 80 10 \
+    "Install-Epoptes" "Install Epoptes onto the server and Raspberry Pis" \
+    "Epoptes-launch" "Launches Epoptes, it must be installed first though" \
+    "Add-Staff" "Add a new account to the staff group" \
+    "Remove-epoptes" "Uninstall Epoptes from the server and Raspberry Pis" \
     3>&1 1>&2 2>&3)
 
-#<<COMMENT1
-#if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
-    Install) 
+    Install-Epoptes) 
     if [ $(checkInternet) -eq 0 ]; then
-    	EpoptesInstaller
-    	NBDRun
+    	whiptail --title "Epoptes install" --yesno "I am now going to install Epoptes classroom management software on the server and Raspberry Pis. Would you like to continue?" 8 78
+    	if [ $? -eq 0 ];then
+    	
+    		EpoptesInstaller
+    		NBDRun
+    	fi
     else
 		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
 	fi
@@ -1695,10 +1667,10 @@ case "$MENUEPT" in
     EpoptesRun
     Menu
     	;;
-    Epoptes-admin)
-    EpoptesAddAdmin
-    Menu
-    	;;
+    Add-Staff) 
+    AddStaff
+	Menu
+    ;;
     Remove-epoptes)
 	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
     ltsp-chroot --arch armhf apt-get -y autoremove
@@ -1711,7 +1683,6 @@ case "$MENUEPT" in
     ;;
 
 esac
-#COMMENT1
 }
 
 #***************************************************************************************************
@@ -1785,8 +1756,8 @@ UserGroups() {
   	"Remove-user" "Remove a Linux user" \
   	"Change-password" "Change password of a user" \
   	"Display-users" "List all the users on the system" \
+  	"Add-staff" "Add user to the staff permission group" \
   	"Launch-graphical" "Launch a graphical user management panel" \
-    "Add-teacher" "Add user to the teachers permission group" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
     3>&1 1>&2 2>&3)
@@ -1815,8 +1786,8 @@ case "$MENUEPT" in
     su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
 	Menu
     ;;
-    Add-teacher) 
-    AddTeacher
+    Add-staff) 
+    AddStaff
 	Menu
     ;;
     Graphics-fix)
@@ -1853,10 +1824,10 @@ ExtraSoftware() {
 if [ $(checkInternet) -eq 0 ]; then
   MENUEPT=$(whiptail --title "Extra Software Submenu" --cancel-button "Finished" --menu "What would you like to do?" 20 100 10 \
     "Install-Libreoffice" "Libreoffice is a full free office suite, similar to Microsoft office " \
-    "Install-MinecraftPi" "Installs Minecraft Pi edition and Raspi2png (for screenshoting)" \
-    "Install-Arduino" "Installs the Arduino IDE for use with Arduinos via USB" \
-    "Install-Scratch-gpio" "Installs Scratch GPIO, a special version of scratch for GPIO work" \
-    "Install-Python-hardware" "Installs python libraries for hardware board, e.g. pibrella" \
+    "Install-Arduino" "The Arduino IDE is for programming and interacting with Arduinos" \
+    "Install-Scratch-gpio" "Scratch GPIO is a special version of scratch for GPIO work" \
+    "Install-Python-hardware" "Python libraries for interacting with boards like the Pibrella" \
+    "Install-Epoptes" "Epoptes is widely used free and open source classroom management program" \
     "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repository" \
     3>&1 1>&2 2>&3)
 
@@ -1866,19 +1837,6 @@ case "$MENUEPT" in
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
-    Install-MinecraftPi)
-    mkdir /tmp/raspiLTSP
-    wget https://s3.amazonaws.com/assets.minecraft.net/pi/minecraft-pi-0.1.1.tar.gz -O /tmp/raspiLTSP/minecraft.tar.gz
-    tar -zxvf /tmp/raspiLTSP/minecraft.tar.gz -C /tmp/raspiLTSP
-    CopyToUsers /tmp/raspiLTSP/mcpi mcpi True False
-    cp -r /tmp/raspiLTSP/mcpi /etc/skel/mcpi
-    ltsp-chroot --arch armhf apt-get install libpng12-dev
-    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /tmp/raspiLTSP/raspi2png
-    cp -r /tmp/raspiLTSP/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
-    chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
-    UpdateConfig NBDBuildNeeded true
-    FinishedInstallingSoftware
-	;;
 	Install-Arduino) 
     ltsp-chroot --arch armhf apt-get -y install arduino
     UpdateConfig NBDBuildNeeded true
@@ -1894,6 +1852,10 @@ case "$MENUEPT" in
     ltsp-chroot --arch armhf pip install pibrella
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
+    ;;
+    Install-Epoptes)
+    EpoptesInstaller
+    UpdateConfig NBDBuildNeeded true
     ;;
     Install-Custom-package)
     InstallProgram
@@ -1965,8 +1927,7 @@ FullInstall(){
 		EnableNBD   #Enables NBD compression
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		fixGroups   #Adds all current users to the pupil and video group
-		groupadd teachers
-		usermod -a -G teachers $SUDO_USER
+		usermod -a -G staff $SUDO_USER
 	
 		whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
@@ -1977,7 +1938,8 @@ FullInstall(){
 Menu() {
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 
-  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 13 \
+  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 14 \
+  	"System-Status" "Display status of key parts of your Raspi-LTSP server" \
   	"Install-Program" "Install a new program on the Raspberry Pi's" \
     "Manage-Users" "Add new users, change passwords and delete users" \
     "Update-All" "Run an automatic update on server and Raspbian" \
@@ -1994,6 +1956,10 @@ IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ pr
     3>&1 1>&2 2>&3)
 
 case "$MENUOPT" in 
+	System-Status)
+	listStatus
+	Menu
+	;;
     Full-Install)
     if [ -d /opt/ltsp/armhf ]; then
     	whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
