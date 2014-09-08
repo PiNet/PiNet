@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.12
+version=0.10.13
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -187,9 +187,9 @@ echo 'NFS_HOME=/home' >> /opt/ltsp/armhf/etc/lts.conf
 cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 
-printf 'snd-bcm2835\n' >> /etc/modules
+printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
 
-cat <<\EOF1 > /etc/asound.conf
+cat <<\EOF1 > /opt/ltsp/armhf/etc/asound.conf
 pcm.mmap0 {
     type mmap_emul;
     slave {
@@ -1751,7 +1751,7 @@ esac
 #***************************************************************************************************
 UserGroups() {
 
-  MENUEPT=$(whiptail --title "User-groups Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title "Manage-users Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
   	"Add-user" "Add a new Linux user" \
   	"Remove-user" "Remove a Linux user" \
   	"Change-password" "Change password of a user" \
