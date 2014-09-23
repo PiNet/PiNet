@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.14
+version=0.10.15
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1140,7 +1140,6 @@ UpdateAll(){
 		apt-get update && apt-get upgrade -y
 		ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
 		AddSoftware
-		RaspiTheme
 		NBDRun
 		whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
 	else
@@ -1398,12 +1397,11 @@ local STAFF=$(cat /etc/group | grep --regex "^staff:.*" | awk -F: '{print $4}')
 local RAM=$(top -bn1 | awk '/Mem/ { mem =  $5 / $3 * 100 }; END { print mem }')
 local CPU=$(bc <<< "scale=0; $(top -bn 1 | awk '{print $9}' | tail -n +8 | awk '{s+=$1} END {print s}') / $(grep -c ^processor /proc/cpuinfo)")
 clear
-Version=0.10.12
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 echo "           RaspberryPi-LTSP System Status"
 echo "---------------------------------------------------"
-echo "Current version                        - $Version"
+echo "Current version                        - $version"
 echo "Server IP address                      - $IP"
 echo "---------------------------------------------------"
 #echo ""
@@ -1439,6 +1437,35 @@ fi
 done
 
 }
+
+CheckDesktopShortcut(){
+if [ $(checkInternet) -eq 0 ]; then
+if [ ! -f "/home/$SUDO_USER/Desktop/Raspi-LTSP.desktop" ]; then
+	echo not found
+	echo "/home/$SUDO_USER/Desktop/Raspi-LTSP.desktop"
+	
+	cat <<EOF1 >> /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
+[Desktop Entry]
+Version=1.0
+Name=Raspi-LTSP
+Comment=Raspberry Pi LTSP       
+Exec=sudo bash Pi_ltsp
+Icon=/usr/share/pixmaps/Pi-ltsp-icon.png
+Terminal=true
+Type=Application
+Categories=Utility;Application;
+EOF1
+	chmod +x "/home/$SUDO_USER/Desktop/Raspi-LTSP.desktop"
+	chown "$SUDO_USER" "/home/$SUDO_USER/Desktop/Raspi-LTSP.desktop"
+fi
+
+if [ ! -f "/usr/share/pixmaps/Pi-ltsp-icon.png" ]; then
+	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-icon.png
+	mv Pi-ltsp-icon.png /usr/share/pixmaps/Pi-ltsp-icon.png
+fi
+fi
+}
+
 
 #***************************************************************************************************
 
@@ -2085,6 +2112,7 @@ Update-All)
 esac
 
 checkInstallLoc
+CheckDesktopShortcut
 
 if [ -d /opt/ltsp/armhf ]; then
 		fixGroups
