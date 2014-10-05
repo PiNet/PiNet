@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.17
+version=0.10.18
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -39,6 +39,14 @@ else
 fi
 } 
 
+LegacyFixes() {
+	CheckSharedFolderIntegrity
+	CheckDesktopShortcut
+	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""
+	ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
+	ReplaceTextLine "/etc/sudoers.d/01staff" "%staff ALL=NOPASSWD: ALL" "%teacher ALL=NOPASSWD: ALL"
+}
+
 
 ConfigFileRead(){
 	#Taken from - http://wiki.bash-hackers.org/howto/conffile
@@ -70,9 +78,10 @@ ReplaceTextLine(){
 
 ReplaceAnyTextOnLine(){
 # ReplaceTextLine /textfile bob brian
-        egrep -i "^$2" $1 >> /dev/null
-        if [ $? = 0 ]; then
-                sed -i "s/.*$2.*/$3/g" $1
+#REMEMBER!! The & symbol can't be in any of the strings as SED is using it for separating. Can change it if need be
+        egrep -i "$2" $1 >> /dev/null
+        if [ $? -eq 0 ]; then
+                sed -i "s&.*$2.*&$3&g" $1
                 return 0
         else
                 echo "$3" >> $1
@@ -172,8 +181,8 @@ echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tft
 echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
-groupadd pupil
-groupadd staff
+groupadd -g 2122 pupil
+groupadd -g 2123 teacher
 
 }
 
@@ -182,7 +191,7 @@ configFixes() {
 
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
-echo 'NFS_HOME=/home' >> /opt/ltsp/armhf/etc/lts.conf
+#echo 'NFS_HOME=/home' >> /opt/ltsp/armhf/etc/lts.conf
 
 cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
@@ -633,7 +642,7 @@ EpoptesInstaller() {
     ltsp-chroot --arch armhf apt-get update
     ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends
     ltsp-chroot --arch armhf epoptes-client -c 
-    ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP" "SOCKET_GROUP=staff"
+    ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP" "SOCKET_GROUP=teacher"
 }
 
 EpoptesRun() {
@@ -643,13 +652,17 @@ EpoptesRun() {
 fixGroups(){
 #Adds users to correct needed groups
 
-for ugroup in adm dialout cdrom audio users sudo video games plugdev input pupil; do
+
+#Adds all the groups if they don't exist
+for ugroup in adm dialout cdrom audio users sudo video games plugdev input; do
 	egrep -i "^$ugroup" /etc/group >> /dev/null
 	if [ $? = 1 ]; then
 		groupadd $ugroup
 	fi
 done
 
+
+#Adds all users to all the required groups if they aren't already in them
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
 do
 	for ugroup in adm dialout cdrom audio users video games plugdev input pupil; do
@@ -659,33 +672,54 @@ do
 	done
 done
 
-egrep -i "^staff" /etc/group >/dev/null
+egrep -i "^teachers" /etc/group >/dev/null
+if [ $? -eq 0 ]; then
+	groupdel teachers
+fi	
+
+local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
+if [ ! "$teacherID" = "2123" ]; then
+	groupdel teacher
+	groupadd teacher -g 2123
+	whiptail --title "Reboot required" --msgbox "Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
+	fixGroups
+fi	
+
+egrep -i "^teacher" /etc/group >/dev/null
 if [ ! $? -eq 0 ]; then
-	groupadd staff
+	groupadd teacher -g 2123
+fi	
+
+local pupilID=$(egrep -i "^pupil" /etc/group | cut -d: -f3)
+if [ ! "$pupilID" = "2122" ]; then
+	groupdel pupil
+	groupadd pupil -g 2122
+	fixGroups
 fi	
 
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 do
-        if groups "$user" | grep -q -E 'teachers(\s|$)'; then
-                gpasswd -d $user teachers
-                gpasswd -a $user staff
+        if groups "$user" | grep -q -E 'staff(\s|$)'; then
+                gpasswd -a $user teacher
+                gpasswd -d $user staff
         fi
 done
+
 }
 
 
-AddStaff() {
-	whiptail --title "Staff" --msgbox "Staff members have full admin access on the server (so can run Raspi-ltsp), full read/write access to all shared folders and Epoptes teacher level (so can control students computers)." 9 78
-	username=$(SelectUser "to add to the staff group.")
+AddTeacher() {
+	whiptail --title "Teacher" --msgbox "Teachers have full admin access on the server (so can run Raspi-ltsp), full read/write access to all shared folders and Epoptes teacher level (so can control students computers)." 9 78
+	username=$(SelectUser "to add to the teacher group.")
 	if [ ! $username = 1 ]; then
 		INIT=""
-		AddUserToStaff $username
-		whiptail --title "Success" --msgbox "The user $username has been added to the staff group." 8 78
+		AddUserToTeacher $username
+		whiptail --title "Success" --msgbox "The user $username has been added to the teacher group." 8 78
 	fi
 }
 
-AddUserToStaff() {
-	usermod -a -G staff $1
+AddUserToTeacher() {
+	usermod -a -G teacher $1
 	AddDesktopShortcutToUser $1
 }
 
@@ -898,11 +932,11 @@ AddUsers(){
 				useradd -m -s /bin/bash -p $pass $username
 			[ $? -eq 0 ] && echo "$username has been added to system!" || echo "Failed to add a user!"
 			fixGroups
-			whiptail --title "Permission level" --yesno "Is $username a pupil or a member of staff?
-Members of staff have a lot more permissions including write access to all shared folders, Epoptes teacher access and the ability to run Raspi-LTSP control software." --yes-button "Pupil" --no-button "Staff" 8 78
+			whiptail --title "Permission level" --yesno "Is $username a pupil or a teacher?
+Teachers have a lot more permissions including write access to all shared folders, Epoptes teacher access and the ability to run Raspi-LTSP control software." --yes-button "Pupil" --no-button "Teacher" 8 78
 			if [ ! $? -eq 0 ]; then
-				AddUserToStaff $username
-				whiptail --title "Success" --msgbox "A new staff user has been added to the system successfully with the name - $username" 8 78
+				AddUserToTeacher $username
+				whiptail --title "Success" --msgbox "A new teacher user has been added to the system successfully with the name - $username" 8 78
 			else
 				whiptail --title "Success" --msgbox "A new student user has been added to the system successfully with the name - $username" 8 78
 			fi
@@ -1022,7 +1056,7 @@ TroubleShooter(){
 
 DisplayUsers(){
 clear
-local STAFF=$(cat /etc/group | grep --regex "^staff:.*" | awk -F: '{print $4}')
+local TEACHER=$(cat /etc/group | grep --regex "^teacher:.*" | awk -F: '{print $4}')
 echo "-------------------"
 echo "Current Linux users"
 echo "-------------------"
@@ -1031,8 +1065,8 @@ cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -
 		echo "$user"
 	done
 echo "---------------"
-echo "Current Linux users in the staff group"
-echo "$STAFF"
+echo "Current Linux users in the teacher group"
+echo "$TEACHER"
 echo "---------------"
 echo "Press enter to continue"
 read
@@ -1170,10 +1204,10 @@ SetupShared(){
 	echo "Setting up shared folders"
 	mkdir /home/shared
 	#ls -l /home/shared
-	sudo chown :staff /home/shared
+	sudo chown :teacher /home/shared
 	sudo chmod 775 /home/shared
 	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf LOCAL_APPS_EXTRAMOUNTS 'LOCAL_APPS_EXTRAMOUNTS=/home/shared'
-	AddSharedFolderScript
+
 }
 
 CreateSharedFolder(){
@@ -1200,6 +1234,16 @@ FILES=/home/shared/*
 	rm -rf /tmp/.gtk-bookmarks
 }
 
+SelectSharedFolder(){
+SFs=$(ls -1 /home/shared | awk -F':' '{ print $1"\na"}')
+SF=$(whiptail --title "Shared-folders" --menu "Select a shared folder $1" 16 78 5 $SFs --noitem 3>&1 1>&2 2>&3)
+if [ $? -eq 0 ]; then
+	echo $SF
+else
+	echo 1
+fi
+}
+
 CreateSharedFoldersDialog(){
 	whiptail --title "Create shared folder" --yesno "Shared folders are accessible on all the Raspberry Pis and appear on the left in the file manager. Would you like to add one?" 8 78	
 	if [ $? -eq 0 ]; then
@@ -1223,10 +1267,12 @@ CreateSharedFoldersDialog(){
 				if [ $? -eq 0 ]; then
 					whiptail --title "Pupil write access" --yesno 'Should pupils have read/write access to this shared folder or just read access? (Default read only)' --yes-button "Read" --no-button "Read/Write" 8 78
 					if [ ! $? -eq 0 ]; then 
-						chmod -R 777 "/home/shared/$FolderName"
-						chown -R :pupil "/home/shared/$FolderName"
+						ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=pupil /home/shared/$FolderName /home/shared/$FolderName"
+					else
+						ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=teacher /home/shared/$FolderName /home/shared/$FolderName"
 					fi
 					RebuildGTKBookmarks
+					service bindfs-mount restart
 					whiptail --title "Complete" --msgbox "The shared folder at /home/shared/$FolderName has been created! To access it reboot your Raspberry Pis" 8 78
 					
 				fi
@@ -1238,59 +1284,52 @@ CreateSharedFoldersDialog(){
 			
 
 }
-
+	
 RemoveSharedFolder(){
 	whiptail --title "Warning!" --yesno "Warning! If you delete a shared folder, you must reboot all Raspberry Pis currently on as they may get confused. Would you like to continue?" 8 78
 	if [ $? -eq 0 ]; then
-		clear
-		echo ""
-		echo "------------------------------------------------------"
-		echo "Current shared folders"
-		echo "Please enter the name of the folder you want to delete"
-		echo "------------------------------------------------------"
-		echo ""
-		ls /home/shared -1
-		echo ""
-		read toDelete
-		if [ -d "/home/shared/$toDelete" ]; then
+		toDelete=$(SelectSharedFolder "to remove.")
+		if [ ! $toDelete = 1 ]; then
 			whiptail --title "Are you sure?" --yesno "Are you sure you want to permanently delete /home/shared/$toDelete ?" 8 78
 			if [ $? -eq 0 ]; then
-				rm -rf "/home/shared/$toDelete"
 				RebuildGTKBookmarks
-				whiptail --title "Success" --msgbox "The folder /home/shared/$toDelete has been successfully deleted." 8 78
+				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$toDelete" ""
+				if [ $? -eq 0 ]; then
+					service bindfs-mount restart
+					rm -rf "/home/shared/$toDelete"
+					whiptail --title "Success" --msgbox "The folder /home/shared/$toDelete has been successfully deleted." 8 78
+				else
+					service bindfs-mount restart
+					whiptail --title "Error" --msgbox "There was an issue removing the mount from /usr/local/bin/bindfs-mount... Please try again." 8 78
+				fi	
 			fi
-		else
-			whiptail --title "Not found" --msgbox "The folder /home/shared/$toDelete does not exist" 8 78
 		fi
 	fi
-		
-}
+}	
 
 SharedFolderPerm(){
-	clear
-	echo ""
-	echo "------------------------------------------------------"
-	echo "Current shared folders"
-	echo "Please enter the name of the folder you want to modify"
-	echo "------------------------------------------------------"
-	echo ""
-	ls /home/shared -1
-	echo ""
-	read toModify
-	if [ -d "/home/shared/$toModify" ]; then
-		whiptail --title "Pupil write access" --yesno 'Should the folder be Read/Write access for students or read only?' --yes-button "Read" --no-button "Read/Write" 8 78
-			if [ ! $? -eq 0 ]; then 
-				chmod -R 777 "/home/shared/$toModify"
-				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read/write access in /home/shared/$toModify" 8 78	
-			else
-				chmod -R 775 "/home/shared/$toModify"
-				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read only access in /home/shared/$toModify" 8 78	
-			fi
-	else
-		whiptail --title "Not found" --msgbox "The folder /home/shared/$toDelete does not exist" 8 78	
+	if [ -f /etc/init.d/SharedFolderUpdate.sh ]; then
+		service stop SharedFolderUpdate.sh
+		rm -rf /etc/init.d/SharedFolderUpdate.sh
 	fi
-
-
+	
+	if [ "$1" = "" ]; then
+		FolderName=$(SelectSharedFolder "to edit.")
+	else
+		FolderName=$1	
+	fi
+	if [ ! $FolderName = 1 ]; then
+		whiptail --title "Pupil write access" --yesno "Should $FolderName be Read/Write access for students or read only?" --yes-button "Read" --no-button "Read/Write" 8 78
+			if [ ! $? -eq 0 ]; then 
+				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=pupil /home/shared/$FolderName /home/shared/$FolderName"
+				service bindfs-mount restart
+				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read/write access in /home/shared/$FolderName" 8 78	
+			else
+				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=teacher /home/shared/$FolderName /home/shared/$FolderName"
+				service bindfs-mount restart
+				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read only access in /home/shared/$FolderName" 8 78	
+			fi
+	fi
 }
 
 DisplaySharedFolders(){
@@ -1307,73 +1346,96 @@ DisplaySharedFolders(){
 }
 
 
-AddSharedFolderScript(){
-if [ ! -f  /etc/init.d/SharedFolderUpdate.sh ]; then
-
-rm -rf /tmp/SharedFolderUpdate.sh
-
-
-cat <<EOF1 >> /tmp/SharedFolderUpdate.sh
-### BEGIN INIT INFO
-# Provides: Shared folder watcher.
-# Required-Start: \$remote_fs \$syslog
-# Required-Stop: \$remote_fs \$syslog
-# Default-Start: 2 3 4 5
-# Default-Stop: 0 1 6
-# Short-Description: Shared folder watcher
-# Description: Watches shared folders updating permissions
-### END INIT INFO
-
-
-#!/bin/bash
-# /etc/init.d/SharedFolderUpdate.sh
-
-case "\$1" in
-	start)
-	FILES="/home/shared/"
-	if [ ! "\$(ls \$FILES)" = "" ]; then
-		for f in \$FILES 
-			do
-			FolderName=\$(basename "\$f")
-	  		chown --recursive --reference=\$FolderName \$FolderName && chmod --recursive --reference=\$FolderName \$FolderName
-	  		chmod --recursive --reference=\$FolderName \$FolderName && chmod --recursive --reference=\$FolderName \$FolderName
-		done
+CheckSharedFolderIntegrity(){
+	if [ -f /etc/init.d/SharedFolderUpdate.sh ]; then
+		service stop SharedFolderUpdate.sh
+		rm -rf /etc/init.d/SharedFolderUpdate.sh
 	fi
-
-	while true; do
-		directory=\$(inotifywait -q -r --format %w -e create /home/shared/)  
-		if [ ! \$directory = "/home/shared/" ]; then
-			chown --recursive --reference=\$directory \$directory 
-			chmod --recursive --reference=\$directory \$directory
-		fi
-		sleep 0.1
-		if [ ! -d /home/shared ]; then
-			echo "Warning shared folder at /home/shared does not exist!"
-			exit 2
-		fi
-	done
-	;;
-	
-	stop)
-	echo "Stopping SharedFolders"
-	LCD_PID=\$(ps auxwww | grep SharedFolderUpdate.sh | head -1 | awk '{print \$2}')
-    kill -9 \$LCD_PID
-    ;;
-    *)
-    echo "Usage: /etc/init.d/SharedFolderUpdate.sh {start|stop}"
-    exit 1
-    ;;
-esac
-exit 0
-EOF1
-cp /tmp/SharedFolderUpdate.sh /etc/init.d/SharedFolderUpdate.sh
-chmod 755 /etc/init.d/SharedFolderUpdate.sh
-service SharedFolderUpdate.sh stop > /dev/null 2>&1
-update-rc.d SharedFolderUpdate.sh defaults
-service SharedFolderUpdate.sh start &
-fi
+	if [ ! -f /etc/init.d/bindfs-mount ]; then
+		service stop bindfs-mount > /dev/null 2>&1
+		addSharedFolderScript
+	fi
+	touch /usr/local/bin/bindfs-mount
+	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
+	inFolder=$(ls -1 /home/shared | wc -l)
+	if [ ! "$inFile" = "$inFolder" ]; then
+		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! You must reselect the correct permission level for each folder now." 8 78	
+		for i in 1 2 3 4 5 6 7 8 9 10
+		do
+			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
+		done
+		sed -i '/^[[:blank:]]*$/d' /usr/local/bin/bindfs-mount
+		
+		for f in $(ls -1 "/home/shared/")
+		do
+			SharedFolderPerm $f
+			chown :root "/home/shared/$f"
+		done
+	fi		
 
 }
+
+addSharedFolderScript() {
+
+service bindfs-mount stop
+rm -rf /etc/init.d/bindfs-mount
+
+cat <<EOF1 >> /etc/init.d/bindfs-mount
+#!/bin/bash
+#Version=01
+### BEGIN INIT INFO
+# Provides:             Bindfs-mounts
+# Required-Start:       \$syslog \$remote_fs
+# Required-Stop:        \$syslog \$remote_fs
+# Should-Start:         \$local_fs
+# Should-Stop:          \$local_fs
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Short-Description:    Bindfs mounts for RaspberryPi-LTSP
+# Description:          The shared folder Bindfs mounts for RaspberryPi-LTSP
+### END INIT INFO
+
+start() {
+bash /usr/local/bin/bindfs-mount
+}
+
+stop() {
+for i in \$(ls -1 /home/shared)
+do
+        umount -l /home/shared/\$i > /dev/null 2>&1
+done
+}
+
+
+restart() {
+    stop
+    start
+}
+
+case "\$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    *)
+        echo "Usage: {start|stop|restart}"
+        exit 1
+        ;;
+esac
+exit	
+	
+EOF1
+chmod 755 /etc/init.d/bindfs-mount
+update-rc.d bindfs-mount defaults
+service bindfs-mount restart > /dev/null 2>&1
+	
+}
+	
 
 CheckOS(){
 	OS=$(lsb_release -si)
@@ -1410,7 +1472,7 @@ if [ $? -eq 0 ]; then
 else
 	local EPOPTES="False"
 fi
-local STAFF=$(cat /etc/group | grep --regex "^staff:.*" | awk -F: '{print $4}')
+local TEACHER=$(cat /etc/group | grep --regex "^teacher:.*" | awk -F: '{print $4}')
 local RAM=$(top -bn1 | awk '/Mem/ { mem =  $5 / $3 * 100 }; END { print mem }')
 local CPU=$(bc <<< "scale=0; $(top -bn 1 | awk '{print $9}' | tail -n +8 | awk '{s+=$1} END {print s}') / $(grep -c ^processor /proc/cpuinfo)")
 clear
@@ -1439,7 +1501,7 @@ echo "-----"
 echo "CPU usage                              - $CPU%"
 echo "RAM usage                              - $(free -tom | grep 'Total:' | awk '{print $4}')MB / $(free -tom | grep 'Total:' | awk '{print $2}')MB"
 echo "Epoptes installed                      - $EPOPTES"
-echo "Staff members                          - $STAFF"
+echo "Teacher members                        - $TEACHER"
 #echo ""
 echo "-----------------------"
 echo "Current active users"
@@ -1487,12 +1549,12 @@ fi
 }
 
 
-staffSudoCheck() {
+teacherSudoCheck() {
 if [ ! -f "/etc/sudoers.d/01staff" ]; then
 	rm -f /etc/sudoers.d/01staff
 	touch /etc/sudoers.d/01staff
 	chmod 440 /etc/sudoers.d/01staff
-	echo '%staff ALL=NOPASSWD: ALL' >> /etc/sudoers.d/01staff
+	echo '%teacher ALL=NOPASSWD: ALL' >> /etc/sudoers.d/01staff
 fi
 }
 
@@ -1503,8 +1565,8 @@ service nfs-kernel-server restart
 sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure nbd-server
 sudo service nbd-server restart
 
-
 }
+
 
 #***************************************************************************************************
 
@@ -1678,7 +1740,7 @@ SharedFolderMenu() {
     "Remove-Shared-Folder" "Remove a shared folder" \
     "Change-Permissions" "Changes shared folder permissions" \
     "DisplayShared-Folders" "Display a list of all shared folders" \
-    "Add-Staff" "Add a new account to the staff group" \
+    "Add-Teacher" "Add a new account to the teacher group" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -1699,8 +1761,8 @@ case "$MENUEPT" in
 	DisplayShared-Folders)
 	DisplaySharedFolders
     ;;
-    Add-Staff) 
-    AddStaff
+    Add-Teacher) 
+    AddTeacher
 	Menu
     ;;
     *)
@@ -1716,7 +1778,7 @@ EpoptesMenu() {
   MENUEPT=$(whiptail --title "Epoptes Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "Epoptes classroom management software is a free, open source and easy to use computer lab management and monitoring tool. What would you like to do?" 20 80 10 \
     "Install-Epoptes" "Install Epoptes onto the server and Raspberry Pis" \
     "Epoptes-launch" "Launches Epoptes, it must be installed first though" \
-    "Add-Staff" "Add a new account to the staff group" \
+    "Add-Teacher" "Add a new account to the teacher group" \
     "Remove-epoptes" "Uninstall Epoptes from the server and Raspberry Pis" \
     3>&1 1>&2 2>&3)
 
@@ -1738,8 +1800,8 @@ case "$MENUEPT" in
     EpoptesRun
     Menu
     	;;
-    Add-Staff) 
-    AddStaff
+    Add-Teacher) 
+    AddTeacher
 	Menu
     ;;
     Remove-epoptes)
@@ -1827,7 +1889,7 @@ UserGroups() {
   	"Remove-user" "Remove a Linux user" \
   	"Change-password" "Change password of a user" \
   	"Display-users" "List all the users on the system" \
-  	"Add-staff" "Add user to the staff permission group" \
+  	"Add-teacher" "Add user to the staff permission group" \
   	"Launch-graphical" "Launch a graphical user management panel" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
@@ -1855,8 +1917,8 @@ case "$MENUEPT" in
     su -c "gnome-control-center user-accounts &" > /dev/null 2>/dev/null
 	Menu
     ;;
-    Add-staff) 
-    AddStaff
+    Add-teacher) 
+    AddTeacher
 	Menu
     ;;
     Graphics-fix)
@@ -1996,7 +2058,7 @@ FullInstall(){
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		EnableNBD   #Enables NBD compression
 		fixGroups   #Adds all current users to the pupil and video group
-		usermod -a -G staff $SUDO_USER
+		usermod -a -G teacher $SUDO_USER
 		resetAndCleanup
 	
 		whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
@@ -2156,7 +2218,7 @@ Update-All)
 esac
 
 checkInstallLoc
-CheckDesktopShortcut
+
 
 if [ -d /opt/ltsp/armhf ]; then
 		fixGroups
@@ -2171,12 +2233,13 @@ else
 		fi
 	fi
 CheckTerminalSize
-staffSudoCheck
+teacherSudoCheck
 LegacyConfig
 ConfigFileRead
 if [ $(checkInternet) -eq 0 ]; then
 	CheckReleases
 fi
+LegacyFixes
 #VariablesSetup
 Menu
 
