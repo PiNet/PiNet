@@ -1,9 +1,10 @@
 RaspberryPi-LTSP
 ================
 
-![Main Menu](https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/images/Raspi-LTSP-Menu.png "Raspi-LTSP Main Menu")
+![Login screen](images/Raspi-Login.png)
    
-####Project website - http://gbaman.github.io/RaspberryPi-LTSP/
+####Project Website - http://gbaman.github.io/RaspberryPi-LTSP/
+####Project Documentation - http://pi-ltsp.net
    
 Raspi-LTSP is a configuration utility to facilitate using Raspberry Pis in a permanent classroom environment through setup as LTSP fat clients. It is based heavily on the Linux Terminal Server Project (LTSP).   
    
@@ -36,11 +37,11 @@ __More information can be found on the blog post http://pi.gbaman.info/?p=256__
 + An SD card of at least 32mb
 
 ##Installation
+###Project Documentation - http://pi-ltsp.net
+**The documentation below may be out of date** and is no longer kept up to date. Please use the dedicated documentation site above.
 
+###Ubuntu Install
 
-###Ubuntu (Recommended)
-
-####For a full draft userguide designed for complete beginners, see here http://bit.ly/1l26rti  
 Raspi-LTSP is officially supported and tested on Ubuntu 14.04 LTS (Trusty Tahr). Other versions are very likely to work, but at not supported.
 
 1. Download and install Ubuntu 14.04 on an old computer. This is a great guide to follow http://www.ubuntu.com/download/desktop/install-ubuntu-desktop .

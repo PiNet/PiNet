@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.18
+version=0.10.19
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -40,7 +40,9 @@ fi
 } 
 
 LegacyFixes() {
-	CheckSharedFolderIntegrity
+	if [ -d "/home/shared" ]; then
+		CheckSharedFolderIntegrity
+	fi
 	CheckDesktopShortcut
 	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""
 	ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
@@ -1377,7 +1379,7 @@ CheckSharedFolderIntegrity(){
 
 addSharedFolderScript() {
 
-service bindfs-mount stop
+#service bindfs-mount stop
 rm -rf /etc/init.d/bindfs-mount
 
 cat <<EOF1 >> /etc/init.d/bindfs-mount
@@ -1432,6 +1434,7 @@ exit
 EOF1
 chmod 755 /etc/init.d/bindfs-mount
 update-rc.d bindfs-mount defaults
+touch /usr/local/bin/bindfs-mount 
 service bindfs-mount restart > /dev/null 2>&1
 	
 }
@@ -1499,7 +1502,7 @@ echo "-----"
 echo "Other"
 echo "-----"
 echo "CPU usage                              - $CPU%"
-echo "RAM usage                              - $(free -tom | grep 'Total:' | awk '{print $4}')MB / $(free -tom | grep 'Total:' | awk '{print $2}')MB"
+#echo "RAM usage                              - $(free -tom | grep 'Total:' | awk '{print $4}')MB / $(free -tom | grep 'Total:' | awk '{print $2}')MB"
 echo "Epoptes installed                      - $EPOPTES"
 echo "Teacher members                        - $TEACHER"
 #echo ""
