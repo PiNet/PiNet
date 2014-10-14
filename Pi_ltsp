@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.19
+version=0.10.20
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -47,6 +47,10 @@ LegacyFixes() {
 	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""
 	ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
 	ReplaceTextLine "/etc/sudoers.d/01staff" "%staff ALL=NOPASSWD: ALL" "%teacher ALL=NOPASSWD: ALL"
+	
+	if [ ! -f "/opt/ltsp/armhf/usr/local/bin/changePassword.sh" ]; then
+		AddPasswordReset
+	fi
 }
 
 
@@ -300,11 +304,11 @@ if [ ! $exitstatus = 0 ]; then
 fi
 
 if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
-	rm ~/Downloads/piBoot/boot/cmdline.txt
-	cp ~/Downloads/piBoot/boot/cmdlineNBD.txt ~/Downloads/piBoot/boot/cmdline.txt
+	rm /home/$SUDO_USER/piBoot/boot/cmdline.txt
+	cp /home/$SUDO_USER/piBoot/boot/cmdlineNBD.txt ~/Downloads/piBoot/boot/cmdline.txt
 else
-	rm ~/Downloads/piBoot/boot/cmdline.txt
-	cp ~/Downloads/piBoot/boot/cmdlineNFS.txt ~/Downloads/piBoot/boot/cmdline.txt
+	rm /home/$SUDO_USER/piBoot/boot/cmdline.txt
+	cp /home/$SUDO_USER/piBoot/boot/cmdlineNFS.txt ~/Downloads/piBoot/boot/cmdline.txt
 fi
 
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
@@ -1570,6 +1574,36 @@ sudo service nbd-server restart
 
 }
 
+AddPasswordReset(){
+	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Scripts/changePassword.sh -O /tmp/changePassword.sh
+	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-change-password.png -O /tmp/Pi-ltsp-change-password.png
+	cp /tmp/Pi-ltsp-change-password.png /opt/ltsp/armhf/usr/share/pixmaps/Pi-ltsp-change-password.png
+	cp /tmp/changePassword.sh /opt/ltsp/armhf/usr/local/bin/changePassword.sh
+	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+	do
+		AddPasswordResetDesktop $user
+	done
+	
+}
+
+AddPasswordResetDesktop(){
+
+if [ ! -f "/home/$1/Desktop/Raspi-ltsp-password.desktop" ]; then
+cat <<EOF1 >> /home/$1/Desktop/Raspi-ltsp-password.desktop
+[Desktop Entry]
+Version=1.0
+Name=Change Password
+Comment=Change password
+Exec=sudo bash changePassword.sh
+Icon=/usr/share/pixmaps/Pi-ltsp-change-password.png
+Terminal=false
+Type=Application
+Categories=Utility;Application;
+
+EOF1
+chown "$1" "/home/$1/Desktop/Raspi-ltsp-password.desktop"
+fi
+}
 
 #***************************************************************************************************
 
@@ -2057,8 +2091,8 @@ FullInstall(){
 		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		UpdateSD   #Runs the IP address selector and builds the SD card image
+		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		EnableNBD   #Enables NBD compression
 		fixGroups   #Adds all current users to the pupil and video group
 		usermod -a -G teacher $SUDO_USER
@@ -2100,9 +2134,8 @@ case "$MENUOPT" in
     	whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
-    		echo "User selected Yes."
+    		echo ""
 		else
-    	#echo "User selected No."
     	Menu
 		fi
 	fi
@@ -2142,8 +2175,8 @@ Rebuild-OS)
     		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 			ExtraSoftware
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-			whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     		UpdateSD
+    		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     		EnableNBD
     		resetAndCleanup
 			whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
