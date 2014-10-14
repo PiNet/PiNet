@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.20
+version=0.10.21
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -50,6 +50,7 @@ LegacyFixes() {
 	
 	if [ ! -f "/opt/ltsp/armhf/usr/local/bin/changePassword.sh" ]; then
 		AddPasswordReset
+		NBDRun
 	fi
 }
 
