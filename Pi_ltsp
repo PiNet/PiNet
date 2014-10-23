@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.21
+version=0.10.22
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1209,7 +1209,7 @@ UpdateAll(){
 
 SetupShared(){
 	echo "Setting up shared folders"
-	mkdir /home/shared
+	mkdir /home/shared > /dev/null 2>&1
 	#ls -l /home/shared
 	sudo chown :teacher /home/shared
 	sudo chmod 775 /home/shared
@@ -1378,6 +1378,7 @@ CheckSharedFolderIntegrity(){
 			SharedFolderPerm $f
 			chown :root "/home/shared/$f"
 		done
+		SetupShared
 	fi		
 
 }
@@ -1585,6 +1586,21 @@ AddPasswordReset(){
 		AddPasswordResetDesktop $user
 	done
 	
+	if [ ! -f "/etc/skel/Desktop/Raspi-ltsp-password.desktop" ]; then
+cat <<EOF1 >> /etc/skel/Desktop/Raspi-ltsp-password.desktop
+[Desktop Entry]
+Version=1.0
+Name=Change Password
+Comment=Change password
+Exec=sudo bash changePassword.sh
+Icon=/usr/share/pixmaps/Pi-ltsp-change-password.png
+Terminal=false
+Type=Application
+Categories=Utility;Application;
+
+EOF1
+fi
+	
 }
 
 AddPasswordResetDesktop(){
@@ -1604,7 +1620,131 @@ Categories=Utility;Application;
 EOF1
 chown "$1" "/home/$1/Desktop/Raspi-ltsp-password.desktop"
 fi
+
 }
+
+CreateMoveBackup() {
+#Create a full backup of all users and groups data for moving to a clean system
+whiptail --title "WARNING!!" --yesno "This process is extremely experimental! I take no responsibility for data loss! It is only designed to move the files to a completely fresh Ubuntu install in which Raspi-LTSP is not installed! Please visit http://pi-ltsp.net/manage-users/migration.html for full instructions.
+Are you sure you want to proceed?" 11 78
+if [ $? -eq 0 ]; then 
+	mkdir /root/move/
+	export UGIDLIMIT=1000
+	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534)' /etc/passwd > /root/move/passwd.mig
+	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534)' /etc/group > /root/move/group.mig
+	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534) {print $1}' /etc/passwd | tee - |egrep -f - /etc/shadow > /root/move/shadow.mig
+	cp /etc/gshadow /root/move/gshadow.mig
+	tar -zcvpf /root/move/home.tar.gz /home
+	tar -zcvpf /home/$SUDO_USER/toMove.tar.gz /root/move
+	chown $SUDO_USER /home/$SUDO_USER/toMove.tar.gz
+	rm -rf /root/move/
+	whiptail --title "Complete" --msgbox "The process is now complete. A zipped file called toMove.tar.gz has been saved in /home/$SUDO_USER/toMove.tar.gz. Please copy this to /home/youruser/toMove.tar.gz on the new server (via a pendrive for example) then run Raspi-LTSP and select yes when asked about importing users." 11 78
+fi
+}
+
+CheckRestoreMoveBackup(){
+if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
+	if [ -d /opt/ltsp ]; then
+		whiptail --title "WARNING!!" --yesno "I have detected that it looks like Raspi-LTSP is already installed. It is highly recommended against importing users with a previous Raspi-LTSP install. You have been warned! Would you like to import them anyway?" 10 78
+		if [ $? -eq 0 ]; then 
+			RestoreMoveBackup
+		fi	
+	else
+		RestoreMoveBackup
+	fi
+	
+else
+	
+	whiptail --title "Error" --msgbox "The zipped file of user data can't be found at /home/$SUDO_USER/toMove.tar.gz." 8 78
+fi
+}
+
+RestoreMoveBackup() {
+#Restore full backup of all users and group data
+whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! Raspi-LTSP must not already be installed! Also this could break everything so I take no responsibility if this alpha quality feature fails. Do you want to proceed?" 10 78
+if [ $? -eq 0 ]; then 
+	mkdir /root/newsusers.bak
+	cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
+	cd /
+	tar -zxvf /home/$SUDO_USER/toMove.tar.gz
+	cd /root/move
+	cat passwd.mig >> /etc/passwd
+	cat group.mig >> /etc/group
+	cat shadow.mig >> /etc/shadow
+	/bin/cp gshadow.mig /etc/gshadow
+	cd /
+	tar -zxvf /root/move/home.tar.gz
+
+	whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok?" 9 78
+	if [ $? -eq 0 ]; then
+		reboot
+	else
+		exit
+	fi
+else
+	exit
+fi
+
+}
+
+InstallScratchGPIO(){
+	whiptail --title "Note" --msgbox "ScratchGPIO can't be directly installed, each user must install it. A desktop shortcut has been added to each user account called \"Install ScratchGPIO\". Get each student to run this the first time they want to use the software." 10 78
+	rm -rf /tmp/isgh5.sh
+	rm -rf /opt/ltsp/armhf/usr/local/bin/isgh5.sh
+	rm -rf /opt/ltsp/armhf/usr/local/bin/scratchSudo.sh
+	wget http://goo.gl/Pthh62 -O /tmp/isgh5.sh
+	cp /tmp/isgh5.sh  /opt/ltsp/armhf/usr/local/bin/isgh5.sh
+	echo "bash /usr/local/bin/isgh5.sh \$SUDO_USER" > /opt/ltsp/armhf/usr/local/bin/scratchSudo.sh
+	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+	do
+	if [ ! -f "/home/$user/Desktop/Install-scratchGPIO.desktop" ]; then
+cat <<EOF1 > /home/$user/Desktop/Install-scratchGPIO.desktop
+[Desktop Entry]
+Version=1.0
+Name=Install ScratchGPIO
+Comment=Install ScratchGPIO
+Exec=sudo bash /usr/local/bin/scratchSudo.sh
+Icon=scratch
+Terminal=true
+Type=Application
+Categories=Utility;Application;
+
+EOF1
+chown "$user" "/home/$user/Desktop/Install-scratchGPIO.desktop"
+fi
+	done
+	
+if [ ! -f " /etc/skel/Desktop/Install-scratchGPIO.desktop" ]; then
+cat <<EOF1 >  /etc/skel/Desktop/Install-scratchGPIO.desktop
+[Desktop Entry]
+Version=1.0
+Name=Install ScratchGPIO
+Comment=Install ScratchGPIO
+Exec=sudo bash /usr/local/bin/scratchSudo.sh
+Icon=scratch
+Terminal=true
+Type=Application
+Categories=Utility;Application;
+EOF1
+fi
+
+
+
+}
+
+FirstTimeImportUsers(){
+if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
+	whiptail --title "Importing users" --yesno "Would you like to import user data from a previous Raspi-LTSP server? (If you don't know, just select no)" 8 78
+	if [ $? -eq 0 ]; then 
+		RestoreMoveBackup
+	fi
+fi
+}
+
+
+
+
+
 
 #***************************************************************************************************
 
@@ -1719,6 +1859,7 @@ OtherMenu() {
     "NBD-recompress" "Force an NBD compress if changes are made outside Raspi-LTSP" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
     "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
+    "Export-users" "Export all user data for migrating to new Raspi-LTSP server" \
     "Pi-control-Menu" "Pi-control classroom management submenu" \
     3>&1 1>&2 2>&3)
 
@@ -1758,6 +1899,10 @@ case "$MENUEPT" in
 	;;
 	Refresh-System)
 	resetAndCleanup
+	Menu
+	;;
+	Export-users)
+	CreateMoveBackup
 	Menu
 	;;
 	Pi-control-Menu)
@@ -1931,6 +2076,7 @@ UserGroups() {
   	"Launch-graphical" "Launch a graphical user management panel" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
+    "Export-users" "Export all user data for migrating to new Raspi-LTSP server" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -1975,11 +2121,16 @@ case "$MENUEPT" in
     AddSambaUser
     Menu
 	;;
+	
 	Remove-Samab-user)
     user=$(whiptail --inputbox "Enter the username of the user you wish to remove from Samba" 8 78 $INIT --title "Samba" 3>&1 1>&2 2>&3)
     pdbedit -u "$user" -xl
     whiptail --title "Samba" --msgbox 'User has been removed from samba. ' 12 78
     Menu
+	;;
+	Export-users)
+	CreateMoveBackup
+	Menu
 	;;
     *)
     Menu
@@ -2012,10 +2163,9 @@ case "$MENUEPT" in
     FinishedInstallingSoftware
     ;;
     Install-Scratch-gpio) 
-    whiptail --title "Error" --infobox "ScratchGPIO installation support has not been added yet" 8 78
-    echo "ScratchGPIO support has not been added yet"
-    sleep 3
-	ExtraSoftware
+    InstallScratchGPIO
+    UpdateConfig NBDBuildNeeded true
+	FinishedInstallingSoftware
     ;;
     Install-Python-hardware) 
     ltsp-chroot --arch armhf pip install pibrella
@@ -2025,10 +2175,10 @@ case "$MENUEPT" in
     Install-Epoptes)
     EpoptesInstaller
     UpdateConfig NBDBuildNeeded true
+    FinishedInstallingSoftware
     ;;
     Install-Custom-package)
     InstallProgram
-    
     FinishedInstallingSoftware
     ;;
     *)
@@ -2078,6 +2228,7 @@ esac
 
 FullInstall(){
 	if [ $(checkInternet) -eq 0 ]; then
+		FirstTimeImportUsers
 		whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
 		installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
 		buildClient   #Creates config file to build Raspbian with LTSP and builds it
