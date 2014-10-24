@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.22
+version=0.10.23
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -48,8 +48,23 @@ LegacyFixes() {
 	ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
 	ReplaceTextLine "/etc/sudoers.d/01staff" "%staff ALL=NOPASSWD: ALL" "%teacher ALL=NOPASSWD: ALL"
 	
-	if [ ! -f "/opt/ltsp/armhf/usr/local/bin/changePassword.sh" ]; then
+	if [ ! -f "/usr/local/bin/changePassword.sh" ]; then
 		AddPasswordReset
+		NBDRun
+	fi
+	local passwdVersion=$(cat /home/$SUDO_USER/Desktop/Raspi-ltsp-password.desktop | sed -n '2p')
+	if [ "$passwdVersion" = "Version=1.0" ]; then
+		rm -rf /etc/skel/Desktop/Raspi-ltsp-password.desktop
+		cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
+		do
+			rm -rf /home/$user/Desktop/Raspi-ltsp-password.desktop
+		done
+		AddPasswordReset
+	fi
+	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
+	exitcode=$?
+	sed -i '/^[[:blank:]]*$/d' /opt/ltsp/armhf/etc/lts.conf
+	if [ "$exitcode" = "1" ]; then
 		NBDRun
 	fi
 }
@@ -597,7 +612,7 @@ AddSoftware(){
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools
+ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python-tk sudo sshpass pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv man-db
@@ -1214,6 +1229,7 @@ SetupShared(){
 	sudo chown :teacher /home/shared
 	sudo chmod 775 /home/shared
 	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf LOCAL_APPS_EXTRAMOUNTS 'LOCAL_APPS_EXTRAMOUNTS=/home/shared'
+	NBDRun
 
 }
 
@@ -1257,6 +1273,7 @@ CreateSharedFoldersDialog(){
 		if [ ! -d /home/shared ]; then 
 			SetupShared
 		fi
+		CheckSharedFolderIntegrity
 		clear
 		echo ""
 		echo "----------------------"
@@ -1280,7 +1297,7 @@ CreateSharedFoldersDialog(){
 					fi
 					RebuildGTKBookmarks
 					service bindfs-mount restart
-					whiptail --title "Complete" --msgbox "The shared folder at /home/shared/$FolderName has been created! To access it reboot your Raspberry Pis" 8 78
+					whiptail --title "Complete" --msgbox "The shared folder at /home/shared/$FolderName has been created! To access it reboot your Raspberry Pis." 8 78
 					
 				fi
 			else
@@ -1493,7 +1510,7 @@ echo "Current version                        - $version"
 echo "Server IP address                      - $IP"
 echo "---------------------------------------------------"
 #echo ""
-echo "Been running version $Version since     - $(stat -c %y /usr/local/bin/Pi_ltsp | cut -d ' ' -f1)"
+echo "Been running version $version since     - $(stat -c %y /usr/local/bin/Pi_ltsp | cut -d ' ' -f1)"
 echo "Piboot folder last updated             - $(stat -c %y piBoot | cut -d ' ' -f1)"
 echo "Last system-wide update (update-all)   - $(stat -c %y /var/lib/apt/periodic/update-success-stamp | cut -d ' ' -f1)"
 #echo ""
@@ -1533,7 +1550,8 @@ if [ $(checkInternet) -eq 0 ]; then
 	if [ ! -f "/usr/share/pixmaps/Pi-ltsp-icon.png" ]; then
 		wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-icon.png
 		mv Pi-ltsp-icon.png /usr/share/pixmaps/Pi-ltsp-icon.png
-fi
+	fi
+
 fi
 }
 
@@ -1580,7 +1598,7 @@ AddPasswordReset(){
 	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Scripts/changePassword.sh -O /tmp/changePassword.sh
 	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-change-password.png -O /tmp/Pi-ltsp-change-password.png
 	cp /tmp/Pi-ltsp-change-password.png /opt/ltsp/armhf/usr/share/pixmaps/Pi-ltsp-change-password.png
-	cp /tmp/changePassword.sh /opt/ltsp/armhf/usr/local/bin/changePassword.sh
+	cp /tmp/changePassword.sh /usr/local/bin/changePassword.sh
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 	do
 		AddPasswordResetDesktop $user
@@ -1589,10 +1607,10 @@ AddPasswordReset(){
 	if [ ! -f "/etc/skel/Desktop/Raspi-ltsp-password.desktop" ]; then
 cat <<EOF1 >> /etc/skel/Desktop/Raspi-ltsp-password.desktop
 [Desktop Entry]
-Version=1.0
+Version=1.1
 Name=Change Password
 Comment=Change password
-Exec=sudo bash changePassword.sh
+Exec=ltsp-remoteapps bash changePassword.sh
 Icon=/usr/share/pixmaps/Pi-ltsp-change-password.png
 Terminal=false
 Type=Application
@@ -1608,10 +1626,10 @@ AddPasswordResetDesktop(){
 if [ ! -f "/home/$1/Desktop/Raspi-ltsp-password.desktop" ]; then
 cat <<EOF1 >> /home/$1/Desktop/Raspi-ltsp-password.desktop
 [Desktop Entry]
-Version=1.0
+Version=1.1
 Name=Change Password
 Comment=Change password
-Exec=sudo bash changePassword.sh
+Exec=ltsp-remoteapps bash changePassword.sh
 Icon=/usr/share/pixmaps/Pi-ltsp-change-password.png
 Terminal=false
 Type=Application

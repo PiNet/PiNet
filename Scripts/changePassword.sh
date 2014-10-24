@@ -37,10 +37,18 @@ if [ "$newpassword2" = "" ]; then
 fi
 
 if [ "$newpassword1" = "$newpassword2" ]; then
-        echo -e "$newpassword1\n$newpassword1" | passwd $SUDO_USER
-        clear
-        zenity --info \
---text="Password change complete."
+        echo -e "$oldpassword\n$newpassword1\n$newpassword1" | passwd
+        exitstatus=$?
+	if [ $exitstatus -eq 10 ]; then
+		zenity --error --text="Your new password was not complex enough or you entered your old password incorrectly."
+	#clear
+	else
+		if [ $exitstatus -eq 0 ]; then
+        		zenity --info --text="Password change complete."
+		else
+			zenity --error --text="An unknown error has occured."
+		fi
+	fi
 
 else
 zenity --error \
