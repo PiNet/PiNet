@@ -2,10 +2,9 @@ RaspberryPi-LTSP
 ================
 
 ![Login screen](images/Raspi-Login.png)
-   
-####Project Website - http://gbaman.github.io/RaspberryPi-LTSP/
-####Project Documentation - http://pi-ltsp.net
-   
+      
+##Raspi-LTSP Documentation Site - http://pi-ltsp.net   
+------   
 ###"*Raspi-LTSP is a utility for setting up the infrastructure required for a permanent classroom set of Raspberry Pis."*    
 RaspberryPi-LTSP is has been written to help support educators in using the Raspberry Pi computer in their classrooms   
 Its main features include
