@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.23
+version=0.10.24
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -872,6 +872,7 @@ if [ $exitstatus = 0 ]; then
 	touch /opt/ltsp/armhf/etc/sudoers.d/01pupil
 	chmod 440 /opt/ltsp/armhf/etc/sudoers.d/01pupil
 	echo '%pupil ALL=NOPASSWD: ALL' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+	UpdateConfig NBDBuildNeeded true
 fi
 }
 
@@ -1112,7 +1113,8 @@ SetupSambaPi(){
 
 Updater(){
 	rm -rf /tmp/Pi_ltsp > /dev/null 2>&1
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
+	#wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
+	wget --content-disposition http://pi-ltsp.net/downloadalpha
 	if [ $? -eq 0 ]; then 
 		rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
 		rm Pi_ltsp > /dev/null 2>&1
@@ -1752,7 +1754,7 @@ fi
 
 FirstTimeImportUsers(){
 if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
-	whiptail --title "Importing users" --yesno "Would you like to import user data from a previous Raspi-LTSP server? (If you don't know, just select no)" 8 78
+	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous Raspi-LTSP server? (If you don't know, just select no)" 8 78
 	if [ $? -eq 0 ]; then 
 		RestoreMoveBackup
 	fi
@@ -2129,10 +2131,14 @@ case "$MENUEPT" in
 	;;
 	Enable-Sudo)
     SudoMenu
+    if [ "$NBDBuildNeeded" = "true" ]; then
+		NBDRun
+	fi
     Menu
 	;;
 	Disable-Sudo)
     rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
+    NBDRun
     Menu
 	;;
 	Add-Samab-user)
