@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.25
+version=0.10.26
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -67,6 +67,7 @@ LegacyFixes() {
 	if [ "$exitcode" = "1" ]; then
 		NBDRun
 	fi
+	addSoundcardDefault
 }
 
 
@@ -220,23 +221,28 @@ cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
 
-cat <<\EOF1 > /opt/ltsp/armhf/etc/asound.conf
-pcm.mmap0 {
-    type mmap_emul;
-    slave {
-      pcm "hw:0,0";
-    }
+addSoundcardDefault
+
 }
 
+addSoundcardDefault(){
+
+if grep -q mmap_emul "$File"; then
+
+cat <<\EOF1 >> /opt/ltsp/armhf/etc/asound.conf
 pcm.!default {
-  type plug;
-  slave {
-    pcm mmap0;
-  }
+type hw;
+card 0;
 }
+
+ctl.!default {
+    type hw
+    card 0
+}
+
 EOF1
 
-
+fi
 }
 
 checkInternet(){
