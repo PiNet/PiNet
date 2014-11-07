@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.26
+version=0.10.27
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -68,6 +68,10 @@ LegacyFixes() {
 		NBDRun
 	fi
 	addSoundcardDefault
+	if [ $? = 1 ]; then
+		whiptail --title "Update" --msgbox "I have detected a high priority update to do sound on the Raspberry Pi. I will now apply the update." 8 78
+		NBDRun
+	fi
 }
 
 
@@ -226,10 +230,11 @@ addSoundcardDefault
 }
 
 addSoundcardDefault(){
-
-if grep -q mmap_emul "$File"; then
-
-cat <<\EOF1 >> /opt/ltsp/armhf/etc/asound.conf
+grep -q mmap_emul "/opt/ltsp/armhf/etc/asound.conf" > /dev/null 2>&1
+checkSound=$?
+#echo $checkSound
+if [ ! $checkSound = 1 ]; then
+cat <<\EOF1 > /opt/ltsp/armhf/etc/asound.conf
 pcm.!default {
 type hw;
 card 0;
@@ -241,8 +246,12 @@ ctl.!default {
 }
 
 EOF1
+return 1
+else
+return 0
 
 fi
+
 }
 
 checkInternet(){
