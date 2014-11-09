@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.27
+version=0.10.28
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1129,7 +1129,7 @@ SetupSambaPi(){
 Updater(){
 	rm -rf /tmp/Pi_ltsp > /dev/null 2>&1
 	#wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
-	wget --content-disposition http://pi-ltsp.net/downloadalpha
+	wget --content-disposition http://pi-ltsp.net/downloadalpha -O /tmp/Pi_ltsp
 	if [ $? -eq 0 ]; then 
 		rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
 		rm Pi_ltsp > /dev/null 2>&1
