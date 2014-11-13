@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.28
+version=0.10.29
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -45,7 +45,9 @@ LegacyFixes() {
 	fi
 	CheckDesktopShortcut
 	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""
-	ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
+	if [ -f "/etc/default/epoptes" ]; then
+		ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
+	fi
 	ReplaceTextLine "/etc/sudoers.d/01staff" "%staff ALL=NOPASSWD: ALL" "%teacher ALL=NOPASSWD: ALL"
 	
 	if [ ! -f "/usr/local/bin/changePassword.sh" ]; then
@@ -2192,7 +2194,8 @@ if [ $(checkInternet) -eq 0 ]; then
 
 case "$MENUEPT" in
     Install-Libreoffice) 
-    ltsp-chroot --arch armhf apt-get -y install libreoffice
+    ltsp-chroot --arch armhf apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java
+    ltsp-chroot --arch armhf apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
@@ -2289,7 +2292,7 @@ FullInstall(){
 		usermod -a -G teacher $SUDO_USER
 		resetAndCleanup
 	
-		whiptail --title "Installation complete" --msgbox "Raspi-LTSP installation is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+		whiptail --title "Main installation complete" --msgbox "Raspi-LTSP main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
 		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
 	fi
