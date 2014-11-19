@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.29
+version=0.10.30
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -52,7 +52,7 @@ LegacyFixes() {
 	
 	if [ ! -f "/usr/local/bin/changePassword.sh" ]; then
 		AddPasswordReset
-		NBDRun
+		UpdateConfig NBDBuildNeeded true
 	fi
 	local passwdVersion=$(cat /home/$SUDO_USER/Desktop/Raspi-ltsp-password.desktop | sed -n '2p')
 	if [ "$passwdVersion" = "Version=1.0" ]; then
@@ -67,13 +67,19 @@ LegacyFixes() {
 	exitcode=$?
 	sed -i '/^[[:blank:]]*$/d' /opt/ltsp/armhf/etc/lts.conf
 	if [ "$exitcode" = "1" ]; then
-		NBDRun
+		UpdateConfig NBDBuildNeeded true
 	fi
 	addSoundcardDefault
 	if [ $? = 1 ]; then
 		whiptail --title "Update" --msgbox "I have detected a high priority update to do sound on the Raspberry Pi. I will now apply the update." 8 78
+		UpdateConfig NBDBuildNeeded true
+	fi
+	DisableI2C_SPI
+	if [ "$NBDBuildNeeded" = "true" ]; then
+		echo "A required system update has been found. I will now compress the operating system again to apply this update"
 		NBDRun
 	fi
+	
 }
 
 
@@ -1778,7 +1784,13 @@ if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
 fi
 }
 
-
+DisableI2C_SPI(){
+	if [ ! -f /opt/ltsp/armhf/etc/modprobe.d/raspi-blacklist.conf ]; then
+		echo "blacklist spi-bcm2708 
+blacklist i2c-bcm2708 " > /opt/ltsp/armhf/etc/modprobe.d/raspi-blacklist.conf
+	UpdateConfig NBDBuildNeeded true
+	fi
+}
 
 
 
@@ -2284,12 +2296,15 @@ FullInstall(){
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateSD   #Runs the IP address selector and builds the SD card image
+		addSoundcardDefault
 		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		EnableNBD   #Enables NBD compression
 		fixGroups   #Adds all current users to the pupil and video group
 		usermod -a -G teacher $SUDO_USER
+		LegacyFixes
 		resetAndCleanup
 	
 		whiptail --title "Main installation complete" --msgbox "Raspi-LTSP main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
@@ -2368,10 +2383,13 @@ Rebuild-OS)
     		EnableNBDswap
     		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 			ExtraSoftware
+			DisableI2C_SPI
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
     		UpdateSD
+    		addSoundcardDefault
     		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     		EnableNBD
+    		LegacyFixes
     		resetAndCleanup
 			whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 		else
