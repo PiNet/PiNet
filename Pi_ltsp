@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.30
+version=0.10.31
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -327,6 +327,8 @@ fi
 return $toReturn
 }
 
+
+
 UpdateIP(){
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
@@ -337,27 +339,33 @@ exitstatus=$?
 if [ ! $exitstatus = 0 ]; then
 	IP=$(whiptail --inputbox "Please enter an IP address to use on the SD cards" 8 78 $IP --title "IP address" 3>&1 1>&2 2>&3)
 	exitstatus=$?
-	#if [ $exitstatus = 0 ]; then
-    #	echo "User selected Ok and entered " $IP
-	#fi
 fi
 
-if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
-	rm /home/$SUDO_USER/piBoot/boot/cmdline.txt
-	cp /home/$SUDO_USER/piBoot/boot/cmdlineNBD.txt ~/Downloads/piBoot/boot/cmdline.txt
-else
-	rm /home/$SUDO_USER/piBoot/boot/cmdline.txt
-	cp /home/$SUDO_USER/piBoot/boot/cmdlineNFS.txt ~/Downloads/piBoot/boot/cmdline.txt
-fi
 
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 if [ "$SUDO_USER" = "" ]; then
-        cp -r /opt/raspiLTSP/PiBootBackup/ ~/piBoot
+		rm -rf ~/piBoot/
+        cp -r /opt/raspiLTSP/PiBootBackup/ ~/piBoot/
+        if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
+			rm ~/piBoot/cmdline.txt
+			cp ~/piBoot/cmdlineNBD.txt ~/piBoot/cmdline.txt
+		else
+			rm ~/piBoot/cmdline.txt
+			cp ~/piBoot/cmdlineNFS.txt ~/piBoot/cmdline.txt
+		fi
         sudo sed -i 's/1.1.1.1/'$IP'/g' ~/piBoot/cmdline.txt
         nautilus ~/piBoot > /dev/null 2>&1 &
 else
-        cp -r /opt/raspiLTSP/PiBootBackup/ "/home/$SUDO_USER/piBoot"
+		rm -rf "/home/$SUDO_USER/piBoot/"
+        cp -r /opt/raspiLTSP/PiBootBackup/ "/home/$SUDO_USER/piBoot/"
         chown -R "$SUDO_USER" "/home/$SUDO_USER/piBoot"
+        if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
+			rm /home/$SUDO_USER/piBoot/cmdline.txt
+			cp /home/$SUDO_USER/piBoot/cmdlineNBD.txt /home/$SUDO_USER/piBoot/cmdline.txt
+		else
+			rm /home/$SUDO_USER/piBoot/cmdline.txt
+			cp /home/$SUDO_USER/piBoot/cmdlineNFS.txt /home/$SUDO_USER/piBoot/cmdline.txt
+		fi
         sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/piBoot/cmdline.txt"
         nautilus "/home/$SUDO_USER/piBoot" > /dev/null 2>&1 &
 fi
