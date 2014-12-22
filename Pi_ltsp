@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.31
+version=0.10.32
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1800,7 +1800,13 @@ blacklist i2c-bcm2708 " > /opt/ltsp/armhf/etc/modprobe.d/raspi-blacklist.conf
 	fi
 }
 
-
+InstallBlueJ(){
+	rm -rf /tmp/bluej-314a.deb
+	rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb
+	wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb
+	cp /tmp/bluej-314a.deb /opt/ltsp/armhf/tmp/bluej-314a.deb
+	ltsp-chroot --arch armhf dpkg -i /tmp/bluej-314a.deb
+}
 
 
 #***************************************************************************************************
@@ -2209,6 +2215,7 @@ if [ $(checkInternet) -eq 0 ]; then
     "Install-Scratch-gpio" "Scratch GPIO is a special version of scratch for GPIO work" \
     "Install-Python-hardware" "Python libraries for interacting with boards like the Pibrella" \
     "Install-Epoptes" "Epoptes is widely used free and open source classroom management program" \
+    "Install-BlueJ" "BlueJ is a Java IDE for developing programs quickly and easily" \
     "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repository" \
     3>&1 1>&2 2>&3)
 
@@ -2236,6 +2243,11 @@ case "$MENUEPT" in
     ;;
     Install-Epoptes)
     EpoptesInstaller
+    UpdateConfig NBDBuildNeeded true
+    FinishedInstallingSoftware
+    ;;
+    Install-BlueJ)
+    InstallBlueJ
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
