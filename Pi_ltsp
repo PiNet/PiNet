@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.33
+version=0.10.34
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1865,6 +1865,19 @@ InstallBlueJ(){
 	ltsp-chroot --arch armhf dpkg -i /tmp/bluej-314a.deb
 }
 
+checkPythonFunctionsInstalled(){
+	if [ ! -f $PythonFunctions ]; then
+		wget https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/Scripts/Pi_ltsp-functions-python.py -O $PythonFunctions
+		if [ ! $? -eq 0 ]; then 
+			whiptail --title "Error!" --msgbox "I am sorry, there has been a critical error with Raspi-LTSP. A required library file could not be acquired. Raspi-LTSP is unable to function without this library. This may be because you are not connected to the internet or there may be another problem.
+Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions
+If the issue persists, please contact support at http://pi-ltsp.net/support.html" 16 78
+			rm -rf $PythonFunctions
+			exit
+		fi
+	fi
+			
+}
 
 #***************************************************************************************************
 
@@ -2544,6 +2557,7 @@ Update-All)
 esac
 
 checkInstallLoc
+checkPythonFunctionsInstalled
 
 
 if [ -d /opt/ltsp/armhf ]; then
