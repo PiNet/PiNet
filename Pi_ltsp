@@ -1,5 +1,5 @@
 #!/bin/bash
-version=0.10.34
+version=0.10.35
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -1879,6 +1879,24 @@ If the issue persists, please contact support at http://pi-ltsp.net/support.html
 			
 }
 
+checkKernelFileUpdateWeb(){
+	KernelV=$($p checkKernelFileUpdateWeb)
+	if [ $KernelV = "1" ]; then
+		current=$(head -n 1 /home/$SUDO_USER/piBoot/version.txt)
+		newVersion=$(head -n 1 /tmp/kernelVersion.txt)
+		whiptail --title "Kernel file update" --yesno "An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, you must load the new files onto any SD cards you use.
+This update is highly recommended.
+You currently are using version $current and the most up to date version is $newVersion
+Would you like me to update them and your system?" 12 78
+		if [ $? -eq 0 ]; then 
+			UpdateSD
+			UpdateAll
+		fi
+	fi
+
+
+}
+
 #***************************************************************************************************
 
 OverclockSet(){
@@ -2578,6 +2596,7 @@ LegacyConfig
 ConfigFileRead
 if [ $(checkInternet) -eq 0 ]; then
 	CheckReleases
+	checkKernelFileUpdateWeb
 fi
 LegacyFixes
 #VariablesSetup

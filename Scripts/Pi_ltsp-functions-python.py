@@ -166,6 +166,9 @@ def cleanStrings(filelist):
     filelist = stripStartWhitespaces(filelist)
     return stripEndWhitespaces(filelist)
 
+def getCleanList(filep):
+    return cleanStrings(getTextFile(filep))
+
 def compareVersions(local, web):
     """
     Compares 2 version numbers to decide if an update is required.
@@ -258,6 +261,23 @@ def checkUpdate():
         print("ERROR")
         print("No release update found!")
 
+def checkKernelFileUpdateWeb():
+    downloadFile("https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/boot/version.txt", "/tmp/kernelVersion.txt")
+    import os.path
+    user=os.environ['SUDO_USER']
+    currentPath="/home/"+user+"/piBoot/version.txt"
+    if (os.path.isfile(currentPath)) == True:
+        current = int(getCleanList(currentPath)[0])
+        new = int(getCleanList("/tmp/kernelVersion.txt")[0])
+        if new > current:
+            print("1")
+            return
+        else:
+            print("0")
+            return
+    else:
+        print("0")
+
 
 
 #------------------------------Main program-------------------------
@@ -281,5 +301,7 @@ else:
         updatePiLTSP()
     elif sys.argv[1] == "triggerInstall":
         downloadFile("http://bit.ly/piltspinstall1", "/dev/null")
+    elif sys.argv[1] == "checkKernelFileUpdateWeb":
+        checkKernelFileUpdateWeb()
 
 
