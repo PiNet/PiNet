@@ -1,10 +1,10 @@
 #!/bin/bash
-version=0.10.32
+version=0.10.33
 
 #Raspi-LTSP
 #Pi_LTSP
 
-#Written by gbaman1, based off the fantastic work by vagrantc and alksig from the LTSP community
+#Written by Andrew Mulholland, based off the fantastic work by vagrantc and alksig from the LTSP community
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 #Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
 #
@@ -13,6 +13,10 @@ version=0.10.32
 #Constants
 #------------------------
 ConfigFileLoc=/etc/raspi-ltsp
+Timeout=1
+PythonFunctions="/usr/local/bin/Pi_ltsp-functions-python.py"
+PythonStart="python3"
+p="$PythonStart $PythonFunctions"
 
 #------------------------
 
@@ -264,16 +268,18 @@ fi
 
 checkInternet(){
 
-WGET="/usr/bin/wget"
+echo $($p CheckInternet $Timeout)
 
-$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
-if [ ! -s /tmp/google.idx ]
-then
-    #return 1
-    echo 1
-else
-    echo 0
-fi
+#WGET="/usr/bin/wget"
+
+#$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
+#if [ ! -s /tmp/google.idx ]
+#then
+#    #return 1
+#    echo 1
+#else
+#    echo 0
+#fi
 
 }
 
@@ -1142,15 +1148,46 @@ SetupSambaPi(){
 	
 }
 
+
+
 Updater(){
+	echo "---------------------------------"
+	echo "Updating Raspi-LTSP, please wait."
+	echo "---------------------------------"
+	exitstatus=$($p updatePiLTSP)
+	if [ $exitstatus = "0" ]; then
+		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
+$newVersion" 8 78
+	echo "---------------------------------"
+	echo "Update to $newVersion complete!"
+	echo "---------------------------------"
+		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+		exitstatus=$?
+		if [ $exitstatus = 0 ]; then
+			exec /bin/bash Pi_ltsp Update-All
+			exit
+		else
+			exec /bin/bash Pi_ltsp
+			exit
+		fi
+	else
+		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading Raspi-LTSP again manually." 8 78
+		exec /bin/bash Pi_ltsp
+	
+	fi
+}
+
+
+UpdaterOld(){
 	rm -rf /tmp/Pi_ltsp > /dev/null 2>&1
 	#wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
 	wget --content-disposition http://pi-ltsp.net/downloadalpha -O /tmp/Pi_ltsp
+	exitstatus=$($p updatePiLTSP)
 	if [ $? -eq 0 ]; then 
-		rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
-		rm Pi_ltsp > /dev/null 2>&1
-		cp -f /tmp/Pi_ltsp "/usr/local/bin/Pi_ltsp" > /dev/null 2>&1
-		rm -rf /tmp/Pi_ltsp
+		#rm /home/$SUDO_USER/Pi_ltsp > /dev/null 2>&1
+		#rm Pi_ltsp > /dev/null 2>&1
+		#cp -f /tmp/Pi_ltsp "/usr/local/bin/Pi_ltsp" > /dev/null 2>&1
+		#rm -rf /tmp/Pi_ltsp
 		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
 $checkRelease" 8 78
 		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
@@ -1169,6 +1206,26 @@ $checkRelease" 8 78
 }
 
 CheckReleases(){
+	echo "Checking for updates"
+	newVersion=$($p CheckUpdate)
+	#echo "$version"
+	#echo "$newVersion"
+	needUpdate=$($p CompareVersion "$version" "$newVersion")
+	if [ $needUpdate = "1" ]; then
+		whiptail --title "Update Detected" --yesno "An update titled Release $newVersion is available for Raspi-LTSP. You are currently running Release $version. Would you like to update?" 8 78
+		exitstatus=$?
+		if [ $exitstatus = 0 ]; then
+		    Updater
+	    fi
+	else
+		echo "No new updates"
+	fi
+}
+
+
+
+
+CheckReleasesOld(){
 #echo checking xml
 echo "Checking for updates"
 xml2 -v > /dev/null 2>&1
@@ -2326,6 +2383,7 @@ FullInstall(){
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes
 		resetAndCleanup
+		$p triggerInstall
 	
 		whiptail --title "Main installation complete" --msgbox "Raspi-LTSP main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
