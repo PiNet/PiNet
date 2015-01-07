@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
-
+# Part of Raspi-LTSP https://github.com/gbaman/RaspberryPi-LTSP
+#
+# See LICENSE file for copyright and license details
 
 #Raspi-LTSP
 #Pi_ltsp-functions-python.py
@@ -190,6 +192,25 @@ def compareVersions(local, web):
                 print(0)
                 return
 
+def getConfigParameter(filep, searchfor):
+    textFile = getTextFile(filep)
+    textFile = stripEndWhitespaces(textFile)
+    value = ""
+    for i in range(0,len(textFile)):
+        #print(textFile[i])
+        found = textFile[i].find(searchfor)
+        if (found != -1):
+            #print(textFile[i])
+            bob = found+len(searchfor)
+            jill = len(searchfor)
+            value = textFile[i][found+len(searchfor):len(textFile[i])]
+
+    if value == "":
+        value = "None"
+
+    return value
+
+
 #---------------- Main functions -------------------
 
 
@@ -278,6 +299,31 @@ def checkKernelFileUpdateWeb():
     else:
         print("0")
 
+def checkKernelUpdater():
+    downloadFile("https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
+
+    import os.path
+    if os.path.isfile("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"):
+
+        currentVersion = int(getConfigParameter("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh", "version="))
+        newVersion = int(getConfigParameter("/tmp/kernelCheckUpdate.sh", "version="))
+        if currentVersion < newVersion:
+            installCheckKernelUpdater()
+            print("1")
+        else:
+            print("0")
+    else:
+        installCheckKernelUpdater()
+        print("1")
+
+def installCheckKernelUpdater():
+    import shutil
+    from subprocess import Popen, PIPE, STDOUT
+    shutil.copy("/tmp/kernelCheckUpdate.sh", "/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh")
+
+    Popen(['ltsp-chroot', '--arch', 'armhf', 'chmod', '755', '/etc/init.d/kernelCheckUpdate.sh'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+    Popen(['ltsp-chroot', '--arch', 'armhf', 'update-rc.d', 'kernelCheckUpdate.sh', 'defaults'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+
 
 
 #------------------------------Main program-------------------------
@@ -303,5 +349,9 @@ else:
         downloadFile("http://bit.ly/piltspinstall1", "/dev/null")
     elif sys.argv[1] == "checkKernelFileUpdateWeb":
         checkKernelFileUpdateWeb()
+    elif sys.argv[1] == "checkKernelUpdater":
+        checkKernelUpdater()
+    elif sys.argv[1] == "installCheckKernelUpdater":
+        installCheckKernelUpdater()
 
 

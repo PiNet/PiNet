@@ -1,5 +1,9 @@
 #!/bin/bash
-version=0.10.35
+# Part of Raspi-LTSP https://github.com/gbaman/RaspberryPi-LTSP
+#
+# See LICENSE file for copyright and license details
+
+version=0.10.36
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -323,10 +327,12 @@ if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
 	if (( $currentVersion < $newVersion )); then 
 		rm -rf "/opt/ltsp/armhf/bootfiles/"
 		cp -rf "/opt/raspiLTSP/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
+		rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
 		NBDRun
 	fi
 else
 	cp -rf "/opt/raspiLTSP/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
+	rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
 	NBDRun
 	
 fi
@@ -1889,12 +1895,33 @@ This update is highly recommended.
 You currently are using version $current and the most up to date version is $newVersion
 Would you like me to update them and your system?" 12 78
 		if [ $? -eq 0 ]; then 
+			whiptail --title "Auto reboot" --msgbox "Your Raspberry Pis will auto update their SD cards (by grabbing the version from the server) on next reboot. They will do this in the background and reboot when the update is complete **without warning**." 9 78
+			installKernelUpdater ""
 			UpdateSD
 			UpdateAll
 		fi
 	fi
 
 
+}
+
+checkKernelUpdater(){
+	installKernelUpdater $1
+
+}
+
+installKernelUpdater(){
+	local compress=$1
+	exitstatus=$($p checkKernelUpdater)
+	if [ "$exitstatus" = "1" ]; then
+		if [ "$compress" = "NBD" ]; then
+			echo "----------------------------------------------------------------------------------------------"
+			echo "An update for the kernel update program has been detected, this will be applied automatically"
+			echo "----------------------------------------------------------------------------------------------"
+			NBDRun
+		fi
+	fi
+	
 }
 
 #***************************************************************************************************
@@ -2408,6 +2435,8 @@ FullInstall(){
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
+		installKernelUpdater ""
+		$p checkKernelFileUpdateWeb
 		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		EnableNBD   #Enables NBD compression
 		fixGroups   #Adds all current users to the pupil and video group
@@ -2496,6 +2525,8 @@ Rebuild-OS)
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
     		UpdateSD
     		addSoundcardDefault
+    		installKernelUpdater ""
+			$p checkKernelFileUpdateWeb
     		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     		EnableNBD
     		LegacyFixes
@@ -2597,6 +2628,7 @@ ConfigFileRead
 if [ $(checkInternet) -eq 0 ]; then
 	CheckReleases
 	checkKernelFileUpdateWeb
+	checkKernelUpdater "NBD"
 fi
 LegacyFixes
 #VariablesSetup

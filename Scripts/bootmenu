@@ -1,4 +1,8 @@
 #!/bin/sh
+# Part of Raspi-LTSP https://github.com/gbaman/RaspberryPi-LTSP
+#
+# See LICENSE file for copyright and license details
+
 
 AddBootmenuToSD(){
 
