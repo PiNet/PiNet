@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.40
+version=0.10.41
 
 #Raspi-LTSP
 #Pi_LTSP
@@ -95,6 +95,12 @@ LegacyFixes() {
 		echo "-------------------------------------------------------------------------------------------------"
 		ltsp-chroot apt-get purge -y nuscratch
 		UpdateConfig NBDBuildNeeded true
+	fi
+	
+	ltsp-chroot dpkg-query -s raspberrypi-ui-mods  > /dev/null 2>&1
+	if [ ! $? -eq 0 ]; then
+		 InstallRaspberryPiUIMods
+		 UpdateConfig NBDBuildNeeded true
 	fi
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
@@ -1956,6 +1962,12 @@ installKernelUpdater(){
 	
 }
 
+InstallRaspberryPiUIMods(){
+		ltsp-chroot apt-get install -y raspberrypi-ui-mods 
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf wallpaper_mode=3 wallpaper_mode=stretch
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf wallpaper=/usr/share/raspberrypi-artwork/raspberry-pi-logo-small.png wallpaper=/etc/alternatives/desktop-background
+}
+
 #***************************************************************************************************
 
 OverclockSet(){
@@ -2467,6 +2479,7 @@ FullInstall(){
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
+		InstallRaspberryPiUIMods
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
 		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
@@ -2557,6 +2570,7 @@ Rebuild-OS)
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
     		UpdateSD
     		addSoundcardDefault
+    		InstallRaspberryPiUIMods
     		installKernelUpdater ""
 			$p checkKernelFileUpdateWeb
     		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
