@@ -1,22 +1,28 @@
 #! /usr/bin/env python3
-# Part of Raspi-LTSP https://github.com/gbaman/RaspberryPi-LTSP
+# Part of PiNet https://github.com/pinet/pinet
 #
 # See LICENSE file for copyright and license details
 
-#Raspi-LTSP
-#Pi_ltsp-functions-python.py
+#PiNet
+#pinet-functions-python.py
 #Written by Andrew Mulholland
-#Supporting python functions for the main Pi_ltsp script in BASH.
+#Supporting python functions for the main pinet script in BASH.
 #Written for Python 3.4
 
-#Raspi-LTSP is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
+#PiNet is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
 
 
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 basicConfig(level=WARNING)
 import sys, os
+from subprocess import Popen, PIPE
+import time
 
-
+RepositoryBase="https://github.com/pinet/"
+RepositoryName="pinet"
+RawRepositoryBase="https://raw.github.com/pinet/"
+Repository=RepositoryBase + RepositoryName
+RawRepository=RawRepositoryBase + RepositoryName
 
 def getTextFile(filep):
     """
@@ -136,13 +142,19 @@ def downloadFile(url, saveloc):
     Downloads a file from the internet using a standard browser header.
     Custom header is required to allow access to all pages.
     """
-    import urllib.request
-    req = urllib.request.Request(url)
-    req.add_header('User-agent', 'Mozilla 5.10')
-    f = urllib.request.urlopen(req)
-    text_file = open(saveloc, "wb")
-    text_file.write(f.read())
-    text_file.close()
+    import traceback
+    try:
+        import urllib.request
+        req = urllib.request.Request(url)
+        req.add_header('User-agent', 'Mozilla 5.10')
+        f = urllib.request.urlopen(req)
+        text_file = open(saveloc, "wb")
+        text_file.write(f.read())
+        text_file.close()
+        return True
+    except:
+        print (traceback.format_exc())
+        return False
 
 def stripStartWhitespaces(filelist):
     """
@@ -178,19 +190,19 @@ def compareVersions(local, web):
     web = str(web).split(".")
     local = str(local).split(".")
     if int(web[0]) > int(local[0]):
-        print(1)
-        return
+        returnData(1)
+        return True
     else:
         if int(web[1]) > int(local[1]):
-            print(1)
-            return
+            returnData(1)
+            return True
         else:
             if int(web[2]) > int(local[2]):
-                print(1)
-                return
+                returnData(1)
+                return True
             else:
-                print(0)
-                return
+                returnData(0)
+                return False
 
 def getConfigParameter(filep, searchfor):
     textFile = getTextFile(filep)
@@ -209,6 +221,51 @@ def getConfigParameter(filep, searchfor):
         value = "None"
 
     return value
+
+#def selectFile(start = "/home/"+os.environ['SUDO_USER']+"/"):
+#    pass
+def returnData(data):
+    with open("/tmp/ltsptmp", "w+") as text_file:
+        text_file.write(str(data))
+    return
+    #return fileLoc
+
+def readReturn():
+    with open("/tmp/ltsptmp", "r") as text_file:
+        print(text_file.read())
+
+#----------------Whiptail functions-----------------
+def whiptailBox(type, title, message, returnTF ,height = "8", width= "78"):
+    cmd = ["whiptail", "--title", title, "--"+type, message, height, width]
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+
+    if returnTF:
+        if p.returncode == 0:
+            return True
+        elif p.returncode == 1:
+            return False
+        else:
+            return "ERROR"
+    else:
+        return p.returncode
+
+def whiptailSelectMenu(title, message, items):
+    height, width, other = "16", "78", "5"
+    cmd = ["whiptail", "--title", title, "--menu", message ,height, width, other]
+    itemsList = ""
+    for x in range(0, len(items)):
+        cmd.append(items[x])
+        cmd.append("a")
+    cmd.append("--noitem")
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    returnCode = p.returncode
+    if str(returnCode) == "0":
+        return(err)
+    else:
+        return("Cancel")
+
 
 
 #---------------- Main functions -------------------
@@ -234,43 +291,68 @@ def replaceBitOrAdd(file, string, newString):
     textfile = findReplaceSection(textfile, string, newString)
     writeTextFile(textfile, file)
 
-def internet_on(timeoutLimit):
+def internet_on(timeoutLimit, returnType = True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
     """
     import urllib.request
+    #print("Checking internet")
     try:
         response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
-        print("0")
-        return
+        returnData(0)
+        #print("returning 0")
+        return True
     except:  pass
     try:
         response=urllib.request.urlopen('http://74.125.228.100',timeout=int(timeoutLimit))
-        print("0")
-        return
+        returnData(0)
+        #print("returning 0")
+        return True
     except:  pass
-    print("1")
-    return
+    #print("Reached end, no internet")
+    returnData(1)
+    return False
 
-def updatePiLTSP():
+def updatePiNet():
     """
-    Fetches most recent Pi_ltsp and Pi_ltsp-functions-python.py
+    Fetches most recent PiNet and PiNet-functions-python.py
     """
     try:
-        os.remove("/home/"+os.environ['SUDO_USER']+"/Pi_ltsp")
+        os.remove("/home/"+os.environ['SUDO_USER']+"/pinet")
     except: pass
-    downloadFile("http://bit.ly/piltspupdate", "/usr/local/bin/Pi_ltsp")
-    downloadFile("https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/Scripts/Pi_ltsp-functions-python.py", "/usr/local/bin/Pi_ltsp-functions-python.py")
-    print(0)
+    print("")
+    print("----------------------")
+    print("Installing update")
+    print("----------------------")
+    print("")
+    download = True
+    if not downloadFile("http://bit.ly/pinetupdate", "/usr/local/bin/pinet"):
+        download = False
+    if not downloadFile(RawRepository + "/master/Scripts/pinet-functions-python.py", "/usr/local/bin/pinet-functions-python.py"):
+        download = False
+    if download:
+        print("----------------------")
+        print("Update complete")
+        print("----------------------")
+        print("")
+        returnData(0)
+    else:
+        print("")
+        print("----------------------")
+        print("Update failed...")
+        print("----------------------")
+        print("")
+        returnData(1)
 
 
-def checkUpdate():
+def checkUpdate2():
     """
     Grabs the xml commit log to check for releases. Picks out most recent release and returns it.
     """
+
     loc = "/tmp/raspiupdate.txt"
-    downloadFile("http://bit.ly/piltspcheckmaster", loc)
+    downloadFile("http://bit.ly/pinetcheckmaster", loc)
     from xml.dom import minidom
     xmldoc = minidom.parse(loc)
     version = xmldoc.getElementsByTagName('title')[1].firstChild.nodeValue
@@ -282,8 +364,33 @@ def checkUpdate():
         print("ERROR")
         print("No release update found!")
 
+def checkUpdate(currentVersion):
+    if not internet_on(5, False):
+        print("No Internet Connection")
+        returnData(0)
+    import feedparser
+    import xml.etree.ElementTree
+    d = feedparser.parse(Repository +'/commits/master.atom')
+    releases = []
+    data = (d.entries[0].content[0].get('value'))
+    data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
+    data = data.split("\n")
+    thisVersion = data[0].rstrip()
+    thisVersion = thisVersion[8:len(thisVersion)]
+
+    if compareVersions(currentVersion, thisVersion):
+        whiptailBox("msgbox", "Update detected", "An update has been detected for PiNet. Select OK to view the Release History.", False)
+        displayChangeLog(currentVersion)
+    else:
+        print("No updates found")
+        #print(thisVersion)
+        #print(currentVersion)
+        returnData(0)
+
+
+
 def checkKernelFileUpdateWeb():
-    downloadFile("https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/boot/version.txt", "/tmp/kernelVersion.txt")
+    downloadFile(RawRepository + "/master/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
     currentPath="/home/"+user+"/piBoot/version.txt"
@@ -291,16 +398,16 @@ def checkKernelFileUpdateWeb():
         current = int(getCleanList(currentPath)[0])
         new = int(getCleanList("/tmp/kernelVersion.txt")[0])
         if new > current:
-            print("1")
-            return
+            returnData(1)
+            return False
         else:
-            print("0")
-            return
+            returnData(0)
+            return True
     else:
-        print("0")
+        returnData(0)
 
 def checkKernelUpdater():
-    downloadFile("https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
+    downloadFile(RawRepository + "/master/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
 
     import os.path
     if os.path.isfile("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"):
@@ -309,12 +416,15 @@ def checkKernelUpdater():
         newVersion = int(getConfigParameter("/tmp/kernelCheckUpdate.sh", "version="))
         if currentVersion < newVersion:
             installCheckKernelUpdater()
-            print("1")
+            returnData(1)
+            return False
         else:
-            print("0")
+            returnData(0)
+            return True
     else:
         installCheckKernelUpdater()
-        print("1")
+        returnData(1)
+        return False
 
 def installCheckKernelUpdater():
     import shutil
@@ -324,13 +434,54 @@ def installCheckKernelUpdater():
     process = Popen(['ltsp-chroot', '--arch', 'armhf', 'update-rc.d', 'kernelCheckUpdate.sh', 'defaults'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
     process.communicate()
 
+#def importUsers():
 
+def displayChangeLog(version):
+    version = "Release " + version
+    import feedparser
+    import xml.etree.ElementTree
+    d = feedparser.parse(Repository +'/commits/master.atom')
+    releases = []
+    for x in range(0, len(d.entries)):
+        data = (d.entries[x].content[0].get('value'))
+        data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
+        data = data.split("\n")
+        thisVersion = data[0].rstrip()
+        if thisVersion == version:
+            break
+        elif x == 10:
+            break
+        releases.append(data)
+    output=[]
+    for i in range(0, len(releases)):
+        output.append(releases[i][0])
+        for z in range(0, len(releases[i])):
+            if not z == 0:
+                output.append(" - " +releases[i][z])
+        output.append("")
+    thing = ""
+    for i in range(0, len(output)):
+        thing = thing + output[i] + "\n"
+    cmd = ["whiptail", "--title", "Release history (Use arrow keys to scroll) - " + version, "--scrolltext", "--"+"yesno", "--yes-button", "Install " + output[0], "--no-button", "Cancel", thing, "24", "78"]
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    if p.returncode == 0:
+        updatePiNet()
+        returnData(1)
+        return True
+    elif p.returncode == 1:
+        returnData(0)
+        return False
+    else:
+        return "ERROR"
 
 #------------------------------Main program-------------------------
 
 
 if len(sys.argv) == 1:
     print("This python script does nothing on its own, it must be passed stuff")
+
+
 
 else:
     if sys.argv[1] == "replaceLineOrAdd":
@@ -340,18 +491,16 @@ else:
     elif sys.argv[1] == "CheckInternet":
         internet_on(sys.argv[2])
     elif sys.argv[1] == "CheckUpdate":
-        checkUpdate()
+        checkUpdate(sys.argv[2])
     elif sys.argv[1] == "CompareVersion":
         compareVersions(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == "updatePiLTSP":
-        updatePiLTSP()
+    elif sys.argv[1] == "updatePiNet":
+        updatePiNet()
     elif sys.argv[1] == "triggerInstall":
-        downloadFile("http://bit.ly/piltspinstall1", "/dev/null")
+        downloadFile("http://bit.ly/pinetinstall1", "/dev/null")
     elif sys.argv[1] == "checkKernelFileUpdateWeb":
         checkKernelFileUpdateWeb()
     elif sys.argv[1] == "checkKernelUpdater":
         checkKernelUpdater()
     elif sys.argv[1] == "installCheckKernelUpdater":
         installCheckKernelUpdater()
-
-

@@ -1,26 +1,34 @@
 #!/bin/bash
-# Part of Raspi-LTSP https://github.com/gbaman/RaspberryPi-LTSP
+# Part of PiNet https://github.com/PiNet/PiNet
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.41
+version=0.10.42
 
-#Raspi-LTSP
-#Pi_LTSP
+#PiNet (Previously pinet)
 
 #Written by Andrew Mulholland, based off the fantastic work by vagrantc and alksig from the LTSP community
-#Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
+#Initial guide available at http://cascadia.debian.net/trenza/Documentation/pinet-howto/
 #Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
 #
-#Raspi-LTSP is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
+#PiNet is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
 
 #Constants
 #------------------------
-ConfigFileLoc=/etc/raspi-ltsp
+ConfigFileLoc=/etc/pinet
 Timeout=1
-PythonFunctions="/usr/local/bin/Pi_ltsp-functions-python.py"
+PythonFunctions="/usr/local/bin/pinet-functions-python.py"
 PythonStart="python3"
 p="$PythonStart $PythonFunctions"
+RepositoryBase="https://github.com/pinet/"
+RepositoryName="pinet"
+RawRepositoryBase="https://raw.github.com/pinet/"
+Repository="$RepositoryBase$RepositoryName"
+RawRepository="$RawRepositoryBase$RepositoryName"
+ReleaseBranch="master"
+ltspBase="/opt/ltsp/"
+cpuArch="armhf"
+
 
 #------------------------
 
@@ -56,9 +64,9 @@ LegacyFixes() {
 	if [ -f "/etc/default/epoptes" ]; then
 		ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
 	fi
-	ReplaceTextLine "/etc/sudoers.d/01staff" "%staff ALL=NOPASSWD: ALL" "%teacher ALL=NOPASSWD: ALL"
+	#ReplaceTextLine "/etc/sudoers.d/01staff" "%staff ALL=NOPASSWD: ALL" "%teacher ALL=NOPASSWD: ALL"
 	
-	if [ ! -f "/opt/ltsp/armhf/usr/local/bin/Raspi-ltsp-screenshot.sh" ]; then
+	if [ ! -f "/opt/ltsp/armhf/usr/local/bin/pinet-screenshot.sh" ]; then
 		AddScreenshot
 		UpdateConfig NBDBuildNeeded true
 	fi
@@ -67,12 +75,12 @@ LegacyFixes() {
 		AddPasswordReset
 		UpdateConfig NBDBuildNeeded true
 	fi
-	local passwdVersion=$(cat /home/$SUDO_USER/Desktop/Raspi-ltsp-password.desktop | sed -n '2p')
+	local passwdVersion=$(cat /home/$SUDO_USER/Desktop/pinet-password.desktop | sed -n '2p')
 	if [ "$passwdVersion" = "Version=1.0" ]; then
-		rm -rf /etc/skel/Desktop/Raspi-ltsp-password.desktop
+		rm -rf /etc/skel/Desktop/pinet-password.desktop
 		cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 		do
-			rm -rf /home/$user/Desktop/Raspi-ltsp-password.desktop
+			rm -rf /home/$user/Desktop/pinet-password.desktop
 		done
 		AddPasswordReset
 	fi
@@ -91,7 +99,7 @@ LegacyFixes() {
 	
 	if [ -f "/opt/ltsp/armhf/usr/bin/scratch.old" ]; then
 		echo "-------------------------------------------------------------------------------------------------"
-		echo "NuScratch detected. It fails to work correctly with Raspi-LTSP at this time, so I will remove it."
+		echo "NuScratch detected. It fails to work correctly with pinet at this time, so I will remove it."
 		echo "-------------------------------------------------------------------------------------------------"
 		ltsp-chroot apt-get purge -y nuscratch
 		UpdateConfig NBDBuildNeeded true
@@ -193,6 +201,12 @@ if [ -e "/opt/ltsp/.backup" ]; then
 
 }
 
+gp(){
+	if [ -f /tmp/ltsptmp ]; then
+		echo $(head -n 1 /tmp/ltsptmp)
+	fi
+}
+
 installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
@@ -292,8 +306,9 @@ fi
 
 checkInternet(){
 
-echo $($p CheckInternet $Timeout)
-
+$p CheckInternet $Timeout
+thing=$(gp)
+echo $thing
 #WGET="/usr/bin/wget"
 
 #$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
@@ -322,7 +337,7 @@ if [ $Internet -eq 0 ]; then
 		mkdir /opt/raspiLTSP/PiBootBackup
 	fi
 	rm -rf /tmp/PiBoot
-	git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git /tmp/PiBoot #Clones main repository, including boot files
+	git clone --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
 	rm -rf /opt/raspiLTSP/PiBootBackup/*
 	cp /tmp/PiBoot/boot/* /opt/raspiLTSP/PiBootBackup/
 	UpdateIP
@@ -577,14 +592,14 @@ whiptail --title "Install complete" --msgbox "The client install is complete, a 
 RaspiTheme(){
 #Grabs a copy of the custom Raspberry Pi login screen and applies it
 
-rm -rf RaspberryPi-LTSP
-git clone --depth 1 https://github.com/gbaman/RaspberryPi-LTSP.git
-cp -r RaspberryPi-LTSP/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
+rm -rf pinet
+git clone --depth 1 $Repository.git
+cp -r pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
 rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
-rm -rf RaspberryPi-LTSP
-cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/raspi-LTSP.png
-sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/raspi-LTSP.png 100
+rm -rf pinet
+cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png
+sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100
 
 
 
@@ -609,7 +624,7 @@ fi
 NBDSetup() {
 #Setup function for NBD, asks user if they wish to use it, if not it defaults to NFS
 
-whiptail --title "Network technology" --yesno  "2 network technologies are available for Raspi-LTSP. NBD and NFS. NBD uses compression dramatically improving application loading times. The tradeoff though is after every modification to the operating system, the image must be recompressed which can take around 5 minutes. NFS is slower but does not need compressed, all changes run live. If in doubt, select NBD." --yes-button "NBD" --no-button "NFS" 11 78
+whiptail --title "Network technology" --yesno  "2 network technologies are available for pinet. NBD and NFS. NBD uses compression dramatically improving application loading times. The tradeoff though is after every modification to the operating system, the image must be recompressed which can take around 5 minutes. NFS is slower but does not need compressed, all changes run live. If in doubt, select NBD." --yes-button "NBD" --no-button "NFS" 11 78
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
@@ -762,7 +777,7 @@ done
 
 
 AddTeacher() {
-	whiptail --title "Teacher" --msgbox "Teachers have full admin access on the server (so can run Raspi-ltsp), full read/write access to all shared folders and Epoptes teacher level (so can control students computers)." 9 78
+	whiptail --title "Teacher" --msgbox "Teachers have full admin access on the server (so can run pinet), full read/write access to all shared folders and Epoptes teacher level (so can control students computers)." 9 78
 	username=$(SelectUser "to add to the teacher group.")
 	if [ ! $username = 1 ]; then
 		INIT=""
@@ -948,7 +963,7 @@ sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
 }
 
 createBackupScript(){
-rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+rm -rf /usr/local/bin/pinet-backup.sh
 
 echo 'currentDate=`date +"%d-%m-%y"`
 currentTime=`date +"%H_%M"`
@@ -968,8 +983,8 @@ if [ ! $backupLoc = "" ]; then
         fi
 else
         logger -s "$currentDate $currentTime - No backup location specified!" 2>> /var/log/Raspi-backup.log
-fi' >> /usr/local/bin/Raspi-LTSP-backup.sh
-chmod +x /usr/local/bin/Raspi-LTSP-backup.sh
+fi' >> /usr/local/bin/pinet-backup.sh
+chmod +x /usr/local/bin/pinet-backup.sh
 }
 
 AddUsers(){
@@ -989,7 +1004,7 @@ AddUsers(){
 			[ $? -eq 0 ] && echo "$username has been added to system!" || echo "Failed to add a user!"
 			fixGroups
 			whiptail --title "Permission level" --yesno "Is $username a pupil or a teacher?
-Teachers have a lot more permissions including write access to all shared folders, Epoptes teacher access and the ability to run Raspi-LTSP control software." --yes-button "Pupil" --no-button "Teacher" 8 78
+Teachers have a lot more permissions including write access to all shared folders, Epoptes teacher access and the ability to run pinet control software." --yes-button "Pupil" --no-button "Teacher" 8 78
 			if [ ! $? -eq 0 ]; then
 				AddUserToTeacher $username
 				whiptail --title "Success" --msgbox "A new teacher user has been added to the system successfully with the name - $username" 8 78
@@ -1058,8 +1073,8 @@ fi
 
 TroubleShooter(){
 
-	whiptail --title "Troubleshooter" --msgbox "Welcome to Raspi-LTSP troubleshooter. The troubleshooter goes over a few possible issues you may be having with your setup and offers advice.
-	WARNING - This troubleshooter is experimental, feel free to open issue reports at https://github.com/gbaman/RaspberryPi-LTSP/issues if you have any additional issues." 16 78
+	whiptail --title "Troubleshooter" --msgbox "Welcome to pinet troubleshooter. The troubleshooter goes over a few possible issues you may be having with your setup and offers advice.
+	WARNING - This troubleshooter is experimental, feel free to open issue reports at $Repository/issues if you have any additional issues." 16 78
 	whiptail --title "Boot" --yesno "Have you got as far as your Raspberry Pi starting up?" 8 78
 	if [ $? -eq 0 ]; then
 		whiptail --title "Login screen" --yesno "Have you got as far as the login screen displaying?" 8 78
@@ -1069,7 +1084,7 @@ TroubleShooter(){
 				whiptail --title "Login" --msgbox "LDM (login screen) does not handle incorrect passwords very well. If you enter an incorrect set of credentials, it just restarts itself. Don't worry about this.
 				If you are unsure about your password, remember you can easily change it in the Manage-users submenu" 16 78
 			else
-				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78
+				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
 			fi
 		else
 			resetAndCleanup
@@ -1088,7 +1103,7 @@ TroubleShooter(){
 					if [ $? -eq 0 ]; then
 						whiptail --title "Giving up" --msgbox "This usually means the Raspberry Pi isn't physically connected to the network, check the ethernet cable is correctly plugged in (wifi is not supported) and is connected to your main switch." 16 78
 					else
-						whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78		
+						whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78		
 					fi
 				fi
 			fi
@@ -1098,13 +1113,13 @@ TroubleShooter(){
 		if [ $? -eq 0 ]; then
 			whiptail --title "Partitions" --yesno "Are you having issues with there being 2-3 partitions on the SD card?" 8 78
 			if [ $? -eq 0 ]; then
-				whiptail --title "Formating partitions" --msgbox "When flashing Raspbian or another Raspberry Pi operating system onto SD cards, a number of partitions are created. Raspi-LTSP only needs a single partition, the boot partition.
+				whiptail --title "Formating partitions" --msgbox "When flashing Raspbian or another Raspberry Pi operating system onto SD cards, a number of partitions are created. pinet only needs a single partition, the boot partition.
 				This is usually a small (~50mb) partition which is formatted as fat32. If you wish to format the entire SD card (which if you are having issues, you may want to), please refer to the userguide section on formatting SD cards. " 16 78	
 			else
-				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78	
+				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78	
 			fi
 		else
-			whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at https://github.com/gbaman/RaspberryPi-LTSP/issues" 8 78
+			whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
 		fi
 	fi
 }
@@ -1146,13 +1161,13 @@ SetupSambaPi(){
 
 
 
-Updater(){
+Updater2(){
 	echo "---------------------------------"
-	echo "Updating Raspi-LTSP, please wait."
+	echo "Updating pinet, please wait."
 	echo "---------------------------------"
 	exitstatus=$($p updatePiLTSP)
 	if [ $exitstatus = "0" ]; then
-		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
+		whiptail --title "Update complete" --msgbox "The update succeeded. pinet is now up to date and running 
 $newVersion" 8 78
 	echo "---------------------------------"
 	echo "Update to $newVersion complete!"
@@ -1167,16 +1182,48 @@ $newVersion" 8 78
 			exit
 		fi
 	else
-		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading Raspi-LTSP again manually." 8 78
+		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading pinet again manually." 8 78
 		exec /bin/bash Pi_ltsp
 	
 	fi
 }
 
+AfterUpdate(){
+whiptail --title "Update complete" --msgbox "The update succeeded. pinet is now up to date." 8 78
+#if [ $exitstatus = "0" ]; then
+
+		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+		exitstatus=$?
+		if [ $exitstatus = 0 ]; then
+			exec /bin/bash Pi_ltsp Update-All
+			exit
+		else
+			exec /bin/bash Pi_ltsp
+			exit
+		fi
+	#fi
+}
+
+
+Updater(){
+	#echo "Ok, going to do that update now for you"
+	$p updatePiNet
+	exitstatus=$(gp)
+	if [ $exitstatus = 0 ]; then 
+		AfterUpdate
+	else
+		whiptail --title "Update failed" --msgbox "The auto update failed. This usually means you aren't connected to the internet" 8 78
+		exec /bin/bash Pi_ltsp
+	fi
+	
+
+}
+
+
 
 UpdaterOld(){
 	rm -rf /tmp/Pi_ltsp > /dev/null 2>&1
-	#wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Pi_ltsp -O /tmp/Pi_ltsp
+	#wget $RawRepository/$ReleaseBranch/Pi_ltsp -O /tmp/Pi_ltsp
 	wget --content-disposition http://pi-ltsp.net/downloadalpha -O /tmp/Pi_ltsp
 	exitstatus=$($p updatePiLTSP)
 	if [ $? -eq 0 ]; then 
@@ -1184,7 +1231,7 @@ UpdaterOld(){
 		#rm Pi_ltsp > /dev/null 2>&1
 		#cp -f /tmp/Pi_ltsp "/usr/local/bin/Pi_ltsp" > /dev/null 2>&1
 		#rm -rf /tmp/Pi_ltsp
-		whiptail --title "Update complete" --msgbox "The update succeeded. Raspi-LTSP is now up to date and running 
+		whiptail --title "Update complete" --msgbox "The update succeeded. pinet is now up to date and running 
 $checkRelease" 8 78
 		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
 		exitstatus=$?
@@ -1196,19 +1243,19 @@ $checkRelease" 8 78
 			exit
 		fi
 	else
-		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading Raspi-LTSP again manually." 8 78
+		whiptail --title "Error" --msgbox "The update failed. Are you connected to the internet? Perhaps try downloading pinet again manually." 8 78
 		exec /bin/bash Pi_ltsp
 	fi
 }
 
-CheckReleases(){
+CheckReleases3(){
 	echo "Checking for updates"
 	newVersion=$($p CheckUpdate)
 	#echo "$version"
 	#echo "$newVersion"
 	needUpdate=$($p CompareVersion "$version" "$newVersion")
 	if [ $needUpdate = "1" ]; then
-		whiptail --title "Update Detected" --yesno "An update titled Release $newVersion is available for Raspi-LTSP. You are currently running Release $version. Would you like to update?" 8 78
+		whiptail --title "Update Detected" --yesno "An update titled Release $newVersion is available for pinet. You are currently running Release $version. Would you like to update?" 8 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 		    Updater
@@ -1219,6 +1266,17 @@ CheckReleases(){
 }
 
 
+CheckReleases(){
+	#echo "Checking update"
+	$p CheckUpdate $version
+	exitstatus=$(gp)
+	#echo $exitstatus
+	if [ $exitstatus = 1 ]; then
+		AfterUpdate
+	fi
+	
+}
+
 
 
 CheckReleasesOld(){
@@ -1228,12 +1286,12 @@ xml2 -v > /dev/null 2>&1
 if [ $? -eq 2 ]; then 
 	#echo downloading
 	rm -f /tmp/master.atom > /dev/null 2>&1
-	wget https://github.com/gbaman/RaspberryPi-LTSP/commits/master.atom -O /tmp/master.atom > /dev/null 2>&1
+	wget $Repository/commits/$ReleaseBranch.atom -O /tmp/master.atom > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		checkRelease=$(xml2 < /tmp/master.atom  | grep /feed/entry/title= | sed 's/.*=//' | sed 's/^ *//; s/ *$//; /^$/d' | head -n 1)
 		checkVersion=$(cut -d " " -f 2 <<< "$checkRelease")
 		if [ ! "$checkVersion" == "$version" ]; then
-			whiptail --title "Update Detected" --yesno "An update titled $checkRelease is available for Raspi-LTSP. You are currently running Release $version. Would you like to update?" 8 78
+			whiptail --title "Update Detected" --yesno "An update titled $checkRelease is available for pinet. You are currently running Release $version. Would you like to update?" 8 78
 			exitstatus=$?
 			if [ $exitstatus = 0 ]; then
 		    	Updater
@@ -1257,7 +1315,7 @@ fi
 checkInstallLoc(){
 InstallLoc="${BASH_SOURCE[0]}"
 if [ ! "$InstallLoc" = "/usr/local/bin/Pi_ltsp" ]; then
-	whiptail --title "Wrong location" --msgbox "I have detected your Raspi-LTSP control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch Raspi-LTSP." 10 78
+	whiptail --title "Wrong location" --msgbox "I have detected your pinet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch pinet." 10 78
 	mv $InstallLoc /usr/local/bin/Pi_ltsp
 	exec /bin/bash Pi_ltsp
 fi
@@ -1502,8 +1560,8 @@ cat <<EOF1 >> /etc/init.d/bindfs-mount
 # Should-Stop:          \$local_fs
 # Default-Start:        2 3 4 5
 # Default-Stop:         0 1 6
-# Short-Description:    Bindfs mounts for RaspberryPi-LTSP
-# Description:          The shared folder Bindfs mounts for RaspberryPi-LTSP
+# Short-Description:    Bindfs mounts for pinet
+# Description:          The shared folder Bindfs mounts for pinet
 ### END INIT INFO
 
 start() {
@@ -1553,7 +1611,7 @@ CheckOS(){
 	OS=$(lsb_release -si)
 	if [ ! $OS == "Ubuntu" ]; then
 		if [ $OS == "Debian" ]; then
-			whiptail --title "WARNING!!" --msgbox "Debian is no longer officially supported by Raspi-LTSP! Please use Ubuntu 14.04 or later. Mileage may vary with Debian and Raspi-LTSP..." 8 78	
+			whiptail --title "WARNING!!" --msgbox "Debian is no longer officially supported by pinet! Please use Ubuntu 14.04 or later. Mileage may vary with Debian and pinet..." 8 78	
 		else
 			whiptail --title "WARNING!!" --msgbox "I don't recognise this operating system. Please use Ubuntu 14.04 or later. Mileage will vary greatly with other distributions and no support will be provided." 8 78	
 		fi
@@ -1590,7 +1648,7 @@ local CPU=$(bc <<< "scale=0; $(top -bn 1 | awk '{print $9}' | tail -n +8 | awk '
 clear
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
-echo "           RaspberryPi-LTSP System Status"
+echo "           pinet System Status"
 echo "---------------------------------------------------"
 echo "Current version                        - $version"
 echo "Server IP address                      - $IP"
@@ -1633,9 +1691,9 @@ CheckDesktopShortcut(){
 if [ $(checkInternet) -eq 0 ]; then
 	AddDesktopShortcutToUser $SUDO_USER
 
-	if [ ! -f "/usr/share/pixmaps/Pi-ltsp-icon.png" ]; then
-		wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-icon.png
-		mv Pi-ltsp-icon.png /usr/share/pixmaps/Pi-ltsp-icon.png
+	if [ ! -f "/usr/share/pixmaps/pinet-icon.png" ]; then
+		wget $RawRepository/$ReleaseBranch/images/pinet-icon.png
+		mv pinet-icon.png /usr/share/pixmaps/pinet-icon.png
 	fi
 
 fi
@@ -1643,20 +1701,20 @@ fi
 
 AddDesktopShortcutToUser() {
 
-if [ ! -f "/home/$1/Desktop/Raspi-LTSP.desktop" ]; then
-	cat <<EOF1 >> /home/$1/Desktop/Raspi-LTSP.desktop
+if [ ! -f "/home/$1/Desktop/pinet.desktop" ]; then
+	cat <<EOF1 >> /home/$1/Desktop/pinet.desktop
 [Desktop Entry]
 Version=1.0
-Name=Raspi-LTSP
+Name=pinet
 Comment=Raspberry Pi LTSP       
 Exec=sudo bash Pi_ltsp
-Icon=/usr/share/pixmaps/Pi-ltsp-icon.png
+Icon=/usr/share/pixmaps/pinet-icon.png
 Terminal=true
 Type=Application
 Categories=Utility;Application;
 EOF1
-	chmod +x "/home/$1/Desktop/Raspi-LTSP.desktop"
-	chown "$1" "/home/$1/Desktop/Raspi-LTSP.desktop"
+	chmod +x "/home/$1/Desktop/pinet.desktop"
+	chown "$1" "/home/$1/Desktop/pinet.desktop"
 fi
 
 }
@@ -1681,8 +1739,8 @@ sudo service nbd-server restart
 }
 
 AddPasswordReset(){
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Scripts/changePassword.sh -O /tmp/changePassword.sh
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-change-password.png -O /tmp/Pi-ltsp-change-password.png
+	wget $RawRepository/$ReleaseBranch/Scripts/changePassword.sh -O /tmp/changePassword.sh
+	wget $RawRepository/$ReleaseBranch/images/Pi-ltsp-change-password.png -O /tmp/Pi-ltsp-change-password.png
 	cp /tmp/Pi-ltsp-change-password.png /opt/ltsp/armhf/usr/share/pixmaps/Pi-ltsp-change-password.png
 	cp /tmp/changePassword.sh /usr/local/bin/changePassword.sh
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
@@ -1690,14 +1748,14 @@ AddPasswordReset(){
 		AddPasswordResetDesktop $user
 	done
 	
-	if [ ! -f "/etc/skel/Desktop/Raspi-ltsp-password.desktop" ]; then
-cat <<EOF1 >> /etc/skel/Desktop/Raspi-ltsp-password.desktop
+	if [ ! -f "/etc/skel/Desktop/pinet-password.desktop" ]; then
+cat <<EOF1 >> /etc/skel/Desktop/pinet-password.desktop
 [Desktop Entry]
 Version=1.1
 Name=Change Password
 Comment=Change password
 Exec=ltsp-remoteapps bash changePassword.sh
-Icon=/usr/share/pixmaps/Pi-ltsp-change-password.png
+Icon=/usr/share/pixmaps/pinet-change-password.png
 Terminal=false
 Type=Application
 Categories=Utility;Application;
@@ -1709,43 +1767,43 @@ fi
 
 AddPasswordResetDesktop(){
 
-if [ ! -f "/home/$1/Desktop/Raspi-ltsp-password.desktop" ]; then
-cat <<EOF1 >> /home/$1/Desktop/Raspi-ltsp-password.desktop
+if [ ! -f "/home/$1/Desktop/pinet-password.desktop" ]; then
+cat <<EOF1 >> /home/$1/Desktop/pinet-password.desktop
 [Desktop Entry]
 Version=1.1
 Name=Change Password
 Comment=Change password
 Exec=ltsp-remoteapps bash changePassword.sh
-Icon=/usr/share/pixmaps/Pi-ltsp-change-password.png
+Icon=/usr/share/pixmaps/pinet-change-password.png
 Terminal=false
 Type=Application
 Categories=Utility;Application;
 
 EOF1
-chown "$1" "/home/$1/Desktop/Raspi-ltsp-password.desktop"
+chown "$1" "/home/$1/Desktop/pinet-password.desktop"
 fi
 
 }
 
 AddScreenshot(){
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/Scripts/Raspi-ltsp-screenshot.sh -O /tmp/Raspi-ltsp-screenshot.sh
-	wget https://raw.github.com/gbaman/RaspberryPi-LTSP/master/images/Pi-ltsp-screenshot.png -O /tmp/Pi-ltsp-screenshot.png
-	cp /tmp/Pi-ltsp-screenshot.png /opt/ltsp/armhf/usr/share/pixmaps/Pi-ltsp-screenshot.png
-	cp /tmp/Raspi-ltsp-screenshot.sh /opt/ltsp/armhf/usr/local/bin/Raspi-ltsp-screenshot.sh
-	chmod +x /opt/ltsp/armhf/usr/local/bin/Raspi-ltsp-screenshot.sh
+	wget $RawRepository/$ReleaseBranch/Scripts/pinet-screenshot.sh -O /tmp/pinet-screenshot.sh
+	wget $RawRepository/$ReleaseBranch/images/pinet-screenshot.png -O /tmp/pinet-screenshot.png
+	cp /tmp/pinet-screenshot.png /opt/ltsp/armhf/usr/share/pixmaps/pinet-screenshot.png
+	cp /tmp/pinet-screenshot.sh /opt/ltsp/armhf/usr/local/bin/pinet-screenshot.sh
+	chmod +x /opt/ltsp/armhf/usr/local/bin/pinet-screenshot.sh
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 	do
 		AddScreenshotDesktop $user
 	done
 	
-	if [ ! -f "/etc/skel/Desktop/Raspi-ltsp-screenshot.desktop" ]; then
-cat <<EOF1 >> /etc/skel/Desktop/Raspi-ltsp-screenshot.desktop
+	if [ ! -f "/etc/skel/Desktop/pinet-screenshot.desktop" ]; then
+cat <<EOF1 >> /etc/skel/Desktop/pinet-screenshot.desktop
 [Desktop Entry]
 Version=1.0
 Name=Take Screenshot
 Comment=Take Screenshot
-Exec=bash Raspi-ltsp-screenshot.sh
-Icon=/usr/share/pixmaps/Pi-ltsp-screenshot.png
+Exec=bash pinet-screenshot.sh
+Icon=/usr/share/pixmaps/pinet-screenshot.png
 Terminal=false
 Type=Application
 Categories=Utility;Application;
@@ -1756,20 +1814,20 @@ fi
 }
 
 AddScreenshotDesktop(){
-if [ ! -f "/home/$1/Desktop/Raspi-ltsp-screenshot.desktop" ]; then
-cat <<EOF1 >> /home/$1/Desktop/Raspi-ltsp-screenshot.desktop
+if [ ! -f "/home/$1/Desktop/pinet-screenshot.desktop" ]; then
+cat <<EOF1 >> /home/$1/Desktop/pinet-screenshot.desktop
 [Desktop Entry]
 Version=1.0
 Name=Take Screenshot
 Comment=Take Screenshot
-Exec=bash Raspi-ltsp-screenshot.sh
-Icon=/usr/share/pixmaps/Pi-ltsp-screenshot.png
+Exec=bash pinet-screenshot.sh
+Icon=/usr/share/pixmaps/pinet-screenshot.png
 Terminal=false
 Type=Application
 Categories=Utility;Application;
 
 EOF1
-chown "$1" "/home/$1/Desktop/Raspi-ltsp-screenshot.desktop"
+chown "$1" "/home/$1/Desktop/pinet-screenshot.desktop"
 fi
 
 
@@ -1777,7 +1835,7 @@ fi
 
 CreateMoveBackup() {
 #Create a full backup of all users and groups data for moving to a clean system
-whiptail --title "WARNING!!" --yesno "This process is extremely experimental! I take no responsibility for data loss! It is only designed to move the files to a completely fresh Ubuntu install in which Raspi-LTSP is not installed! Please visit http://pi-ltsp.net/manage-users/migration.html for full instructions.
+whiptail --title "WARNING!!" --yesno "This process is extremely experimental! I take no responsibility for data loss! It is only designed to move the files to a completely fresh Ubuntu install in which pinet is not installed! Please visit http://PiNet.org.uk/manage-users/migration.html for full instructions.
 Are you sure you want to proceed?" 11 78
 if [ $? -eq 0 ]; then 
 	mkdir /root/move/
@@ -1790,14 +1848,14 @@ if [ $? -eq 0 ]; then
 	tar -zcvpf /home/$SUDO_USER/toMove.tar.gz /root/move
 	chown $SUDO_USER /home/$SUDO_USER/toMove.tar.gz
 	rm -rf /root/move/
-	whiptail --title "Complete" --msgbox "The process is now complete. A zipped file called toMove.tar.gz has been saved in /home/$SUDO_USER/toMove.tar.gz. Please copy this to /home/youruser/toMove.tar.gz on the new server (via a pendrive for example) then run Raspi-LTSP and select yes when asked about importing users." 11 78
+	whiptail --title "Complete" --msgbox "The process is now complete. A zipped file called toMove.tar.gz has been saved in /home/$SUDO_USER/toMove.tar.gz. Please copy this to /home/youruser/toMove.tar.gz on the new server (via a pendrive for example) then run pinet and select yes when asked about importing users." 11 78
 fi
 }
 
 CheckRestoreMoveBackup(){
 if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 	if [ -d /opt/ltsp ]; then
-		whiptail --title "WARNING!!" --yesno "I have detected that it looks like Raspi-LTSP is already installed. It is highly recommended against importing users with a previous Raspi-LTSP install. You have been warned! Would you like to import them anyway?" 10 78
+		whiptail --title "WARNING!!" --yesno "I have detected that it looks like pinet is already installed. It is highly recommended against importing users with a previous pinet install. You have been warned! Would you like to import them anyway?" 10 78
 		if [ $? -eq 0 ]; then 
 			RestoreMoveBackup
 		fi	
@@ -1813,7 +1871,7 @@ fi
 
 RestoreMoveBackup() {
 #Restore full backup of all users and group data
-whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! Raspi-LTSP must not already be installed! Also this could break everything so I take no responsibility if this alpha quality feature fails. Do you want to proceed?" 10 78
+whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! pinet must not already be installed! Also this could break everything so I take no responsibility if this alpha quality feature fails. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	mkdir /root/newsusers.bak
 	cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
@@ -1886,7 +1944,7 @@ fi
 
 FirstTimeImportUsers(){
 if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
-	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous Raspi-LTSP server? (If you don't know, just select no)" 8 78
+	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous pinet server? (If you don't know, just select no)" 8 78
 	if [ $? -eq 0 ]; then 
 		RestoreMoveBackup
 	fi
@@ -1911,11 +1969,11 @@ InstallBlueJ(){
 
 checkPythonFunctionsInstalled(){
 	if [ ! -f $PythonFunctions ]; then
-		wget https://raw.githubusercontent.com/gbaman/RaspberryPi-LTSP/master/Scripts/Pi_ltsp-functions-python.py -O $PythonFunctions
+		wget $RawRepository/$ReleaseBranch/Scripts/Pi_ltsp-functions-python.py -O $PythonFunctions
 		if [ ! $? -eq 0 ]; then 
-			whiptail --title "Error!" --msgbox "I am sorry, there has been a critical error with Raspi-LTSP. A required library file could not be acquired. Raspi-LTSP is unable to function without this library. This may be because you are not connected to the internet or there may be another problem.
+			whiptail --title "Error!" --msgbox "I am sorry, there has been a critical error with pinet. A required library file could not be acquired. pinet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem.
 Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions
-If the issue persists, please contact support at http://pi-ltsp.net/support.html" 16 78
+If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
 			rm -rf $PythonFunctions
 			exit
 		fi
@@ -1924,7 +1982,8 @@ If the issue persists, please contact support at http://pi-ltsp.net/support.html
 }
 
 checkKernelFileUpdateWeb(){
-	KernelV=$($p checkKernelFileUpdateWeb)
+	$p checkKernelFileUpdateWeb
+	KernelV=$(gp)
 	if [ $KernelV = "1" ]; then
 		current=$(head -n 1 /home/$SUDO_USER/piBoot/version.txt)
 		newVersion=$(head -n 1 /tmp/kernelVersion.txt)
@@ -1950,7 +2009,8 @@ checkKernelUpdater(){
 
 installKernelUpdater(){
 	local compress=$1
-	exitstatus=$($p checkKernelUpdater)
+	$p checkKernelUpdater
+	exitstatus=$(gp)
 	if [ "$exitstatus" = "1" ]; then
 		if [ "$compress" = "NBD" ]; then
 			echo "----------------------------------------------------------------------------------------------"
@@ -1966,7 +2026,13 @@ InstallRaspberryPiUIMods(){
 		ltsp-chroot apt-get install -y raspberrypi-ui-mods 
 		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf wallpaper_mode=3 wallpaper_mode=stretch
 		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf wallpaper=/usr/share/raspberrypi-artwork/raspberry-pi-logo-small.png wallpaper=/etc/alternatives/desktop-background
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf side_pane_mode=2 side_pane_mode=1
 }
+
+#ChooseReleaseChannel(){
+#
+#}
+
 
 #***************************************************************************************************
 
@@ -2000,7 +2066,7 @@ over_voltage=6
     ;;
     *)
     removeAnacronLines
-    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    rm -rf /usr/local/bin/pinet-backup.sh
     Menu
     ;;
 
@@ -2031,7 +2097,7 @@ case "$MENUEPT" in
     ;;
     *)
     removeAnacronLines
-    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    rm -rf /usr/local/bin/pinet-backup.sh
     Menu
     ;;
 
@@ -2050,20 +2116,20 @@ backupFrequency(){
 case "$MENUEPT" in
     Every-day) 
     removeAnacronLines
-    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
+    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
 	
     ;;
     Twice-weekly)
     removeAnacronLines 
-    echo "3       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
+    echo "3       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
     ;;
     Once-a-week)
     removeAnacronLines 
-    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/Raspi-LTSP-backup.sh" >> /etc/anacrontab
+    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
     ;;
     *)
     removeAnacronLines
-    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    rm -rf /usr/local/bin/pinet-backup.sh
     Menu
     ;;
 
@@ -2078,10 +2144,10 @@ OtherMenu() {
   MENUEPT=$(whiptail --title "Other Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 85 10 \
     "Refresh-System" "Refreshes network services. Useful if having boot issues" \
     "Network-technology" "Select your preferred network technology, NBD or NFS" \
-    "NBD-recompress" "Force an NBD compress if changes are made outside Raspi-LTSP" \
+    "NBD-recompress" "Force an NBD compress if changes are made outside pinet" \
     "NBD-compress-disable" "Disable auto NBD recompression after every change" \
     "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
-    "Export-users" "Export all user data for migrating to new Raspi-LTSP server" \
+    "Export-users" "Export all user data for migrating to new pinet server" \
     "Pi-control-Menu" "Pi-control classroom management submenu" \
     3>&1 1>&2 2>&3)
 
@@ -2256,18 +2322,18 @@ case "$MENUEPT" in
 	Menu
     ;;
     Disable-backup)
-    rm -rf /usr/local/bin/Raspi-LTSP-backup.sh
+    rm -rf /usr/local/bin/pinet-backup.sh
     removeAnacronLines
     currentDate=`date +"%d-%m-%y"`
 	currentTime=`date +"%H:%M"`
-    logger -s "$currentDate $currentTime - Backup disabled from Raspi-LTSP" 2>> /var/log/Raspi-backup.log
+    logger -s "$currentDate $currentTime - Backup disabled from pinet" 2>> /var/log/Raspi-backup.log
     whiptail --title "Backup disabled" --msgbox 'The backup daemon has now been disabled, no more backups will be performed till it is enabled again with Configure-backup. All old backups have been kept.' 12 78
     Menu
     ;;
     Display-Logs)
     clear
     echo "-------------------"
-    echo "Raspi-LTSP log file"
+    echo "pinet log file"
     echo "-------------------"
     echo " "
     echo "$(cat /var/log/Raspi-backup.log)"
@@ -2298,7 +2364,7 @@ UserGroups() {
   	"Launch-graphical" "Launch a graphical user management panel" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
-    "Export-users" "Export all user data for migrating to new Raspi-LTSP server" \
+    "Export-users" "Export all user data for migrating to new pinet server" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -2470,7 +2536,7 @@ FullInstall(){
 		configFixes   #Main configuration changes that are run on the the LTSP chroot (/opt/ltsp/armhf). These must be run every time the image is generated
 		FixRepo   #Adds additional repositories to the Raspbian build
 		AddSoftware   #Adds all the custom software on top of a normal Armhf Debian Wheezy build
-		RaspiTheme   #Installs the Raspi-LTSP theme which can be seen at login
+		RaspiTheme   #Installs the pinet theme which can be seen at login
 		FixDesktopIcons   #Adds desktop icons
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
@@ -2490,7 +2556,7 @@ FullInstall(){
 		resetAndCleanup
 		$p triggerInstall
 	
-		whiptail --title "Main installation complete" --msgbox "Raspi-LTSP main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+		whiptail --title "Main installation complete" --msgbox "pinet main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
 		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
 	fi
@@ -2499,8 +2565,8 @@ FullInstall(){
 Menu() {
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 
-  MENUOPT=$(whiptail --title "Raspi-LTSP $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 14 \
-  	"System-Status" "Display status of key parts of your Raspi-LTSP server" \
+  MENUOPT=$(whiptail --title "pinet $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 14 \
+  	"System-Status" "Display status of key parts of your pinet server" \
   	"Install-Program" "Install a new program on the Raspberry Pi's" \
     "Manage-Users" "Add new users, change passwords and delete users" \
     "Update-All" "Run an automatic update on server and Raspbian" \
@@ -2512,8 +2578,8 @@ IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ pr
     "Epoptes-Menu" "Epoptes classroom management submenu" \
     "Troubleshooter" "Having issues? Try running the troubleshooter" \
     "Other" "Other options and utilities for management" \
-    "Full-Install" "Full install of Raspi-LTSP server" \
-    "Update-Pi-LTSP" "Forces Raspi-LTSP to update itself" \
+    "Full-Install" "Full install of pinet server" \
+    "Update-Pi-LTSP" "Forces pinet to update itself" \
     3>&1 1>&2 2>&3)
 
 case "$MENUOPT" in 
@@ -2577,7 +2643,7 @@ Rebuild-OS)
     		EnableNBD
     		LegacyFixes
     		resetAndCleanup
-			whiptail --title "Rebuild complete" --msgbox "Raspi-LTSP rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+			whiptail --title "Rebuild complete" --msgbox "pinet rebuild is now complete. Please copy the files found in /home/YourUser/piboot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 		else
 			whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
 		fi
@@ -2585,7 +2651,7 @@ Rebuild-OS)
 	Menu
 	;;
 Backup-Menu)
-	whiptail --title "WARNING" --msgbox 'WARNING - The backup system in Raspi-LTSP is currently in alpha, you are responsible to check backups are correctly being made and checking the log file frequently. To check the log file, select Display-Logs in the Backup submenu!' 12 78
+	whiptail --title "WARNING" --msgbox 'WARNING - The backup system in pinet is currently in alpha, you are responsible to check backups are correctly being made and checking the log file frequently. To check the log file, select Display-Logs in the Backup submenu!' 12 78
 	BackupMenu
 	;;	
 Manage-Users)
@@ -2636,8 +2702,8 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 if [ ! "$BASH_VERSION" ] ; then
-	whiptail --title "Shell error" --msgbox "Please do not run Raspi-LTSP with sudo sh $0. Please run it with bash using     sudo bash $0" 8 78
-    echo "Please do not run Raspi-LTSP with sh $0. Please run it with bash using     sudo bash $0" 1>&2
+	whiptail --title "Shell error" --msgbox "Please do not run pinet with sudo sh $0. Please run it with bash using     sudo bash $0" 8 78
+    echo "Please do not run pinet with sh $0. Please run it with bash using     sudo bash $0" 1>&2
     exit 1
 fi
 CheckOS
@@ -2658,7 +2724,7 @@ checkPythonFunctionsInstalled
 if [ -d /opt/ltsp/armhf ]; then
 		fixGroups
 else
-    	whiptail --title "Welcome" --yesno 'Welcome to Raspi-LTSP. We have detected Raspi-LTSP is not installed, would you like to run the full install?' 8 78 
+    	whiptail --title "Welcome" --yesno 'Welcome to pinet. We have detected pinet is not installed, would you like to run the full install?' 8 78 
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 			UpdateConfig FirstUser $SUDO_USER
@@ -2671,7 +2737,9 @@ CheckTerminalSize
 teacherSudoCheck
 LegacyConfig
 ConfigFileRead
-if [ $(checkInternet) -eq 0 ]; then
+
+intStat=$(checkInternet)
+if [ $intStat -eq 0 ]; then
 	CheckReleases
 	checkKernelFileUpdateWeb
 	checkKernelUpdater "NBD"
@@ -2679,4 +2747,3 @@ fi
 LegacyFixes
 #VariablesSetup
 Menu
-
