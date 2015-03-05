@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.42
+version=0.10.43
 
 #PiNet (Previously pinet)
 
@@ -121,7 +121,7 @@ LegacyFixes() {
 
 ConfigFileRead(){
 	#Taken from - http://wiki.bash-hackers.org/howto/conffile
-	configfile_secured="/tmp/raspi-config"
+	configfile_secured="/tmp/pinet-config"
 	#touch $configfile_secured
 	#echo "reading $ConfigFileLoc"
 
@@ -1195,10 +1195,10 @@ whiptail --title "Update complete" --msgbox "The update succeeded. pinet is now 
 		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
-			exec /bin/bash Pi_ltsp Update-All
+			exec /bin/bash pinet Update-All
 			exit
 		else
-			exec /bin/bash Pi_ltsp
+			exec /bin/bash pinet
 			exit
 		fi
 	#fi
@@ -1213,7 +1213,7 @@ Updater(){
 		AfterUpdate
 	else
 		whiptail --title "Update failed" --msgbox "The auto update failed. This usually means you aren't connected to the internet" 8 78
-		exec /bin/bash Pi_ltsp
+		exec /bin/bash pinet
 	fi
 	
 
@@ -1314,10 +1314,10 @@ fi
 
 checkInstallLoc(){
 InstallLoc="${BASH_SOURCE[0]}"
-if [ ! "$InstallLoc" = "/usr/local/bin/Pi_ltsp" ]; then
+if [ ! "$InstallLoc" = "/usr/local/bin/pinet" ]; then
 	whiptail --title "Wrong location" --msgbox "I have detected your pinet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch pinet." 10 78
-	mv $InstallLoc /usr/local/bin/Pi_ltsp
-	exec /bin/bash Pi_ltsp
+	mv $InstallLoc /usr/local/bin/pinet
+	exec /bin/bash pinet
 fi
 }
 
@@ -1654,7 +1654,7 @@ echo "Current version                        - $version"
 echo "Server IP address                      - $IP"
 echo "---------------------------------------------------"
 #echo ""
-echo "Been running version $version since     - $(stat -c %y /usr/local/bin/Pi_ltsp | cut -d ' ' -f1)"
+echo "Been running version $version since     - $(stat -c %y /usr/local/bin/pinet | cut -d ' ' -f1)"
 echo "Piboot folder last updated             - $(stat -c %y piBoot | cut -d ' ' -f1)"
 echo "Last system-wide update (update-all)   - $(stat -c %y /var/lib/apt/periodic/update-success-stamp | cut -d ' ' -f1)"
 #echo ""
@@ -1707,7 +1707,7 @@ if [ ! -f "/home/$1/Desktop/pinet.desktop" ]; then
 Version=1.0
 Name=pinet
 Comment=Raspberry Pi LTSP       
-Exec=sudo bash Pi_ltsp
+Exec=sudo bash pinet
 Icon=/usr/share/pixmaps/pinet-icon.png
 Terminal=true
 Type=Application
@@ -1740,8 +1740,8 @@ sudo service nbd-server restart
 
 AddPasswordReset(){
 	wget $RawRepository/$ReleaseBranch/Scripts/changePassword.sh -O /tmp/changePassword.sh
-	wget $RawRepository/$ReleaseBranch/images/Pi-ltsp-change-password.png -O /tmp/Pi-ltsp-change-password.png
-	cp /tmp/Pi-ltsp-change-password.png /opt/ltsp/armhf/usr/share/pixmaps/Pi-ltsp-change-password.png
+	wget $RawRepository/$ReleaseBranch/images/pinet-change-password.png -O /tmp/pinet-change-password.png
+	cp /tmp/pinet-change-password.png /opt/ltsp/armhf/usr/share/pixmaps/pinet-change-password.png
 	cp /tmp/changePassword.sh /usr/local/bin/changePassword.sh
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 	do
@@ -1969,7 +1969,7 @@ InstallBlueJ(){
 
 checkPythonFunctionsInstalled(){
 	if [ ! -f $PythonFunctions ]; then
-		wget $RawRepository/$ReleaseBranch/Scripts/Pi_ltsp-functions-python.py -O $PythonFunctions
+		wget $RawRepository/$ReleaseBranch/Scripts/pinet-functions-python.py -O $PythonFunctions
 		if [ ! $? -eq 0 ]; then 
 			whiptail --title "Error!" --msgbox "I am sorry, there has been a critical error with pinet. A required library file could not be acquired. pinet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem.
 Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions
@@ -2579,7 +2579,7 @@ IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ pr
     "Troubleshooter" "Having issues? Try running the troubleshooter" \
     "Other" "Other options and utilities for management" \
     "Full-Install" "Full install of pinet server" \
-    "Update-Pi-LTSP" "Forces pinet to update itself" \
+    "Update-PiNet" "Forces pinet to update itself" \
     3>&1 1>&2 2>&3)
 
 case "$MENUOPT" in 
@@ -2681,7 +2681,7 @@ Troubleshooter)
 	TroubleShooter
 	Menu
 	;;
-Update-Pi-LTSP)
+Update-PiNet)
 	Updater
 	;;
 	*)

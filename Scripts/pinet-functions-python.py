@@ -327,7 +327,7 @@ def updatePiNet():
     print("----------------------")
     print("")
     download = True
-    if not downloadFile("http://bit.ly/pinetupdate", "/usr/local/bin/pinet"):
+    if not downloadFile(RawRepository +"/master/pinet", "/usr/local/bin/pinet"):
         download = False
     if not downloadFile(RawRepository + "/master/Scripts/pinet-functions-python.py", "/usr/local/bin/pinet-functions-python.py"):
         download = False
