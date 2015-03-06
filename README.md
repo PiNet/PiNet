@@ -1,4 +1,4 @@
-PiNet (Previously PiNet)
+PiNet (Previously RaspberryPi-LTSP)
 ================
 
 ![Login screen](images/Raspi-Login.png)

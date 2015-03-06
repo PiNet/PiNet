@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.44
+version=0.10.45
 
 #PiNet (Previously pinet)
 
@@ -1368,6 +1368,7 @@ UpdateAll(){
 
 SetupShared(){
 	echo "Setting up shared folders"
+	whiptail --title "Setting up shared folders" --msgbox "As this is the first time you are using shared folders, I have to set them up. This may take a few minutes." 8 78
 	mkdir /home/shared > /dev/null 2>&1
 	#ls -l /home/shared
 	sudo chown :teacher /home/shared
@@ -1428,7 +1429,7 @@ CreateSharedFoldersDialog(){
 		echo ""
 		echo "Hit enter to continue"
 		read
-		FolderName=$(whiptail --inputbox "Enter the name of the new shared folder" 8 78 $INIT --title "Shared folder" 3>&1 1>&2 2>&3)
+		FolderName=$(whiptail --inputbox "Enter the name of the new shared folder" 8 78 --title "Shared folder" 3>&1 1>&2 2>&3)
 		if [ $? -eq 0 ]; then
 			if ! [ "$FolderName" = "" ]; then
 				CreateSharedFolder "$FolderName"
