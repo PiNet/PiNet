@@ -23,6 +23,24 @@ RepositoryName="pinet"
 RawRepositoryBase="https://raw.github.com/pinet/"
 Repository=RepositoryBase + RepositoryName
 RawRepository=RawRepositoryBase + RepositoryName
+ReleaseBranch = "master"
+
+def getReleaseChannel():
+    Channel = "Stable"
+    configFile = getList("/etc/pinet")
+    for i in range(0, len(configFile)):
+        if configFile[i][0:14] == "ReleaseChannel":
+            Channel = configFile[i][15:len(configFile[i])]
+            break
+
+    global ReleaseBranch
+    if Channel == "Stable":
+        ReleaseBranch = "master"
+    elif Channel == "Dev":
+        ReleaseBranch = "dev"
+    else:
+        ReleaseBranch = "master"
+
 
 def getTextFile(filep):
     """
@@ -327,9 +345,9 @@ def updatePiNet():
     print("----------------------")
     print("")
     download = True
-    if not downloadFile(RawRepository +"/master/pinet", "/usr/local/bin/pinet"):
+    if not downloadFile(RawRepository +"/" + ReleaseBranch + "/pinet", "/usr/local/bin/pinet"):
         download = False
-    if not downloadFile(RawRepository + "/master/Scripts/pinet-functions-python.py", "/usr/local/bin/pinet-functions-python.py"):
+    if not downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/pinet-functions-python.py", "/usr/local/bin/pinet-functions-python.py"):
         download = False
     if download:
         print("----------------------")
@@ -370,7 +388,7 @@ def checkUpdate(currentVersion):
         returnData(0)
     import feedparser
     import xml.etree.ElementTree
-    d = feedparser.parse(Repository +'/commits/master.atom')
+    d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
     data = (d.entries[0].content[0].get('value'))
     data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
@@ -390,7 +408,7 @@ def checkUpdate(currentVersion):
 
 
 def checkKernelFileUpdateWeb():
-    downloadFile(RawRepository + "/master/boot/version.txt", "/tmp/kernelVersion.txt")
+    downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
     currentPath="/home/"+user+"/piBoot/version.txt"
@@ -407,7 +425,7 @@ def checkKernelFileUpdateWeb():
         returnData(0)
 
 def checkKernelUpdater():
-    downloadFile(RawRepository + "/master/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
+    downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
 
     import os.path
     if os.path.isfile("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"):
@@ -440,7 +458,7 @@ def displayChangeLog(version):
     version = "Release " + version
     import feedparser
     import xml.etree.ElementTree
-    d = feedparser.parse(Repository +'/commits/master.atom')
+    d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
     for x in range(0, len(d.entries)):
         data = (d.entries[x].content[0].get('value'))
@@ -477,6 +495,7 @@ def displayChangeLog(version):
 
 #------------------------------Main program-------------------------
 
+getReleaseChannel()
 
 if len(sys.argv) == 1:
     print("This python script does nothing on its own, it must be passed stuff")
