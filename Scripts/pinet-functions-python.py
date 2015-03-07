@@ -382,6 +382,15 @@ def checkUpdate2():
         print("ERROR")
         print("No release update found!")
 
+def GetVersionNum(data):
+    for i in range(0, len(data)):
+        bob = data[i][0:8]
+        if data[i][0:7] == "Release":
+            bob = data[i]
+            version = str(data[i][8:len(data[i])]).rstrip()
+            return version
+
+
 def checkUpdate(currentVersion):
     if not internet_on(5, False):
         print("No Internet Connection")
@@ -393,8 +402,9 @@ def checkUpdate(currentVersion):
     data = (d.entries[0].content[0].get('value'))
     data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
     data = data.split("\n")
-    thisVersion = data[0].rstrip()
-    thisVersion = thisVersion[8:len(thisVersion)]
+    thisVersion = GetVersionNum(data)
+    #thisVersion = data[0].rstrip()
+    #thisVersion = thisVersion[8:len(thisVersion)]
 
     if compareVersions(currentVersion, thisVersion):
         whiptailBox("msgbox", "Update detected", "An update has been detected for PiNet. Select OK to view the Release History.", False)
@@ -464,11 +474,14 @@ def displayChangeLog(version):
         data = (d.entries[x].content[0].get('value'))
         data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
         data = data.split("\n")
-        thisVersion = data[0].rstrip()
+        thisVersion = "Release " + GetVersionNum(data)
+        #thisVersion = data[0].rstrip()
         if thisVersion == version:
             break
         elif x == 10:
             break
+        if data[0][0:5] == "Merge":
+            continue
         releases.append(data)
     output=[]
     for i in range(0, len(releases)):
