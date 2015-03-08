@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.48
+version=0.10.49
 
 #PiNet (Previously pinet)
 
@@ -279,21 +279,22 @@ UpdateSD() {
 #whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
 local Internet=$(checkInternet)
 if [ $Internet -eq 0 ]; then
-	if [ ! -d "/opt/raspiLTSP" ]; then
-		mkdir /opt/raspiLTSP
+	if [ ! -d "/opt/PiNet" ]; then
+		mkdir /opt/PiNet
 	fi
-	if [ ! -d "/opt/raspiLTSP/PiBootBackup" ]; then
-		mkdir /opt/raspiLTSP/PiBootBackup
+	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
+		mkdir /opt/PiNet/PiBootBackup
 	fi
 	rm -rf /tmp/PiBoot
-	git clone --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
-	rm -rf /opt/raspiLTSP/PiBootBackup/*
-	cp /tmp/PiBoot/boot/* /opt/raspiLTSP/PiBootBackup/
+	git clone --no-single-branch --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
+	(cd "/tmp/PiBoot"; git checkout "$ReleaseBranch")
+	rm -rf /opt/PiNet/PiBootBackup/*
+	cp /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/
 	UpdateIP
 	toReturn=0
 	
 else
-	if [ ! -d "/opt/raspiLTSP/PiBootBackup" ]; then
+	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
 		whiptail --title "Error" --msgbox "You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
 		toReturn=1
 	else
@@ -306,16 +307,16 @@ if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
 	local currentVersion=0
 	local newVersion=0
 	local currentVersion=$(head -n 1 "/opt/ltsp/armhf/bootfiles/version.txt")
-	local newVersion=$(head -n 1 "/opt/raspiLTSP/PiBootBackup/version.txt")
+	local newVersion=$(head -n 1 "/opt/PiNet/PiBootBackup/version.txt")
 	echo "$currentVersion $newVersion"
 	if (( $currentVersion < $newVersion )); then 
 		rm -rf "/opt/ltsp/armhf/bootfiles/"
-		cp -rf "/opt/raspiLTSP/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
+		cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
 		rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
 		NBDRun
 	fi
 else
-	cp -rf "/opt/raspiLTSP/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
+	cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
 	rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
 	NBDRun
 	
@@ -341,7 +342,7 @@ fi
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 if [ "$SUDO_USER" = "" ]; then
 		rm -rf ~/PiBoot/
-        cp -r /opt/raspiLTSP/PiBootBackup/ ~/PiBoot/
+        cp -r /opt/PiNet/PiBootBackup/ ~/PiBoot/
         if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
 			rm ~/PiBoot/cmdline.txt
 			cp ~/PiBoot/cmdlineNBD.txt ~/PiBoot/cmdline.txt
@@ -353,7 +354,7 @@ if [ "$SUDO_USER" = "" ]; then
         nautilus ~/PiBoot > /dev/null 2>&1 &
 else
 		rm -rf "/home/$SUDO_USER/PiBoot/"
-        cp -r /opt/raspiLTSP/PiBootBackup/ "/home/$SUDO_USER/PiBoot/"
+        cp -r /opt/PiNet/PiBootBackup/ "/home/$SUDO_USER/PiBoot/"
         chown -R "$SUDO_USER" "/home/$SUDO_USER/PiBoot"
         if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
 			rm /home/$SUDO_USER/PiBoot/cmdline.txt
@@ -919,9 +920,9 @@ fi
 
 removeAnacronLines() {
 #Removes anacrontab lines which can cause issues. Used for backup scheduling
-sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
-sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
-sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
+sed --in-place '/PiNet.backup/d' /etc/anacrontab
+sed --in-place '/PiNet.backup/d' /etc/anacrontab
+sed --in-place '/PiNet.backup/d' /etc/anacrontab
 
 }
 
@@ -1981,16 +1982,16 @@ backupFrequency(){
 case "$MENUEPT" in
     Every-day) 
     removeAnacronLines
-    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
+    echo "1       15      PiNet.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
 	
     ;;
     Twice-weekly)
     removeAnacronLines 
-    echo "3       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
+    echo "3       15      PiNet.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
     ;;
     Once-a-week)
     removeAnacronLines 
-    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
+    echo "1       15      PiNet.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
     ;;
     *)
     removeAnacronLines
