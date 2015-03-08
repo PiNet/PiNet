@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.49
+version=0.10.50
 
 #PiNet (Previously pinet)
 
@@ -1750,7 +1750,7 @@ fi
 
 RestoreMoveBackup() {
 #Restore full backup of all users and group data
-whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! PiNet must not already be installed! Also this could break everything so I take no responsibility if this alpha quality feature fails. Do you want to proceed?" 10 78
+whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! PiNet must not already be installed! This feature is still alpha level quality. Make sure to manaully check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	mkdir /root/newsusers.bak
 	cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
@@ -1763,7 +1763,7 @@ if [ $? -eq 0 ]; then
 	/bin/cp gshadow.mig /etc/gshadow
 	cd /
 	tar -zxvf /root/move/home.tar.gz
-
+	fixGroups
 	whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
 	if [ $? -eq 0 ]; then
 		reboot
