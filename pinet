@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.47
+version=0.10.48
 
 #PiNet (Previously pinet)
 
@@ -608,7 +608,7 @@ AddSoftware(){
 ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python3-pygame python-tk sudo sshpass pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
-ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv man-db
+ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools man-db
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
 ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby
 ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
@@ -616,7 +616,7 @@ ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-bro
 ltsp-chroot apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
-ltsp-chroot --arch armhf apt-get install -y linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
+ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
 
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
 
@@ -1176,7 +1176,7 @@ checkInstallLoc(){
 #Checks PiNet is installed in the correct place (/usr/local/bin/pinet)
 InstallLoc="${BASH_SOURCE[0]}"
 if [ ! "$InstallLoc" = "/usr/local/bin/pinet" ]; then
-	whiptail --title "Wrong location" --msgbox "I have detected your PiNet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch PiNet." 10 78
+	#whiptail --title "Wrong location" --msgbox "I have detected your PiNet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch PiNet." 10 78
 	mv $InstallLoc /usr/local/bin/pinet
 	exec /bin/bash pinet
 fi
@@ -1395,7 +1395,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! You must reselect the correct permission level for each folder now." 8 78	
+		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1763,7 +1763,7 @@ if [ $? -eq 0 ]; then
 	cd /
 	tar -zxvf /root/move/home.tar.gz
 
-	whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok?" 9 78
+	whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
 	if [ $? -eq 0 ]; then
 		reboot
 	else
@@ -2564,21 +2564,20 @@ if [ ! -d /opt/ltsp/armhf ]; then
     		Menu
 		fi
 fi
-CheckTerminalSize
-ConfigFileRead
+CheckTerminalSize  #Changes the terminal to the minimum size if is too small
+ConfigFileRead  #Reads the main configuration file (/etc/pinet) and loads all values in as environmental variables
 
-if [ "$ReleaseChannel" = "" ]; then
+if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected, if not asks for one
 	ChooseReleaseChannel "Restart"
 fi
 
-SetupRepositories
+SetupRepositories #Sets up the correct branch varliables as selected in ChooseReleaseChannel()
 
-intStat=$(checkInternet)
+intStat=$(checkInternet)  #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
 if [ $intStat -eq 0 ]; then
 	CheckReleases
 	checkKernelFileUpdateWeb
 	checkKernelUpdater "NBD"
 fi
-LegacyFixes
-#VariablesSetup
-Menu
+LegacyFixes #Makes sure all configuration data is correctly configured
+Menu #Runs main menu

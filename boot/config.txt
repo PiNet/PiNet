@@ -18,7 +18,7 @@
 #framebuffer_height=720
 
 # uncomment if hdmi display is not detected and composite is being output
-#hdmi_force_hotplug=1
+hdmi_force_hotplug=1
 
 # uncomment to force a specific HDMI mode (this will force VGA)
 #hdmi_group=1
@@ -37,12 +37,13 @@
 
 #uncomment to overclock the arm. 700 MHz is the default.
 start_x=1
-arm_freq=1000
-gpu_mem=128
-core_freq=500
-sdram_freq=600
-over_voltage=6
 
 # for more options see http://elinux.org/RPi_config.txt
-kernel vmlinuz-3.12-1-rpi
-initramfs initrd.img-3.12-1-rpi
+
+[pi1]
+kernel vmlinuz-3.18.0-trunk-rpi
+initramfs initrd.img-3.18.0-trunk-rpi
+
+[pi2]
+kernel vmlinuz-3.18.0-trunk-rpi2
+initramfs initrd.img-3.18.0-trunk-rpi2
