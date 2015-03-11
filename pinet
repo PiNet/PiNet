@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.50
+version=0.10.51
 
 #PiNet (Previously pinet)
 
@@ -1752,23 +1752,34 @@ RestoreMoveBackup() {
 #Restore full backup of all users and group data
 whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! PiNet must not already be installed! This feature is still alpha level quality. Make sure to manaully check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
-	mkdir /root/newsusers.bak
-	cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
-	cd /
-	tar -zxvf /home/$SUDO_USER/toMove.tar.gz
-	cd /root/move
-	cat passwd.mig >> /etc/passwd
-	cat group.mig >> /etc/group
-	cat shadow.mig >> /etc/shadow
-	/bin/cp gshadow.mig /etc/gshadow
-	cd /
-	tar -zxvf /root/move/home.tar.gz
-	fixGroups
-	whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
-	if [ $? -eq 0 ]; then
-		reboot
+	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
+		mkdir /root/newsusers.bak
+		cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
+		cd /
+		tar -zxvf /home/$SUDO_USER/toMove.tar.gz
+		cd /root/move
+		cat passwd.mig >> /etc/passwd
+		cat group.mig >> /etc/group
+		cat shadow.mig >> /etc/shadow
+		/bin/cp gshadow.mig /etc/gshadow
+		cd /
+		tar -zxvf /root/move/home.tar.gz
+		fixGroups
+		rm /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
+		AddDesktopShortcutToUser
+		whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
+		if [ $? -eq 0 ]; then
+			reboot
+		else
+			exit
+		fi
 	else
-		exit
+		whiptail --title "Import failed" --yesno "The user import has failed, /home/$SUDO_USER/toMove.tar.gz wasn't found? Are you sure you copied it to that location? Would you like to try again?" 9 78
+		if [ $? -eq 0 ]; then
+			RestoreMoveBackup
+		else
+			exit
+		fi
 	fi
 else
 	exit
@@ -1936,6 +1947,21 @@ GroupCheck(){
 	whiptail --title "Groupcheck" --msgbox "Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
 	fixGroups
 	whiptail --title "Complete" --msgbox "All user groups have been checked and if need be, corrected." 8 78
+}
+
+CheckForRaspiLTSP(){
+	#Checks if Raspi-LTSP is installed and warns the user if it is.
+	if [ -f /etc/raspi-ltsp ]; then
+		whiptail --title "Raspi-LTSP found!" --msgbox "A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
+		echo "Raspi-LTSP configuration file found at /etc/raspi-ltsp"
+		exit
+	else
+		if [ -d /opt/raspiLTSP ]; then
+			whiptail --title "Raspi-LTSP found!" --msgbox "A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
+			echo "Raspi-LTSP configuration folder found at /opt/raspiLTSP"
+			exit
+		fi
+	fi
 }
 
 
@@ -2553,6 +2579,7 @@ checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to 
 
 echo "Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
+CheckForRaspiLTSP
 
 
 if [ ! -d /opt/ltsp/armhf ]; then
