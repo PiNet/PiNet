@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.52
+version=0.10.53
 
 #PiNet (Previously pinet)
 
@@ -910,6 +910,25 @@ else
         if [ "$results" = "./" ]; then
                 location=$(pwd)
                 echo "chosen location is $location"
+        else
+                cd "$results"
+                fileSelect
+        fi
+fi
+
+}
+
+SingleFileSelect(){
+#Selects a folder using some BASH/Whiptail trickery
+results=$(whiptail --title "Current location $(pwd)"  --menu "Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `echo "../ -"; for x in $(ls -p); do echo $x "-"; done` 2>&1 >/dev/tty)
+exitstatus=$?
+if [ "$exitstatus" = "1" ]; then
+        echo "The user canceled :("
+        return "1"
+else
+        if [ -f "$results" ]; then
+                location=$(pwd)/$results
+                echo "$location"
         else
                 cd "$results"
                 fileSelect
@@ -1966,6 +1985,24 @@ CheckForRaspiLTSP(){
 }
 
 
+ImportUsersFromCSV(){
+	whiptail --title "Import from CSV" --yesno "PiNet supports importing users from a CSV file. Many user management systems can export a CSV file with usernames and passwords (or just usernames). The required format is 1st column is username and 2nd coloum is password. If the password column is left blank, a default password you select will be used. Would you like to continue?" 11 78
+	if [ $? -eq 0 ]; then 
+		whiptail --title "Select CSV" --msgbox "Please now select your CSV file." 9 78
+		cd /home/$SUDO_USER
+		local fileLoc=$(SingleFileSelect)
+		if [ ! fileLoc = "The user canceled :(" ]; then
+			password=$(whiptail --inputbox "Enter a default password to use if I am unable to find one." 8 78 --title "Password" 3>&1 1>&2 2>&3)
+			if [ password = "" ]; then
+				whiptail --title "Error" --msgbox "Default password box can't be left blank!" 9 78
+			else
+				$p importFromCSV $fileLoc $password
+			fi
+		fi
+	fi
+}
+
+
 #***************************************************************************************************
 backupDeleteTime(){
   MENUEPT=$(whiptail --menu "How long would you like to store backups? Note this only runs when a backup runs." 20 85 10 \
@@ -2266,6 +2303,7 @@ UserGroups() {
   	"Change-password" "Change password of a user" \
   	"Display-users" "List all the users on the system" \
   	"Add-teacher" "Add user to the staff permission group" \
+		"Import-Users" "Import usernames and passwords from a CSV file" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
 		"Group-check" "Checks all users are in the correct system groups" \
@@ -2295,6 +2333,9 @@ case "$MENUEPT" in
     Add-teacher) 
     AddTeacher
 	Menu
+		;;
+		Import-Users)
+		ImportUsersFromCSV
     ;;
     Graphics-fix)
     fixGroups
