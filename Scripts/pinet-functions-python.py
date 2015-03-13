@@ -506,10 +506,49 @@ def displayChangeLog(version):
     else:
         return "ERROR"
 
+def previousImport():
+    items = ["passwd", "group", "shadow", "gshadow"]
+    #items = ["group",]
+    toAdd = []
+    for x in range(0, len(items)):
+        #migLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x] + ".mig"
+        #etcLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x]
+        migLoc = "/root/move/" + items[x] + ".mig"
+        etcLoc = "/etc/" + items[x]
+        debug("mig loc " + migLoc)
+        debug("etc loc " + etcLoc)
+        mig = getList(migLoc)
+        etc = getList(etcLoc)
+        for i in range(0, len(mig)):
+            mig[i] = str(mig[i]).split(":")
+        for i in range(0, len(etc)):
+            etc[i] = str(etc[i]).split(":")
+        for i in range(0, len(mig)):
+            unFound = True
+            for y in range(0, len(etc)):
+                bob = mig[i][0]
+                thing = etc[y][0]
+                if bob == thing:
+                    unFound = False
+            if unFound:
+                toAdd.append(mig[i])
+        for i in range(0, len(toAdd)):
+            etc.append(toAdd[i])
+        for i in range(0, len(etc)):
+            line = ""
+            for y in range(0, len(etc[i])):
+                line = line  + etc[i][y] + ":"
+            line = line[0:len(line) - 1]
+            etc[i] = line
+        debug(etc)
+        writeTextFile(etc, etcLoc)
+
+
+
 #------------------------------Main program-------------------------
 
 getReleaseChannel()
-
+#previousImport()
 if len(sys.argv) == 1:
     print("This python script does nothing on its own, it must be passed stuff")
 
@@ -536,3 +575,5 @@ else:
         checkKernelUpdater()
     elif sys.argv[1] == "installCheckKernelUpdater":
         installCheckKernelUpdater()
+    elif sys.argv[1] == "previousImport":
+        previousImport()

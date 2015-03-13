@@ -3,12 +3,12 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.51
+version=0.10.52
 
 #PiNet (Previously pinet)
 
 #Written by Andrew Mulholland, based off the fantastic work by vagrantc and alksig from the LTSP community
-#Initial guide available at http://cascadia.debian.net/trenza/Documentation/pinet-howto/
+#Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 #Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
 #
 #PiNet is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
@@ -1757,11 +1757,12 @@ if [ $? -eq 0 ]; then
 		cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
 		cd /
 		tar -zxvf /home/$SUDO_USER/toMove.tar.gz
-		cd /root/move
-		cat passwd.mig >> /etc/passwd
-		cat group.mig >> /etc/group
-		cat shadow.mig >> /etc/shadow
-		/bin/cp gshadow.mig /etc/gshadow
+		#cd /root/move
+		#cat passwd.mig >> /etc/passwd
+		#cat group.mig >> /etc/group
+		#cat shadow.mig >> /etc/shadow
+		#/bin/cp gshadow.mig /etc/gshadow
+		$p "previousImport"
 		cd /
 		tar -zxvf /root/move/home.tar.gz
 		fixGroups
@@ -2411,7 +2412,7 @@ FullInstall(){
 		RaspiTheme   #Installs the PiNet theme which can be seen at login
 		FixDesktopIcons   #Adds desktop icons
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
