@@ -3,12 +3,12 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.47
+version=0.10.53
 
 #PiNet (Previously pinet)
 
 #Written by Andrew Mulholland, based off the fantastic work by vagrantc and alksig from the LTSP community
-#Initial guide available at http://cascadia.debian.net/trenza/Documentation/pinet-howto/
+#Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
 #Spindle was used to figure out needed changes to generate Raspbian image https://github.com/asb/spindle
 #
 #PiNet is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
@@ -279,21 +279,22 @@ UpdateSD() {
 #whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
 local Internet=$(checkInternet)
 if [ $Internet -eq 0 ]; then
-	if [ ! -d "/opt/raspiLTSP" ]; then
-		mkdir /opt/raspiLTSP
+	if [ ! -d "/opt/PiNet" ]; then
+		mkdir /opt/PiNet
 	fi
-	if [ ! -d "/opt/raspiLTSP/PiBootBackup" ]; then
-		mkdir /opt/raspiLTSP/PiBootBackup
+	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
+		mkdir /opt/PiNet/PiBootBackup
 	fi
 	rm -rf /tmp/PiBoot
-	git clone --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
-	rm -rf /opt/raspiLTSP/PiBootBackup/*
-	cp /tmp/PiBoot/boot/* /opt/raspiLTSP/PiBootBackup/
+	git clone --no-single-branch --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
+	(cd "/tmp/PiBoot"; git checkout "$ReleaseBranch")
+	rm -rf /opt/PiNet/PiBootBackup/*
+	cp /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/
 	UpdateIP
 	toReturn=0
 	
 else
-	if [ ! -d "/opt/raspiLTSP/PiBootBackup" ]; then
+	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
 		whiptail --title "Error" --msgbox "You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
 		toReturn=1
 	else
@@ -306,16 +307,16 @@ if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
 	local currentVersion=0
 	local newVersion=0
 	local currentVersion=$(head -n 1 "/opt/ltsp/armhf/bootfiles/version.txt")
-	local newVersion=$(head -n 1 "/opt/raspiLTSP/PiBootBackup/version.txt")
+	local newVersion=$(head -n 1 "/opt/PiNet/PiBootBackup/version.txt")
 	echo "$currentVersion $newVersion"
 	if (( $currentVersion < $newVersion )); then 
 		rm -rf "/opt/ltsp/armhf/bootfiles/"
-		cp -rf "/opt/raspiLTSP/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
+		cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
 		rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
 		NBDRun
 	fi
 else
-	cp -rf "/opt/raspiLTSP/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
+	cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
 	rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
 	NBDRun
 	
@@ -341,7 +342,7 @@ fi
 service nfs-kernel-server restart   #Restart the NFS kernel, just in case
 if [ "$SUDO_USER" = "" ]; then
 		rm -rf ~/PiBoot/
-        cp -r /opt/raspiLTSP/PiBootBackup/ ~/PiBoot/
+        cp -r /opt/PiNet/PiBootBackup/ ~/PiBoot/
         if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
 			rm ~/PiBoot/cmdline.txt
 			cp ~/PiBoot/cmdlineNBD.txt ~/PiBoot/cmdline.txt
@@ -353,7 +354,7 @@ if [ "$SUDO_USER" = "" ]; then
         nautilus ~/PiBoot > /dev/null 2>&1 &
 else
 		rm -rf "/home/$SUDO_USER/PiBoot/"
-        cp -r /opt/raspiLTSP/PiBootBackup/ "/home/$SUDO_USER/PiBoot/"
+        cp -r /opt/PiNet/PiBootBackup/ "/home/$SUDO_USER/PiBoot/"
         chown -R "$SUDO_USER" "/home/$SUDO_USER/PiBoot"
         if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
 			rm /home/$SUDO_USER/PiBoot/cmdline.txt
@@ -608,7 +609,7 @@ AddSoftware(){
 ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python3-pygame python-tk sudo sshpass pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
-ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools linux-image-rpi-rpfv man-db
+ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools man-db
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
 ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby
 ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
@@ -616,7 +617,7 @@ ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-bro
 ltsp-chroot apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
-ltsp-chroot --arch armhf apt-get install -y linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi
+ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
 
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
 
@@ -917,11 +918,30 @@ fi
 
 }
 
+SingleFileSelect(){
+#Selects a folder using some BASH/Whiptail trickery
+results=$(whiptail --title "Current location $(pwd)"  --menu "Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `echo "../ -"; for x in $(ls -p); do echo $x "-"; done` 2>&1 >/dev/tty)
+exitstatus=$?
+if [ "$exitstatus" = "1" ]; then
+        echo "The user canceled :("
+        return "1"
+else
+        if [ -f "$results" ]; then
+                location=$(pwd)/$results
+                echo "$location"
+        else
+                cd "$results"
+                fileSelect
+        fi
+fi
+
+}
+
 removeAnacronLines() {
 #Removes anacrontab lines which can cause issues. Used for backup scheduling
-sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
-sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
-sed --in-place '/RaspiLTSP.backup/d' /etc/anacrontab
+sed --in-place '/PiNet.backup/d' /etc/anacrontab
+sed --in-place '/PiNet.backup/d' /etc/anacrontab
+sed --in-place '/PiNet.backup/d' /etc/anacrontab
 
 }
 
@@ -1176,7 +1196,7 @@ checkInstallLoc(){
 #Checks PiNet is installed in the correct place (/usr/local/bin/pinet)
 InstallLoc="${BASH_SOURCE[0]}"
 if [ ! "$InstallLoc" = "/usr/local/bin/pinet" ]; then
-	whiptail --title "Wrong location" --msgbox "I have detected your PiNet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch PiNet." 10 78
+	#whiptail --title "Wrong location" --msgbox "I have detected your PiNet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch PiNet." 10 78
 	mv $InstallLoc /usr/local/bin/pinet
 	exec /bin/bash pinet
 fi
@@ -1395,7 +1415,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! You must reselect the correct permission level for each folder now." 8 78	
+		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1749,25 +1769,37 @@ fi
 
 RestoreMoveBackup() {
 #Restore full backup of all users and group data
-whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! PiNet must not already be installed! Also this could break everything so I take no responsibility if this alpha quality feature fails. Do you want to proceed?" 10 78
+whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! PiNet must not already be installed! This feature is still alpha level quality. Make sure to manaully check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
-	mkdir /root/newsusers.bak
-	cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
-	cd /
-	tar -zxvf /home/$SUDO_USER/toMove.tar.gz
-	cd /root/move
-	cat passwd.mig >> /etc/passwd
-	cat group.mig >> /etc/group
-	cat shadow.mig >> /etc/shadow
-	/bin/cp gshadow.mig /etc/gshadow
-	cd /
-	tar -zxvf /root/move/home.tar.gz
-
-	whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok?" 9 78
-	if [ $? -eq 0 ]; then
-		reboot
+	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
+		mkdir /root/newsusers.bak
+		cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
+		cd /
+		tar -zxvf /home/$SUDO_USER/toMove.tar.gz
+		#cd /root/move
+		#cat passwd.mig >> /etc/passwd
+		#cat group.mig >> /etc/group
+		#cat shadow.mig >> /etc/shadow
+		#/bin/cp gshadow.mig /etc/gshadow
+		$p "previousImport"
+		cd /
+		tar -zxvf /root/move/home.tar.gz
+		fixGroups
+		rm /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
+		AddDesktopShortcutToUser
+		whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
+		if [ $? -eq 0 ]; then
+			reboot
+		else
+			exit
+		fi
 	else
-		exit
+		whiptail --title "Import failed" --yesno "The user import has failed, /home/$SUDO_USER/toMove.tar.gz wasn't found? Are you sure you copied it to that location? Would you like to try again?" 9 78
+		if [ $? -eq 0 ]; then
+			RestoreMoveBackup
+		else
+			exit
+		fi
 	fi
 else
 	exit
@@ -1937,6 +1969,39 @@ GroupCheck(){
 	whiptail --title "Complete" --msgbox "All user groups have been checked and if need be, corrected." 8 78
 }
 
+CheckForRaspiLTSP(){
+	#Checks if Raspi-LTSP is installed and warns the user if it is.
+	if [ -f /etc/raspi-ltsp ]; then
+		whiptail --title "Raspi-LTSP found!" --msgbox "A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
+		echo "Raspi-LTSP configuration file found at /etc/raspi-ltsp"
+		exit
+	else
+		if [ -d /opt/raspiLTSP ]; then
+			whiptail --title "Raspi-LTSP found!" --msgbox "A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
+			echo "Raspi-LTSP configuration folder found at /opt/raspiLTSP"
+			exit
+		fi
+	fi
+}
+
+
+ImportUsersFromCSV(){
+	whiptail --title "Import from CSV" --yesno "PiNet supports importing users from a CSV file. Many user management systems can export a CSV file with usernames and passwords (or just usernames). The required format is 1st column is username and 2nd coloum is password. If the password column is left blank, a default password you select will be used. Would you like to continue?" 11 78
+	if [ $? -eq 0 ]; then 
+		whiptail --title "Select CSV" --msgbox "Please now select your CSV file." 9 78
+		cd /home/$SUDO_USER
+		local fileLoc=$(SingleFileSelect)
+		if [ ! fileLoc = "The user canceled :(" ]; then
+			password=$(whiptail --inputbox "Enter a default password to use if I am unable to find one." 8 78 --title "Password" 3>&1 1>&2 2>&3)
+			if [ password = "" ]; then
+				whiptail --title "Error" --msgbox "Default password box can't be left blank!" 9 78
+			else
+				$p importFromCSV $fileLoc $password
+			fi
+		fi
+	fi
+}
+
 
 #***************************************************************************************************
 backupDeleteTime(){
@@ -1981,16 +2046,16 @@ backupFrequency(){
 case "$MENUEPT" in
     Every-day) 
     removeAnacronLines
-    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
+    echo "1       15      PiNet.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
 	
     ;;
     Twice-weekly)
     removeAnacronLines 
-    echo "3       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
+    echo "3       15      PiNet.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
     ;;
     Once-a-week)
     removeAnacronLines 
-    echo "1       15      RaspiLTSP.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
+    echo "1       15      PiNet.backup1      /bin/sh /usr/local/bin/pinet-backup.sh" >> /etc/anacrontab
     ;;
     *)
     removeAnacronLines
@@ -2238,6 +2303,7 @@ UserGroups() {
   	"Change-password" "Change password of a user" \
   	"Display-users" "List all the users on the system" \
   	"Add-teacher" "Add user to the staff permission group" \
+		"Import-Users" "Import usernames and passwords from a CSV file" \
     "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" "Disables the use of sudo for pupils" \
 		"Group-check" "Checks all users are in the correct system groups" \
@@ -2267,6 +2333,9 @@ case "$MENUEPT" in
     Add-teacher) 
     AddTeacher
 	Menu
+		;;
+		Import-Users)
+		ImportUsersFromCSV
     ;;
     Graphics-fix)
     fixGroups
@@ -2384,7 +2453,7 @@ FullInstall(){
 		RaspiTheme   #Installs the PiNet theme which can be seen at login
 		FixDesktopIcons   #Adds desktop icons
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
@@ -2552,6 +2621,7 @@ checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to 
 
 echo "Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
+CheckForRaspiLTSP
 
 
 if [ ! -d /opt/ltsp/armhf ]; then
@@ -2564,21 +2634,20 @@ if [ ! -d /opt/ltsp/armhf ]; then
     		Menu
 		fi
 fi
-CheckTerminalSize
-ConfigFileRead
+CheckTerminalSize  #Changes the terminal to the minimum size if is too small
+ConfigFileRead  #Reads the main configuration file (/etc/pinet) and loads all values in as environmental variables
 
-if [ "$ReleaseChannel" = "" ]; then
+if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected, if not asks for one
 	ChooseReleaseChannel "Restart"
 fi
 
-SetupRepositories
+SetupRepositories #Sets up the correct branch varliables as selected in ChooseReleaseChannel()
 
-intStat=$(checkInternet)
+intStat=$(checkInternet)  #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
 if [ $intStat -eq 0 ]; then
 	CheckReleases
 	checkKernelFileUpdateWeb
 	checkKernelUpdater "NBD"
 fi
-LegacyFixes
-#VariablesSetup
-Menu
+LegacyFixes #Makes sure all configuration data is correctly configured
+Menu #Runs main menu

@@ -506,10 +506,108 @@ def displayChangeLog(version):
     else:
         return "ERROR"
 
+def previousImport():
+    items = ["passwd", "group", "shadow", "gshadow"]
+    #items = ["group",]
+    toAdd = []
+    for x in range(0, len(items)):
+        #migLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x] + ".mig"
+        #etcLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x]
+        migLoc = "/root/move/" + items[x] + ".mig"
+        etcLoc = "/etc/" + items[x]
+        debug("mig loc " + migLoc)
+        debug("etc loc " + etcLoc)
+        mig = getList(migLoc)
+        etc = getList(etcLoc)
+        for i in range(0, len(mig)):
+            mig[i] = str(mig[i]).split(":")
+        for i in range(0, len(etc)):
+            etc[i] = str(etc[i]).split(":")
+        for i in range(0, len(mig)):
+            unFound = True
+            for y in range(0, len(etc)):
+                bob = mig[i][0]
+                thing = etc[y][0]
+                if bob == thing:
+                    unFound = False
+            if unFound:
+                toAdd.append(mig[i])
+        for i in range(0, len(toAdd)):
+            etc.append(toAdd[i])
+        for i in range(0, len(etc)):
+            line = ""
+            for y in range(0, len(etc[i])):
+                line = line  + etc[i][y] + ":"
+            line = line[0:len(line) - 1]
+            etc[i] = line
+        debug(etc)
+        writeTextFile(etc, etcLoc)
+
+def importFromCSV(theFile, defaultPassword, test = True):
+    import csv
+    import os
+    from sys import exit
+    import crypt
+    userData=[]
+    if test == "True" or True:
+        test = True
+    else:
+        test = False
+    if os.path.isfile(theFile):
+        with open(theFile) as csvFile:
+            data = csv.reader(csvFile, delimiter=' ', quotechar='|')
+            for row in data:
+                try:
+                    theRow=str(row[0]).split(",")
+                except:
+                    whiptailBox("msgbox", "Error!", "CSV file invalid!", False)
+                    sys.exit()
+                user=theRow[0]
+                if " " in user:
+                    whiptailBox("msgbox", "Error!", "CSV file names column (1st column) contains spaces in the usernames! This isn't supported.", False)
+                    returnData("1")
+                    sys.exit()
+                if len(theRow) >= 2:
+                    if theRow[1] == "":
+                        password=defaultPassword
+                    else:
+                        password=theRow[1]
+                else:
+                    password=defaultPassword
+                userData.append([user, password])
+            if test:
+                thing = ""
+                for i in range(0, len(userData)):
+                    thing = thing + "Username - " + userData[i][0] + " : Password - " + userData[i][1] + "\n"
+                cmd = ["whiptail", "--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "import" , "--no-button", "Cancel", thing, "24", "78"]
+                p = Popen(cmd,  stderr=PIPE)
+                out, err = p.communicate()
+                if p.returncode == 0:
+                    for x in range(0, len(userData)):
+                        user = userData[x][0]
+                        password = userData[x][1]
+                        encPass = crypt.crypt(password,"22")
+                        cmd = ["useradd", "-p", encPass, user]
+                        p = Popen(cmd,  stderr=PIPE)
+                        out, err = p.communicate()
+                        fixGroupSingle(user)
+                        print("Import of " + user + " complete.")
+                    whiptailBox("msgbox", "Complete", "Importing of CSV data has been complete.", False)
+                else:
+                    sys.exit()
+    else:
+        print("Error! CSV file not found at " + theFile)
+
+def fixGroupSingle(username):
+    groups = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
+    for x in range(0, len(groups)):
+        cmd = ["usermod", "-a", "-G", groups[x], username]
+        p = Popen(cmd,  stderr=PIPE)
+        out, err = p.communicate()
+
 #------------------------------Main program-------------------------
 
 getReleaseChannel()
-
 if len(sys.argv) == 1:
     print("This python script does nothing on its own, it must be passed stuff")
 
@@ -536,3 +634,7 @@ else:
         checkKernelUpdater()
     elif sys.argv[1] == "installCheckKernelUpdater":
         installCheckKernelUpdater()
+    elif sys.argv[1] == "previousImport":
+        previousImport()
+    elif sys.argv[1] == "importFromCSV":
+        importFromCSV(sys.argv[2], sys.argv[3])
