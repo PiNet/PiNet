@@ -397,6 +397,7 @@ def checkUpdate(currentVersion):
         returnData(0)
     import feedparser
     import xml.etree.ElementTree
+    downloadFile("http://bit.ly/pinetCheckCommits", "/dev/null")
     d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
     data = (d.entries[0].content[0].get('value'))

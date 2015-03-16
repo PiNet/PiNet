@@ -3,9 +3,9 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.53
+version=0.10.54
 
-#PiNet (Previously pinet)
+#PiNet (Previously RaspberryPi-LTSP)
 
 #Written by Andrew Mulholland, based off the fantastic work by vagrantc and alksig from the LTSP community
 #Initial guide available at http://cascadia.debian.net/trenza/Documentation/raspberrypi-ltsp-howto/
@@ -1071,7 +1071,16 @@ TroubleShooter(){
 				whiptail --title "Login" --msgbox "LDM (login screen) does not handle incorrect passwords very well. If you enter an incorrect set of credentials, it just restarts itself. Don't worry about this.
 				If you are unsure about your password, remember you can easily change it in the Manage-users submenu" 16 78
 			else
-				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
+				whiptail --title "USB drivers" --yesno "Is your keyboard working?" 8 78
+				if [ ! $? -eq 0 ]; then
+					whiptail --title "Kernel misaligned" --msgbox "9/10 times, this means your kernels are misaligned. Basically there is a kernel on the SD card and as it boots and connects to the PiNet server, it
+					loads the required additional modules (for stuff like USB) from the server. If the server has modules compiled for a more recent kernel, they are misaligned and don't work.
+					To fix this, make sure you are running the most recent version of PiNet, also hit the update-sd option and reflash your SD card to see if that fixes it. If not, a patched set of boot files may not
+					be available yet (they have to be prepared by hand). Best thing you can do is drop support an email and let them know that you are having keyboard/mouse issues. Visit http://pinet.org.uk/articles/support.html" 17 78
+					
+				else
+					whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
+				fi
 			fi
 		else
 			resetAndCleanup
@@ -1810,12 +1819,13 @@ fi
 InstallScratchGPIO(){
 #Installs ScratchGPIO 5 by manually pushing an install script to each user
 	whiptail --title "Note" --msgbox "ScratchGPIO can't be directly installed, each user must install it. A desktop shortcut has been added to each user account called \"Install ScratchGPIO\". Get each student to run this the first time they want to use the software." 10 78
-	rm -rf /tmp/isgh5.sh
+	rm -rf /tmp/isgh7.sh
 	rm -rf /opt/ltsp/armhf/usr/local/bin/isgh5.sh
 	rm -rf /opt/ltsp/armhf/usr/local/bin/scratchSudo.sh
-	wget http://goo.gl/Pthh62 -O /tmp/isgh5.sh
-	cp /tmp/isgh5.sh  /opt/ltsp/armhf/usr/local/bin/isgh5.sh
-	echo "bash /usr/local/bin/isgh5.sh \$SUDO_USER" > /opt/ltsp/armhf/usr/local/bin/scratchSudo.sh
+	rm -rf /opt/ltsp/armhf/usr/local/bin/isgh7.sh
+	wget http://bit.ly/1wxrqdp -O /tmp/isgh7.sh
+	cp /tmp/isgh7.sh  /opt/ltsp/armhf/usr/local/bin/isgh7.sh
+	echo "bash /usr/local/bin/isgh7.sh \$SUDO_USER" > /opt/ltsp/armhf/usr/local/bin/scratchSudo.sh
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 	do
 	if [ ! -f "/home/$user/Desktop/Install-scratchGPIO.desktop" ]; then
@@ -2406,7 +2416,7 @@ case "$MENUEPT" in
 	FinishedInstallingSoftware
     ;;
     Install-Python-hardware) 
-    ltsp-chroot --arch armhf pip install pibrella
+    ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
