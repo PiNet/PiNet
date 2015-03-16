@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.55
+version=0.10.56
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -1964,6 +1964,7 @@ ChooseReleaseChannel(){
 	else
 		UpdateConfig ReleaseChannel "Dev"
 	fi
+	SetupRepositories
 	if [ $1 = "Restart" ]; then
 		exec /bin/bash pinet
 		exit
