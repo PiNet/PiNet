@@ -422,7 +422,7 @@ def checkKernelFileUpdateWeb():
     downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
-    currentPath="/home/"+user+"/piBoot/version.txt"
+    currentPath="/home/"+user+"/PiBoot/version.txt"
     if (os.path.isfile(currentPath)) == True:
         current = int(getCleanList(currentPath)[0])
         new = int(getCleanList("/tmp/kernelVersion.txt")[0])
