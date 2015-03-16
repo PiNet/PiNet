@@ -397,6 +397,7 @@ def checkUpdate(currentVersion):
         returnData(0)
     import feedparser
     import xml.etree.ElementTree
+    downloadFile("http://bit.ly/pinetCheckCommits", "/dev/null")
     d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
     data = (d.entries[0].content[0].get('value'))
@@ -421,7 +422,7 @@ def checkKernelFileUpdateWeb():
     downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
-    currentPath="/home/"+user+"/piBoot/version.txt"
+    currentPath="/home/"+user+"/PiBoot/version.txt"
     if (os.path.isfile(currentPath)) == True:
         current = int(getCleanList(currentPath)[0])
         new = int(getCleanList("/tmp/kernelVersion.txt")[0])
