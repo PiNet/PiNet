@@ -17,7 +17,7 @@ Its main features include
 - **Easy to configure backups** - Educators can easily setup backups for the entire classes work to be saved on an external hard drive on a daily or weekly basis.   
 - **It is completely free and open-source** - PiNet is completely free and open-source for everybody!   
 - **Extensive documentation** - Alongside PiNet, there is also an extensive website of documentation with currently over 30 sections covering all features with over 100 images/screengrabs. This can be found at [http://pinet.org.uk](http://pinet.org.uk).   
-- **Fully supports the OCR GCSE CS A452 task\* ** - PiNet full supports the OCR GCSE Computer Science A452 Linux task which requires students to be able to work with files, create users and groups and also install software. All of this is possible with PiNet.   
+- **Fully supports the OCR GCSE CS A452 task** \* - PiNet full supports the OCR GCSE Computer Science A452 Linux task which requires students to be able to work with files, create users and groups and also install software. All of this is possible with PiNet.   
      
           
 PiNet is designed for teachers to setup their own mini Raspberry Pi networks. 
