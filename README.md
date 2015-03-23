@@ -3,7 +3,7 @@ PiNet (Previously RaspberryPi-LTSP)
 
 ![Login screen](images/Raspi-Login.png)
       
-##PiNet Documentation Site - http://pinet.org.uk    
+#PiNet Website - http://pinet.org.uk    
 ------   
 ###"*PiNet is a utility for setting up the infrastructure required for a permanent classroom set of Raspberry Pis."*    
 PiNet is has been written to help support educators in using the Raspberry Pi computer in their classrooms   
@@ -17,7 +17,7 @@ Its main features include
 - **Easy to configure backups** - Educators can easily setup backups for the entire classes work to be saved on an external hard drive on a daily or weekly basis.   
 - **It is completely free and open-source** - PiNet is completely free and open-source for everybody!   
 - **Extensive documentation** - Alongside PiNet, there is also an extensive website of documentation with currently over 30 sections covering all features with over 100 images/screengrabs. This can be found at [http://pinet.org.uk](http://pinet.org.uk).   
-- **Fully supports the OCR GCSE CS A452 task\*** - PiNet full supports the OCR GCSE Computer Science A452 Linux task which requires students to be able to work with files, create users and groups and also install software. All of this is possible with PiNet.   
+- **Fully supports the OCR GCSE CS A452 task\* ** - PiNet full supports the OCR GCSE Computer Science A452 Linux task which requires students to be able to work with files, create users and groups and also install software. All of this is possible with PiNet.   
      
           
 PiNet is designed for teachers to setup their own mini Raspberry Pi networks. 
@@ -26,7 +26,7 @@ It is so simple, we even have an 11 year old who manages his entire schools PiNe
    
 Simplicity is the key to PiNet.   
 
-\* The OCR GCSE CS A452 task is not supported on the original Raspberry Pi model B revision 1 with 256mb of RAM as it is unable to install ```tree``` due to a lack of RAM.
+\* The OCR GCSE CS A452 task is not supported on the original Raspberry Pi model B revision 1 with 256mb of RAM as it is unable to install additional packages due to a lack of RAM.
 
 ![Lapdocks](images/lapdock-ltsp.jpg)
 
@@ -42,8 +42,16 @@ The overall feedback has been excellent with overwhelmingly positive feedback fr
 Raspberry Pi Club.**
 
 
-##WARNING
+##License
 
-The software included should work but is not heavily tested with every new code change. Consider it Alpha quality software.   
-It is recommended, if you are interested in bringing this into your school, feel free to contact Andrew (lead developer) via the [support page](http://pinet.org.uk/support.html).  
-For details on the licence of this project, see the LICENCE file.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.   
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.    
+   
+For details on the License of this project, see the LICENSE file.

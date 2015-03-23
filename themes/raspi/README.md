@@ -1,6 +1,6 @@
-This folder contains the custom LDM theme designed for the Raspberry Pi   
+This folder contains the custom LDM theme designed for the Raspberry Pi.   
 
-Logo.png - Image credit : Raspberry Pi foundation http://www.raspberrypi.org/   
-Bg.png - Image credit : Jason Kinnan http://scienceblogs.com/startswithabang/2013/04/05/long-for-the-stars/   
+logo.png - Image credit : Raspberry Pi Foundation http://www.raspberrypi.org/   
+bg.png - Image credit : John Lemieux  [https://www.flickr.com/photos/newdimensionfilms/7108632527/](https://www.flickr.com/photos/newdimensionfilms/7108632527/)  
 
-Is based off the Joy theme provided by default   
+The theme is based off the Joy theme provided by default.   

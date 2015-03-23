@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.56
+version=0.10.57
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -629,7 +629,7 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
 fi
 
 #Server software
-apt-get install -y bindfs
+apt-get install -y bindfs python3-feedparser
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
@@ -1865,7 +1865,7 @@ fi
 FirstTimeImportUsers(){
 #Asks user if they want to import users on the first startup of PiNet
 if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
-	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous PiNet server? (If you don't know, just select no)" 8 78
+	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous PiNet (or Raspi-LTSP) server? This can only be done now on installation. If in doubt, select no." 8 78
 	if [ $? -eq 0 ]; then 
 		RestoreMoveBackup
 	fi
