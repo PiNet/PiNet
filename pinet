@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=0.10.56
+version=1.0.1
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -629,7 +629,7 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
 fi
 
 #Server software
-apt-get install -y bindfs
+apt-get install -y bindfs python3-feedparser
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
@@ -1740,7 +1740,7 @@ fi
 
 CreateMoveBackup() {
 #Create a full backup of all users and groups data for moving to a clean system
-whiptail --title "WARNING!!" --yesno "This process is extremely experimental! I take no responsibility for data loss! It is only designed to move the files to a completely fresh Ubuntu install in which PiNet is not installed! Please visit http://PiNet.org.uk/manage-users/migration.html for full instructions.
+whiptail --title "Warning" --yesno "This process is only designed to move user files to a completely fresh Ubuntu install in which PiNet is not installed. Please make sure to verify all user data is imported correctly on the new PiNet server. Visit http://PiNet.org.uk/manage-users/migration.html for full instructions.
 Are you sure you want to proceed?" 11 78
 if [ $? -eq 0 ]; then 
 	mkdir /root/move/
@@ -1777,7 +1777,7 @@ fi
 
 RestoreMoveBackup() {
 #Restore full backup of all users and group data
-whiptail --title "WARNING!!" --yesno "Importing should only be performed on a completely fresh Ubuntu install! PiNet must not already be installed! This feature is still alpha level quality. Make sure to manaully check all files have copied correctly. Do you want to proceed?" 10 78
+whiptail --title "Warning" --yesno "Importing should only be performed on a completely fresh Ubuntu install. PiNet or Raspi-LTSP must not already be installed. Make sure to manually check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 		mkdir /root/newsusers.bak
@@ -1865,7 +1865,7 @@ fi
 FirstTimeImportUsers(){
 #Asks user if they want to import users on the first startup of PiNet
 if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
-	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous PiNet server? (If you don't know, just select no)" 8 78
+	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous PiNet (or Raspi-LTSP) server? This can only be done now on installation. If in doubt, select no." 8 78
 	if [ $? -eq 0 ]; then 
 		RestoreMoveBackup
 	fi
