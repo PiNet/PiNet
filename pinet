@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.1
+version=1.0.2
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -2467,6 +2467,7 @@ FullInstall(){
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
+		UpdateConfig NBD true
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
 		InstallRaspberryPiUIMods
