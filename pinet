@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.2
+version=1.0.3
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -51,7 +51,7 @@ LegacyFixes() {
 	fi
 	CheckDesktopShortcut
 	teacherSudoCheck
-	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""  #zzzz
+	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""
 	if [ -f "/etc/default/epoptes" ]; then
 		ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
 	fi
@@ -2113,11 +2113,12 @@ case "$MENUEPT" in
     Menu
     ;;
     Network-technology)
-	NBDSetup
-	UpdateSD
-	whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/PiBoot folder to the root of an SD card." 16 78
-	Menu
-	;;
+		whiptail --title "Option disabled" --msgbox "This option has been disabled for now. NFS is currently broken in 3.18 kernels, so NBD is the only option." 8 78
+		#NBDSetup
+		#UpdateSD
+		#whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/PiBoot folder to the root of an SD card." 16 78
+		Menu
+		;;
 	NBD-recompress)
 	local CurrentNBD=$NBDuse
 	UpdateConfig NBDuse true
