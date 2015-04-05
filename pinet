@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.3
+version=1.0.4
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -1912,12 +1912,12 @@ checkKernelFileUpdateWeb(){
 	if [ $KernelV = "1" ]; then
 		current=$(head -n 1 /home/$SUDO_USER/PiBoot/version.txt)
 		newVersion=$(head -n 1 /tmp/kernelVersion.txt)
-		whiptail --title "Kernel file update" --yesno "An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, you must load the new files onto any SD cards you use.
+		whiptail --title "Kernel file update" --yesno "An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, PiNet will attempt to load these new files onto your SD cards on boot up.
 This update is highly recommended.
 You currently are using version $current and the most up to date version is $newVersion
 Would you like me to update them and your system?" 12 78
 		if [ $? -eq 0 ]; then 
-			whiptail --title "Auto reboot" --msgbox "Your Raspberry Pis will auto update their SD cards (by grabbing the version from the server) on next reboot. They will do this in the background and reboot when the update is complete **without warning**." 9 78
+			whiptail --title "Auto reboot" --msgbox "Your Raspberry Pis will attempt to auto update their SD cards (by grabbing the version from the server) on next reboot. They will do this in the background and reboot when the update is complete **without warning**." 9 78
 			installKernelUpdater ""
 			UpdateSD
 			UpdateAll
