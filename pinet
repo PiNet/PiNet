@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.4
+version=1.0.5
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -610,7 +610,7 @@ ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc s
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python3-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools man-db
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
-ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby
+ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby iputils-ping
 ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
 ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser cgroup-bin
 ltsp-chroot apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
@@ -2012,6 +2012,13 @@ ImportUsersFromCSV(){
 	fi
 }
 
+CheckInstallSuccess(){
+	if [ -d "/opt/ltsp/armhf/debootstrap" ]; then
+		whiptail --title "Installation error" --msgbox "An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		exit
+	fi
+}
+
 
 #***************************************************************************************************
 backupDeleteTime(){
@@ -2482,6 +2489,7 @@ FullInstall(){
 		LegacyFixes
 		resetAndCleanup
 		$p triggerInstall
+		CheckInstallSuccess
 	
 		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
@@ -2555,6 +2563,7 @@ Rebuild-OS)
     		EnableNBD
     		LegacyFixes
     		resetAndCleanup
+				CheckInstallSuccess
 			whiptail --title "Rebuild complete" --msgbox "PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 		else
 			whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
@@ -2662,4 +2671,5 @@ if [ $intStat -eq 0 ]; then
 	checkKernelUpdater "NBD"
 fi
 LegacyFixes #Makes sure all configuration data is correctly configured
+CheckInstallSuccess
 Menu #Runs main menu
