@@ -1424,7 +1424,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
+		whiptail --title "WARNING!!" --msgbox "Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
