@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.5
+version=1.0.6
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -51,6 +51,7 @@ LegacyFixes() {
 	fi
 	CheckDesktopShortcut
 	teacherSudoCheck
+	CheckRaspberryPiUIMods
 	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf "NFS_HOME=/home" ""
 	if [ -f "/etc/default/epoptes" ]; then
 		ReplaceTextLine "/etc/default/epoptes" "SOCKET_GROUP=staff" "SOCKET_GROUP=teacher"
@@ -629,7 +630,7 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
 fi
 
 #Server software
-apt-get install -y bindfs python3-feedparser
+apt-get install -y bindfs python3-feedparser ntp
 
 #******************************************************************************************
 #------------------------------------------------------------------------------------------
@@ -1949,12 +1950,68 @@ installKernelUpdater(){
 	
 }
 
+CheckRaspberryPiUIMods(){
+	
+	if [ ! -f "/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf" ]; then
+		InstallRaspberryPiUIMods
+		UpdateConfig NBDBuildNeeded true
+		return
+	fi
+	
+	
+	$p checkIfFileContainsString "/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf" "raspberrypi-artwork"
+	exitstatus=$(gp)
+	if [ "$exitstatus" = "1" ]; then
+		InstallRaspberryPiUIMods
+		UpdateConfig NBDBuildNeeded true
+	else
+		$p checkIfFileContainsString "/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf" "raspberrypi-artwork"
+		exitstatus=$(gp)
+		if [ "$exitstatus" = "1" ]; then
+			InstallRaspberryPiUIMods
+			UpdateConfig NBDBuildNeeded true
+		fi
+	fi
+	
+}
+
+FixUIConfigFile(){
+	if [ $1 == "System" ]; then
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/$2 wallpaper_mode= wallpaper_mode=stretch
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/$2 wallpaper= wallpaper=/etc/alternatives/desktop-background
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/$2 side_pane_mode= side_pane_mode=1
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/$2 desktop_shadow= desktop_shadow=#000000
+		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/$2 desktop_fg= desktop_fg=#ffffff
+	else
+		$p replaceLineOrAdd /home/$3/.config/pcmanfm/LXDE-pi/$2 wallpaper_mode= wallpaper_mode=stretch
+		$p replaceLineOrAdd /home/$3/.config/pcmanfm/LXDE-pi/$2 wallpaper= wallpaper=/etc/alternatives/desktop-background
+		$p replaceLineOrAdd /home/$3/.config/pcmanfm/LXDE-pi/$2 side_pane_mode= side_pane_mode=1 
+		$p replaceLineOrAdd /home/$3/.config/pcmanfm/LXDE-pi/$2 desktop_shadow= desktop_shadow=#000000
+		$p replaceLineOrAdd /home/$3/.config/pcmanfm/LXDE-pi/$2 desktop_fg= desktop_fg=#ffffff
+	fi
+}
+
+CheckRaspberryPiUIModsAllUsers(){
+	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets all users
+	do
+		if [ -f "/home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf" ]; then
+			FixUIConfigFile "User" "pcmanfm.conf" $user
+			FixUIConfigFile "User" "desktop-items-0.conf" $user
+			echo "Updating $user"
+			
+			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf wallpaper_mode= wallpaper_mode=stretch
+			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf wallpaper= wallpaper=/etc/alternatives/desktop-background
+			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf side_pane_mode= side_pane_mode=1
+		fi
+	done
+}
+
 InstallRaspberryPiUIMods(){
 #Installs the new Raspberry Pi UI mods, but fixes the mistakes made in the wallpaper setting
-		ltsp-chroot apt-get install -y raspberrypi-ui-mods 
-		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf wallpaper_mode=3 wallpaper_mode=stretch
-		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf wallpaper=/usr/share/raspberrypi-artwork/raspberry-pi-logo-small.png wallpaper=/etc/alternatives/desktop-background
-		$p replaceLineOrAdd /opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/pcmanfm.conf side_pane_mode=2 side_pane_mode=1
+		ltsp-chroot apt-get -o Dpkg::Options::="--force-overwrite" install -y raspberrypi-ui-mods 
+		FixUIConfigFile "System" "pcmanfm.conf"
+		FixUIConfigFile "System" "desktop-items-0.conf"
+		CheckRaspberryPiUIModsAllUsers 
 }
 
 ChooseReleaseChannel(){
@@ -1976,6 +2033,7 @@ GroupCheck(){
 	#Checks if all users permissions are correct in groups. Front end for fixGroups
 	whiptail --title "Groupcheck" --msgbox "Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
 	fixGroups
+	CheckRaspberryPiUIModsAllUsers
 	whiptail --title "Complete" --msgbox "All user groups have been checked and if need be, corrected." 8 78
 }
 
@@ -2470,6 +2528,7 @@ FullInstall(){
 		AddSoftware   #Adds all the custom software on top of a normal Armhf Debian Wheezy build
 		RaspiTheme   #Installs the PiNet theme which can be seen at login
 		FixDesktopIcons   #Adds desktop icons
+		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
@@ -2478,15 +2537,14 @@ FullInstall(){
 		UpdateConfig NBD true
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
-		InstallRaspberryPiUIMods
 		SetupSharedStandalone
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
 		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-		EnableNBD   #Enables NBD compression
 		fixGroups   #Adds all current users to the pupil and video group
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes
+		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
 		CheckInstallSuccess
@@ -2549,6 +2607,7 @@ Rebuild-OS)
     		FixRepo
     		AddSoftware
     		RaspiTheme
+				InstallRaspberryPiUIMods
     		EnableNBDswap
     		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 			ExtraSoftware
@@ -2556,12 +2615,11 @@ Rebuild-OS)
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
     		UpdateSD
     		addSoundcardDefault
-    		InstallRaspberryPiUIMods
     		installKernelUpdater ""
 			$p checkKernelFileUpdateWeb
     		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-    		EnableNBD
     		LegacyFixes
+				EnableNBD
     		resetAndCleanup
 				CheckInstallSuccess
 			whiptail --title "Rebuild complete" --msgbox "PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78

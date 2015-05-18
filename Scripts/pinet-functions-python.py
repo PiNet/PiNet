@@ -606,6 +606,25 @@ def fixGroupSingle(username):
         p = Popen(cmd,  stderr=PIPE)
         out, err = p.communicate()
 
+def checkIfFileContains(file, string):
+    """
+    Simple function to check if a string exists in a file.
+    """
+
+    textfile = getList(file)
+    unfound = True
+    for i in range(0,len(textfile)):
+        found = textfile[i].find(string)
+        #print("Searching line number " + str(i) + ". Found status is " + str(found))
+        #print(textfile[i])
+        #print("")
+        if (found != -1):
+            unfound = False
+
+    if unfound:
+        returnData(0)
+    else:
+        returnData(1)
 #------------------------------Main program-------------------------
 
 getReleaseChannel()
@@ -639,3 +658,5 @@ else:
         previousImport()
     elif sys.argv[1] == "importFromCSV":
         importFromCSV(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "checkIfFileContainsString":
+        checkIfFileContains(sys.argv[2], sys.argv[3])
