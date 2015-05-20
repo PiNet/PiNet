@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.6
+version=1.0.7
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -614,7 +614,8 @@ ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils m
 ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby iputils-ping
 ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
 ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser cgroup-bin
-ltsp-chroot apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
+ltsp-chroot --arch armhf apt-get install -y -o Dpkg::Options::="--force-confnew" raspberrypi-net-mods
+ltsp-chroot --arch armhf apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
@@ -1997,7 +1998,6 @@ CheckRaspberryPiUIModsAllUsers(){
 		if [ -f "/home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf" ]; then
 			FixUIConfigFile "User" "pcmanfm.conf" $user
 			FixUIConfigFile "User" "desktop-items-0.conf" $user
-			echo "Updating $user"
 			
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf wallpaper_mode= wallpaper_mode=stretch
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf wallpaper= wallpaper=/etc/alternatives/desktop-background
