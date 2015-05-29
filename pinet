@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.8
+version=1.0.9
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -1196,6 +1196,7 @@ Updater(){
 
 CheckReleases(){
 #Checks if there is a new software release. Mainly uses CheckUpdate on Python side
+	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install python3-feedparser  )
 	$p CheckUpdate $version
 	exitstatus=$(gp)
 	#echo $exitstatus
@@ -2486,6 +2487,7 @@ case "$MENUEPT" in
     ;;
     Install-Python-hardware) 
     ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat
+		ltsp-chroot --arch armhf pip-3.2 install pibrella unicornhat
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
