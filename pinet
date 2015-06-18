@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.10
+version=1.0.11
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -2012,7 +2012,8 @@ CheckRaspberryPiUIModsAllUsers(){
 
 InstallRaspberryPiUIMods(){
 #Installs the new Raspberry Pi UI mods, but fixes the mistakes made in the wallpaper setting
-		ltsp-chroot apt-get -o Dpkg::Options::="--force-overwrite" install -y raspberrypi-ui-mods 
+		ltsp-chroot apt-get update
+		ltsp-chroot apt-get -o Dpkg::Options::="--force-overwrite --force-confnew" install -y raspberrypi-ui-mods 
 		FixUIConfigFile "System" "pcmanfm.conf"
 		FixUIConfigFile "System" "desktop-items-0.conf"
 		CheckRaspberryPiUIModsAllUsers 
