@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.7
+version=1.0.10
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -255,10 +255,13 @@ fi
 
 checkInternet(){
 #Checks if the internet is connected. Mainly passes off to CheckInternet Python programme in Python functions
-
-$p CheckInternet $Timeout
-thing=$(gp)
-echo $thing
+if [ ! "$CheckInternetConnection" = "false" ]; then
+	$p CheckInternet $Timeout
+	thing=$(gp)
+	echo $thing
+else
+	echo 0
+fi
 #WGET="/usr/bin/wget"
 
 #$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
@@ -1193,6 +1196,7 @@ Updater(){
 
 CheckReleases(){
 #Checks if there is a new software release. Mainly uses CheckUpdate on Python side
+	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install python3-feedparser  )
 	$p CheckUpdate $version
 	exitstatus=$(gp)
 	#echo $exitstatus
@@ -2483,6 +2487,7 @@ case "$MENUEPT" in
     ;;
     Install-Python-hardware) 
     ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat
+		ltsp-chroot --arch armhf pip-3.2 install pibrella unicornhat
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
     ;;
@@ -2535,6 +2540,7 @@ FullInstall(){
 		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateConfig NBD true
+		UpdateConfig NBDuse true
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
 		SetupSharedStandalone
