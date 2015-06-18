@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.9
+version=1.0.10
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -2540,6 +2540,7 @@ FullInstall(){
 		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateConfig NBD true
+		UpdateConfig NBDuse true
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
 		SetupSharedStandalone
