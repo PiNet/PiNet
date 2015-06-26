@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.11
+version=1.0.12
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -525,6 +525,57 @@ if [ "$RESULT" = "y" ]; then
 		echo "-----------------------------"
 		echo "ERROR"
 		echo $INSTALLP " was NOT installed correctly    Read error above"
+		echo "-----------------------------"
+		sleep 8
+	fi
+fi
+	
+
+}
+
+InstallPythonLib() {
+#Installing custom programs into the chroot using apt-get install x
+INSTALLP=$(whiptail --inputbox "What Python library would you like to install? PiNet will attempt to install it for both Python 2.7 and 3.2. You can enter multiple Python libraries by leaving a space between each" 11 78 $INIT --title "Python Library installation." 3>&1 1>&2 2>&3)
+ 
+exitstatus=$?
+
+clear
+echo "------------------------------------------------------"
+echo "Am about to try and install " $INSTALLP
+echo "Are you sure? y or n"
+echo "------------------------------------------------------"
+read RESULT
+if [ "$RESULT" = "y" ]; then
+	echo "Attempting install with Python 2.7"
+	echo ""
+	ltsp-chroot --arch armhf pip-2.7 install $INSTALLP
+	if [ $? -eq 0 ]; then
+		UpdateConfig NBDBuildNeeded true
+		echo "-----------------------------"
+		echo $INSTALLP " was installed correctly for Python 2.7"
+		echo "-----------------------------"
+		sleep 2
+	else
+		echo "-----------------------------"
+		echo "ERROR"
+		echo $INSTALLP " was NOT installed correctly for Python 2.7    Read error above"
+		echo "-----------------------------"
+		sleep 8
+	fi
+	echo ""
+	echo "Attempting install with Python 3.2"
+	echo ""
+	ltsp-chroot --arch armhf pip-3.2 install $INSTALLP
+	if [ $? -eq 0 ]; then
+		UpdateConfig NBDBuildNeeded true
+		echo "-----------------------------"
+		echo $INSTALLP " was installed correctly for Python 3.2"
+		echo "-----------------------------"
+		sleep 2
+	else
+		echo "-----------------------------"
+		echo "ERROR"
+		echo $INSTALLP " was NOT installed correctly for Python 3.2    Read error above"
 		echo "-----------------------------"
 		sleep 8
 	fi
@@ -2467,6 +2518,7 @@ if [ $(checkInternet) -eq 0 ]; then
     "Install-Epoptes" "Epoptes is widely used free and open source classroom management program" \
     "Install-BlueJ" "BlueJ is a Java IDE for developing programs quickly and easily" \
     "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repository" \
+		"Install-Custom-python" "Allows you to enter the name of a Python library from pip." \
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
@@ -2487,7 +2539,7 @@ case "$MENUEPT" in
 	FinishedInstallingSoftware
     ;;
     Install-Python-hardware) 
-    ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat
+    ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat piglow
 		ltsp-chroot --arch armhf pip-3.2 install pibrella unicornhat
     UpdateConfig NBDBuildNeeded true
     FinishedInstallingSoftware
@@ -2505,6 +2557,11 @@ case "$MENUEPT" in
     Install-Custom-package)
     InstallProgram
     FinishedInstallingSoftware
+		;;
+    Install-Custom-python)
+		InstallPythonLib
+		UpdateConfig NBDBuildNeeded true
+		FinishedInstallingSoftware
     ;;
     *)
     FinishedInstallingSoftware
