@@ -588,7 +588,7 @@ def importFromCSV(theFile, defaultPassword, test = True):
                         user = userData[x][0]
                         password = userData[x][1]
                         encPass = crypt.crypt(password,"22")
-                        cmd = ["useradd", "-p", encPass, user]
+                        cmd = ["useradd", "-m", "-s", "/bin/bash", "-p", encPass, user]
                         p = Popen(cmd,  stderr=PIPE)
                         out, err = p.communicate()
                         fixGroupSingle(user)
