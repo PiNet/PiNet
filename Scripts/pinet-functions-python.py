@@ -18,6 +18,8 @@ import sys, os
 from subprocess import Popen, PIPE
 import time
 
+DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
+
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
 RawRepositoryBase="https://raw.github.com/pinet/"
@@ -25,9 +27,9 @@ Repository=RepositoryBase + RepositoryName
 RawRepository=RawRepositoryBase + RepositoryName
 ReleaseBranch = "master"
 
-def getReleaseChannel():
+def getReleaseChannel(filepath="/etc/pinet"):
     Channel = "Stable"
-    configFile = getList("/etc/pinet")
+    configFile = getList(filepath)
     for i in range(0, len(configFile)):
         if configFile[i][0:14] == "ReleaseChannel":
             Channel = configFile[i][15:len(configFile[i])]
@@ -243,13 +245,13 @@ def getConfigParameter(filep, searchfor):
 #def selectFile(start = "/home/"+os.environ['SUDO_USER']+"/"):
 #    pass
 def returnData(data):
-    with open("/tmp/ltsptmp", "w+") as text_file:
+    with open(DATA_TRANSFER_FILEPATH, "w+") as text_file:
         text_file.write(str(data))
     return
     #return fileLoc
 
 def readReturn():
-    with open("/tmp/ltsptmp", "r") as text_file:
+    with open(DATA_TRANSFER_FILEPATH, "r") as text_file:
         print(text_file.read())
 
 #----------------Whiptail functions-----------------
