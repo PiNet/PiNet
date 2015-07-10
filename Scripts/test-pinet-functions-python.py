@@ -4,7 +4,25 @@ import shutil
 import tempfile
 import unittest
 
+#
+# Hackety-hack: as it stands the code expects this
+# to be present when the module is imported
+#
+PINET_CONF_FILEPATH = "/etc/pinet"
+if not os.path.exists(PINET_CONF_FILEPATH): 
+    os.makedirs(os.path.dirname(PINET_CONF_FILEPATH))
+open(PINET_CONF_FILEPATH, "w").close()
 pinet_functions = __import__("pinet-functions-python")
+
+def _internet_is_available():
+    from urllib import request, error
+    try:
+        request.urlopen("http://pinet.org")
+    except error.URLError:
+        return False
+    else:
+        return True
+internet_is_available = _internet_is_available()
 
 class TestPiNet(unittest.TestCase):
    
@@ -13,6 +31,10 @@ class TestPiNet(unittest.TestCase):
         pinet_functions.DATA_TRANSFER_FILEPATH = tempfile.mktemp()
         open(pinet_functions.DATA_TRANSFER_FILEPATH, "w").close()
         self.addCleanup(os.remove, pinet_functions.DATA_TRANSFER_FILEPATH)
+    
+    def read_data(self):
+        with open(pinet_functions.DATA_TRANSFER_FILEPATH) as f:
+            return f.read()
     
 class TestSupportFunctions(TestPiNet):
     
@@ -89,7 +111,7 @@ class TestSupportFunctions(TestPiNet):
     def test_getCleanList(self):
         self.assertEqual(["Line 1", "Line 2", "Line 3", ""], pinet_functions.getCleanList(self.filepath))
         
-
+@unittest.skipUnless(internet_is_available, "Internet not available")
 class TestDownloads(TestPiNet):
     
     def setUp(self):
@@ -128,6 +150,7 @@ class TestVersions(TestPiNet):
 class TestConfigParameter(TestPiNet):
     
     def setUp(self):
+        super().setUp()
         self.filepath = tempfile.mktemp()
         with open(self.filepath, "w") as f:
             f.write("version=1234\n")
@@ -137,6 +160,32 @@ class TestConfigParameter(TestPiNet):
 
     def test_getConfigParameter_not_present(self):
         self.assertEqual(pinet_functions.getConfigParameter(self.filepath, "not-present="), "None")
+
+class TestFileOperations(TestPiNet):
+    
+    def setUp(self):
+        super().setUp()
+        self.filepath = tempfile.mktemp()
+        with open(self.filepath, "w") as f:
+            f.write("Line 1\nLine 2\nLine 3\n")
+
+    def test_replaceLineOrAdd(self):
+        pinet_functions.replaceLineOrAdd(self.filepath, "Line 2", "***")
+        with open(self.filepath) as f:
+            self.assertEqual(f.read(), "Line 1\n***\nLine 3\n")
+
+    def test_replaceBitOrAdd(self):
+        pinet_functions.replaceBitOrAdd(self.filepath, "ine", "**")
+        with open(self.filepath) as f:
+            self.assertEqual(f.read(), "L** 1\nL** 2\nL** 3\n")
+    
+    def test_checkIfFileContains_valid(self):
+        pinet_functions.checkIfFileContains(self.filepath, "Line 1")
+        self.assertEqual(self.read_data(), "1")
+
+    def test_checkIfFileContains_invalid(self):
+        pinet_functions.checkIfFileContains(self.filepath, "Line X")
+        self.assertEqual(self.read_data(), "0")
 
 if __name__ == '__main__':
     unittest.main()

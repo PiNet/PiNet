@@ -19,6 +19,7 @@ from subprocess import Popen, PIPE
 import time
 
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
+PINET_CONF_FILEPATH = "/etc/pinet"
 
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
@@ -27,7 +28,7 @@ Repository=RepositoryBase + RepositoryName
 RawRepository=RawRepositoryBase + RepositoryName
 ReleaseBranch = "master"
 
-def getReleaseChannel(filepath="/etc/pinet"):
+def getReleaseChannel(filepath=PINET_CONF_FILEPATH):
     Channel = "Stable"
     configFile = getList(filepath)
     for i in range(0, len(configFile)):
