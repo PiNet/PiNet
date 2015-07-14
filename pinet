@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.13
+version=1.0.14
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -1604,7 +1604,7 @@ local CPU=$(bc <<< "scale=0; $(top -bn 1 | awk '{print $9}' | tail -n +8 | awk '
 clear
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
-echo "           pinet System Status"
+echo "           PiNet System Status"
 echo "---------------------------------------------------"
 echo "Current version                        - $version"
 echo "Server IP address                      - $IP"
@@ -2581,6 +2581,7 @@ FullInstall(){
 	if [ $(checkInternet) -eq 0 ]; then
 		FirstTimeImportUsers
 		ChooseReleaseChannel 1
+		$p initialInstallSoftwareList
 		whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
 		installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
 		buildClient   #Creates config file to build Raspbian with LTSP and builds it
@@ -2594,7 +2595,8 @@ FullInstall(){
 		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
-		ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		#ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		$p installSoftwareFromFile
 		DisableI2C_SPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateConfig NBD true
@@ -2651,7 +2653,8 @@ Update-SD)
 	Menu
 	;;
 Install-Program)
-	ExtraSoftware
+	#ExtraSoftware
+	$p installSoftwareList
 	Menu
 	;;
 Shared-Folders)
@@ -2666,6 +2669,7 @@ Rebuild-OS)
 		if [ $(checkInternet) -eq 0 ]; then
     		rm -rf /opt/ltsp/armhf
     		rm -rf /var/lib/tftpboot/ltsp/armhf
+				$p initialInstallSoftwareList
     		buildClient
     		configFixes
     		FixRepo
@@ -2674,7 +2678,7 @@ Rebuild-OS)
 				InstallRaspberryPiUIMods
     		EnableNBDswap
     		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
-			ExtraSoftware
+			$p installSoftwareFromFile
 			DisableI2C_SPI
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
     		UpdateSD
