@@ -29,12 +29,12 @@ i_am_root = os.geteuid() == 0
 
 def _internet_is_available():
     try:
-        _urllib_request.urlopen("http://pinet.org.uk")
+        _urllib_request.urlopen("http://example.com")
     except _urllib_error.URLError:
         return False
     else:
         return True
-internet_is_available = False ## _internet_is_available()
+internet_is_available = _internet_is_available()
 
 def mock_urlopen(act_enabled, *args, **kwargs):
     """Allow the internet to appear to be available or not on demand
@@ -97,6 +97,12 @@ def suppress_whiptail(func):
             pinet_functions.whiptail = original_whiptail
             pinet_functions.whiptailBox = original_whiptailBox
     return _suppress_whiptail
+
+def remove(filepath):
+    try:
+        os.remove(filepath)
+    except FileNotFoundError:
+        pass
 
 pinet_functions = __import__("pinet-functions-python")
 
@@ -290,18 +296,18 @@ class Test_downloadFile(TestPiNet):
     def setUp(self):
         super().setUp()
         self.download_filepath = tempfile.mktemp()
-        self.addCleanup(os.remove, self.download_filepath)
+        self.addCleanup(remove, self.download_filepath)
         self.track_original(pinet_functions.urllib.request, "urlopen")
     
     def test_successful_download(self):
-        result = pinet_functions.downloadFile("http://pinet.org.uk", self.download_filepath)
+        result = pinet_functions.downloadFile("http://example.com", self.download_filepath)
         self.assertTrue(result)
         with open(self.download_filepath) as f:
-            self.assertIn("pinet.org.uk", f.read())
+            self.assertIn("Example Domain", f.read())
 
     def test_unsuccessful_download(self):
         pinet_functions.urllib.request.urlopen = mock_urlopen(False)
-        result = pinet_functions.downloadFile("http://pinet.org.uk", self.download_filepath)
+        result = pinet_functions.downloadFile("http://example.com", self.download_filepath)
         self.assertFalse(result)
 
 class MockFilesystemMixin:
@@ -314,7 +320,7 @@ class MockFilesystemMixin:
     def make_local_filepath(self, filepath):
         "Turn filepath into a local filepath rooted at local_dirpath"
         return os.path.join(self.local_dirpath, filepath.lstrip(os.path.sep))
-        
+    
 class TestDownloads(MockFilesystemMixin, TestPiNet):
     
     def setUp(self):
