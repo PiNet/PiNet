@@ -155,16 +155,47 @@ gp(){
 	fi
 }
 
+
+die() {
+	#Borrowed from https://github.com/RPi-Distro/spindle/
+  FMTSTR=$1
+  shift
+  printf "Died: $FMTSTR\n" "$@" >&2
+  exit 1
+}
+
+DOTASK_MODE="ea"
+
+d() {
+	#Borrowed from https://github.com/RPi-Distro/spindle/
+	#Simple task wrapper
+  case "$DOTASK_MODE" in
+    e*) printf "Run: '%s'\n" "$*"; false;;
+    q*) printf "Run: '%s' [Y/n/q] ? " "$*" && read SHOULD_RUN;
+        case "$SHOULD_RUN" in
+          n*|N*|s*|S*)  printf "Skip '%s'\n" "$*";;
+          q*|Q*)        die "Exit at user request";;
+          *)            false;;
+        esac;;
+    *)  false;;
+  esac || "$@" || { RC=$?
+    [ -z "$DOTASK_QUIT_ON_FAILURE" ] && printf "'%s' failed (returned $RC) - Quit? [Y/n] : " "$*" && read YN
+    case "$YN" in n*|N*) true ;; *) die "Failed while performing task: %s" "$*";; esac;
+  }
+}
+
+
+
 installLTSP() {
 #Installs main packages required by LTSP
-apt-get update && apt-get upgrade -y
+$d apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools bindfs
-exitstatus=$?
-if ! [ $exitstatus = 0 ]; then
-	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
-	exit 1
-fi
+$d apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools bindfs
+#exitstatus=$?
+#if ! [ $exitstatus = 0 ]; then
+#	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
+#	exit 1
+#fi
 	
 }
 
@@ -173,8 +204,8 @@ fi
 buildClient() {
 #Creates the custom config file needed to build Raspbian and grabs keychain. Then starts the build
 
-wget http://archive.raspbian.org/raspbian.public.key -O - | gpg --import
-gpg --export 90FDDD2E >> /etc/ltsp/raspbian.public.key.gpg
+$d wget http://archive.raspbian.org/raspbian.public.key -O - | gpg --import
+$d gpg --export 90FDDD2E >> /etc/ltsp/raspbian.public.key.gpg
 
 rm /etc/ltsp/ltsp-raspbian.conf
 
@@ -189,7 +220,7 @@ LOCALE="$LANG UTF-8"
 KERNEL_PACKAGES=linux-image-3.10-3-rpi
 EOF
 
-VENDOR=Debian ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
+$d VENDOR=Debian ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
 }
 
 
@@ -206,8 +237,8 @@ echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tft
 echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
-groupadd -g 2122 pupil
-groupadd -g 2123 teacher
+$d groupadd -g 2122 pupil
+$d groupadd -g 2123 teacher
 
 }
 

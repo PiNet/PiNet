@@ -17,9 +17,6 @@ basicConfig(level=WARNING)
 import sys, os
 from subprocess import Popen, PIPE, check_output
 import time
-import shutil
-import pwd, grp
-import socket
 
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
@@ -27,92 +24,6 @@ RawRepositoryBase="https://raw.github.com/pinet/"
 Repository=RepositoryBase + RepositoryName
 RawRepository=RawRepositoryBase + RepositoryName
 ReleaseBranch = "master"
-configFileData = {}
-
-
-class softwarePackage():
-    """
-    Class for possible software packages.
-    """
-
-    name = ""
-    description = ""
-    installType = ""
-    installCommands = []
-    marked = False
-
-    def __init__(self, name, description, installType, installCommands):
-        super(softwarePackage, self).__init__()
-        self.name = name
-        self.description = description
-        self.installType = installType
-        self.installCommands = installCommands
-
-    def installPackage(self):
-        debug("Installing " +  self.name)
-        debug(self.installCommands)
-        if len(self.installCommands) > 0:
-            programs = " ".join(self.installCommands)
-        else:
-            programs = self.installCommands
-        if self.installType == "pip":
-            self.marked = False
-            py2 = runBash("ltsp-chroot pip install " + programs)
-            py3 = runBash("ltsp-chroot pip-3.2 install " + programs)
-            return
-        elif self.installType == "apt":
-            self.marked = False
-            return runBash("ltsp-chroot apt-get install " + programs + " -y")
-        elif self.installType == "script":
-            for i in self.installCommands:
-                runBash("ltsp-chroot --arch armhf " + i)
-            self.marked = False
-        elif self.installType == "epoptes":
-            installEpoptes()
-        elif self.installType == "scratchGPIO":
-            installScratchGPIO()
-        else:
-            print("Error in installing " + self.name + " due to invalid install type.")
-            self.marked = False
-
-    def customAptPip(self):
-        done = False
-        while done == False:
-            if self.installType == "customApt":
-                packageName = whiptailBox("inputbox", "Custom package", "Enter the name of the name of your package from apt you wish to install.", False, returnErr = True)
-                if packageName == "":
-                    yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you want to cancel the installation of a custom apt package?", True)
-                    if yesno:
-                        self.marked = False
-                        done = True
-                    #else:
-                        #print("Setting marked to false")
-                        #self.marked = False
-                else:
-                    self.installType = "apt"
-                    self.installCommands = [packageName,]
-                    self.marked = True
-                    done = True
-
-            elif self.installType == "customPip":
-                packageName = whiptailBox("inputbox", "Custom package", "Enter the name of the name of your python package from pip you wish to install.", False, returnErr = True)
-                if packageName == "":
-                    yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you want to cancel the installation of a custom pip package?", True)
-                    if yesno:
-                        self.marked = False
-                        done = True
-                    else:
-                        self.marked = False
-                else:
-                    self.installType = "pip"
-                    self.installCommands = [packageName,]
-                    self.marked = True
-                    done = True
-            else:
-                self.marked = True
-                done = True
-        debug(self.marked, self.installType, self.installCommands, self.name)
-
 
 def runBash(command):
     if type(command) == str:
@@ -126,42 +37,8 @@ def runBash(command):
 
 def runBashOutput(command):
     output = check_output("sudo " + command, shell=True)
-    return output.decode("utf-8")
+    return output
 
-def getUsers(includeRoot=False):
-    users = []
-    for p in pwd.getpwall():
-        if (len(str(p[2])) > 3) and (str(p[5])[0:5] == "/home"): #or (str(p[5])[0:5] == "/root"):
-            users.append(p[0].lower())
-    return users
-
-def ltspChroot(command):
-    runBash("ltsp-chroot --arch armhf " + command)
-
-def installPackage(toInstall, update=False, upgrade=False, InstallOnServer=False):
-    toInstall = toInstall.split(" ")
-    totalPackages = ""
-    for i in range(0, len(toInstall)):
-        totalPackages = totalPackages + " " + toInstall[i]
-    if update:
-        runBash("apt-get update")
-    if update:
-        runBash("apt-get upgrade -y")
-    if InstallOnServer:
-        runBash("apt-get install -y " + str(totalPackages))
-    else:
-        ltspChroot("apt-get install -y " + str(totalPackages))
-
-
-def createTextFile(location, text):
-    newText = text.split("\n")
-    newText = stripStartWhitespaces(newText)
-    newText = stripEndWhitespaces(newText)
-    writeTextFile(newText, location)
-
-def makeFolder(directory):
-    if not os.path.exists(directory):
-        os.makedirs(directory)
 
 
 def getReleaseChannel():
@@ -381,18 +258,18 @@ def getConfigParameter(filep, searchfor):
     textFile = stripEndWhitespaces(textFile)
     value = ""
     for i in range(0,len(textFile)):
+        #print(textFile[i])
         found = textFile[i].find(searchfor)
         if (found != -1):
+            #print(textFile[i])
+            bob = found+len(searchfor)
+            jill = len(searchfor)
             value = textFile[i][found+len(searchfor):len(textFile[i])]
 
     if value == "":
         value = "None"
 
     return value
-
-def setConfigParameter(option, value, filep = "/etc/pinet"):
-    newValue = option + "=" + value
-    replaceLineOrAdd(filep, option, newValue)
 
 #def selectFile(start = "/home/"+os.environ['SUDO_USER']+"/"):
 #    pass
@@ -406,75 +283,19 @@ def readReturn():
     with open("/tmp/ltsptmp", "r") as text_file:
         print(text_file.read())
 
-def removeFile(file):
-    try:
-        shutil.rmtree(file)
-    except (OSError, IOError):
-        pass
-
-def copyFile(src, dest):
-    shutil.copy(src, dest)
-
-def checkFileFolderExists(path):
-    if os.path.isdir(path):
-        return True
-    else:
-        if os.path.exists(path):
-            return True
-        else:
-            return False
-
-
-
-def getInterfaceIP(ifname):
-    import fcntl
-    import struct
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',ifname[:15]))[20:24])
-
-def getCurrentIP():
-    return runBashOutput("hostname -I")
-
-    """
-    Get current IP address of machine.
-    Based off http://stackoverflow.com/questions/11735821/python-get-localhost-ip
-    """
-    ip = socket.gethostbyname(socket.gethostname())
-    if ip.startswith("127.") and os.name != "nt":
-        interfaces = [
-            "eth0",
-            "eth1",
-            "eth2",
-            "wlan0",
-            "wlan1",
-            "wifi0",
-            "ath0",
-            "ath1",
-            "ppp0",
-            ]
-        for ifname in interfaces:
-            try:
-                ip = getInterfaceIP(ifname)
-                break
-            except IOError:
-                pass
-    return ip
-
 #----------------Whiptail functions-----------------
-def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False):
-    cmd = ["whiptail", "--title", title, "--"+whiltailType, message, height, width]
+def whiptailBox(type, title, message, returnTF ,height = "8", width= "78"):
+    cmd = ["whiptail", "--title", title, "--"+type, message, height, width]
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
 
-    if returnTrueFalse:
+    if returnTF:
         if p.returncode == 0:
             return True
         elif p.returncode == 1:
             return False
         else:
             return "ERROR"
-    elif returnErr:
-        return err.decode()
     else:
         return p.returncode
 
@@ -486,22 +307,6 @@ def whiptailSelectMenu(title, message, items):
         cmd.append(items[x])
         cmd.append("a")
     cmd.append("--noitem")
-    p = Popen(cmd,  stderr=PIPE)
-    out, err = p.communicate()
-    returnCode = p.returncode
-    if str(returnCode) == "0":
-        return(err)
-    else:
-        return("Cancel")
-
-def whiptailCheckList(title, message, items, parameter1 = "", ):
-    height, width, other = "20", "100", str(len(items)) #"16", "78", "5"
-    cmd = ["whiptail", "--title", title, "--checklist", message ,height, width, other]
-    itemsList = ""
-    for x in range(0, len(items)):
-        cmd.append(items[x][0])
-        cmd.append(items[x][1])
-        cmd.append("OFF")
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
     returnCode = p.returncode
@@ -535,7 +340,7 @@ def replaceBitOrAdd(file, string, newString):
     textfile = findReplaceSection(textfile, string, newString)
     writeTextFile(textfile, file)
 
-def internet_on(timeoutLimit = 5, returnType = True):
+def internet_on(timeoutLimit, returnType = True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
@@ -543,19 +348,13 @@ def internet_on(timeoutLimit = 5, returnType = True):
     import urllib.request
     #print("Checking internet")
     try:
-        response=urllib.request.urlopen('http://www.google.com',timeout=int(timeoutLimit))
-        returnData(0)
-        #print("returning 0")
-        return True
-    except:  pass
-    try:
-        response=urllib.request.urlopen('http://mirrordirector.raspbian.org/',timeout=int(timeoutLimit))
-        returnData(0)
-        #print("returning 0")
-        return True
-    except:  pass
-    try:
         response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
+        returnData(0)
+        #print("returning 0")
+        return True
+    except:  pass
+    try:
+        response=urllib.request.urlopen('http://74.125.228.100',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
@@ -857,256 +656,13 @@ def checkIfFileContains(file, string):
         returnData(0)
     else:
         returnData(1)
-
-def saveSoftwareToDo(toSave, path = "/tmp/pinetSoftware.dump"):
-    """
-    Saves list of softwarePackage objects.
-    """
-    import pickle
-    with open(path, "wb") as output:
-        pickle.dump(toSave, output, pickle.HIGHEST_PROTOCOL)
-
-def loadSoftwareToDo(path= "/tmp/pinetSoftware.dump", deleteAfter = True):
-    """
-    Loads list of softwarePackage objects ready to be used.
-    """
-    import pickle
-    try:
-        with open(path, "rb") as input:
-            obj = pickle.load(input)
-        if deleteAfter:
-            removeFile(path)
-        return obj
-    except (OSError, IOError):
-        if deleteAfter:
-            removeFile(path)
-        return []
-
-def installEpoptes():
-    """
-    Install Epoptes classroom management software. Key is making sure groups are correct.
-    :return:
-    """
-    runBash("apt-get install -y epoptes")
-    runBash("gpasswd -a root staff")
-    runBash("ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends")
-    runBash("ltsp-chroot --arch armhf epoptes-client -c")
-    replaceLineOrAdd("/etc/default/epoptes", "SOCKET_GROUP", "SOCKET_GROUP=teacher")
-
-def installScratchGPIO():
-    """
-    ScratchGPIO installation process. Includes creating the desktop icon in all users and /etc/skel
-    """
-    removeFile("/tmp/isgh7.sh")
-    removeFile("/opt/ltsp/armhf/usr/local/bin/isgh5.sh")
-    removeFile("/opt/ltsp/armhf/usr/local/bin/scratchSudo.sh")
-    removeFile("/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
-    downloadFile("http://bit.ly/1wxrqdp", "/tmp/isgh7.sh")
-    copyFile("/tmp/isgh7.sh", "/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
-    replaceLineOrAdd("/opt/ltsp/armhf/usr/local/bin/scratchSudo.sh", "bash /usr/local/bin/isgh7.sh $SUDO_USER", "bash /usr/local/bin/isgh7.sh $SUDO_USER")
-    users = getUsers()
-    for u in users:
-        createTextFile("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", """
-        [Desktop Entry]
-        Version=1.0
-        Name=Install ScratchGPIO
-        Comment=Install ScratchGPIO
-        Exec=sudo bash /usr/local/bin/scratchSudo.sh
-        Icon=scratch
-        Terminal=true
-        Type=Application
-        Categories=Utility;Application;
-        """)
-        os.chown("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", pwd.getpwnam(u).pw_uid, grp.getgrnam(u).gr_gid)
-    makeFolder("/etc/skel/Desktop")
-    createTextFile("/etc/skel/Desktop/Install-scratchGPIO.desktop",
-    """[Desktop Entry]
-    Version=1.0
-    Name=Install ScratchGPIO
-    Comment=Install ScratchGPIO
-    Exec=sudo bash /usr/local/bin/scratchSudo.sh
-    Icon=scratch
-    Terminal=true
-    Type=Application
-    Categories=Utility;Application;""")
-
-
-def installSoftwareList(holdOffInstall = False):
-    """
-    Replacement for ExtraSoftware function in bash.
-    Builds a list of possible software to install (using softwarePackage class) then displays the list using checkbox Whiptail menu.
-    Checks what options the user has collected, then saves the packages list to file (using pickle). If holdOffInstall is False, then runs installSoftwareFromFile().
-    """
-    software = []
-    software.append(softwarePackage("Libreoffice", "A free office suite, similar to Microsoft office", "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
-    software.append(softwarePackage("Arduino-IDE", "Programming environment for Arduino microcontrollers", "apt", ["arduino",]))
-    software.append(softwarePackage("Scratch-gpio", "A special version of scratch for GPIO work" , "scratchGPIO", ["",]))
-    software.append(softwarePackage("Python-hardware", "Python libraries for some addon boards", "pip", ["pibrella skywriter unicornhat piglow"]))
-    software.append(softwarePackage("Epoptes", "Free and open source classroom management software", "epoptes", ["",]))
-    software.append(softwarePackage("BlueJ", "A Java IDE for developing programs quickly and easily", "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
-    software.append(softwarePackage("Custom-package", "Allows you to enter the name of a package from Raspbian repository", "customApt", ["",]))
-    software.append(softwarePackage("Custom-python", "Allows you to enter the name of a Python library from pip.", "customPip", ["",]))
-    softwareList = []
-    for i in software:
-        softwareList.append([i.name, i.description])
-    done = False
-    if (shutil.get_terminal_size()[0] < 105) or (shutil.get_terminal_size()[0] < 30):
-        print("\x1b[8;30;105t")
-        time.sleep(0.05)
-        print("Resizing")
-    while done == False:
-        whiptailBox("msgbox", "Additional Software", "In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished.", False)
-        result = (whiptailCheckList("Extra Software Submenu", "Select any software you want to install. Use space bar to select then enter to continue.", softwareList))
-        result = result.decode("utf-8")
-        result = result.replace('"', '')
-        if result != "Cancel":
-            if result == "":
-                yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you don't want to install any additional software?", True)
-                if yesno:
-                    saveSoftwareToDo(software)
-                    done = True
-            else:
-                resultList = result.split(" ")
-                yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you want to install this software? \n" + (result.replace(" ", "\n")), True, height=str(7+len(result.split(" "))))
-                if yesno:
-                    for i in software:
-                        if i.name in resultList:
-                            i.customAptPip()
-                            #i.marked = True
-                    done = True
-                    saveSoftwareToDo(software)
-
-    if holdOffInstall == False:
-        installSoftwareFromFile()
-
-def installSoftwareFromFile(packages = None):
-    """
-    Second part of installSoftwareList().
-    Loads the pickle encoded list of softwarePackage objects then if they are marked to be installed, installs then.
-    """
-    needCompress = False
-    if packages == None:
-        packages = loadSoftwareToDo()
-    for i in packages:
-        if i.marked == True:
-            print("Installing " + str(i.name))
-            if needCompress == False:
-                ltspChroot("apt-get update")
-            i.installPackage()
-            i.marked = False
-            setConfigParameter("NBDBuildNeeded", "true")
-            needCompress = True
-        else:
-            debug("Not installing " + str(i.name))
-    if needCompress:
-        nbdRun()
-
-def nbdRun():
-    """
-    Runs NBD compression tool. Clone of version in main pinet script
-    """
-    if getConfigParameter("/etc/pinet", "NBD=") == "true":
-        if getConfigParameter("/etc/pinet", "NBDuse=") == "true":
-            print("--------------------------------------------------------")
-            print("Compressing the image, this will take roughly 5 minutes")
-            print("--------------------------------------------------------")
-            runBash("ltsp-update-image /opt/ltsp/armhf")
-            setConfigParameter("NBDBuildNeeded", "false")
-        else:
-            whiptailBox("msgbox", "WARNING", "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu.", False)
-
-def updateIPDialog(installation = False):
-    complete = False
-    while complete == False:
-        ip = getCurrentIP()
-        result = whiptailBox("yesno", "IP Address", "The IP address of the PiNet server is stored on the SD card. Because of this, you can either choose to build the SD card files with your current IP address, or enter a custom address. Are you happy to use your current address ("+ str(ip).rstrip() +")? \nThis is recommended.", True, height="11")
-        if result == False:
-            newip = whiptailBox("inputbox", "Custom IP Address", "Enter the IP address you wish to use on the SD card.", False, returnErr = True)
-            if newip == "":
-                pass
-            else:
-                break
-        else:
-            break
-    if installation == False:
-        updateSDImage(ip)
-
-def updateIP(ip = None):
-    if ip == None:
-        getConfigParameter("/etc/pinet", "ipaddress=")
-    runBash("service nfs-kernel-server restart")
-    if os.environ['SUDO_USER'] == "":
-        removeFile("~/PiBoot/")
-        copyFile("/opt/PiNet/PiBootBackup/", "~/PiBoot/")
-
-        if getConfigParameter("/etc/pinet", "NBD=") == "true":
-            removeFile("~/PiBoot/cmdline.txt")
-            copyFile("~/PiBoot/cmdlineNBD.txt", "~/PiBoot/cmdline.txt")
-        else:
-            removeFile("~/PiBoot/cmdline.txt")
-            copyFile("~/PiBoot/cmdlineNFS.txt", "~/PiBoot/cmdline.txt")
-        replaceBitOrAdd("~/PiBoot/cmdline.txt", "1.1.1.1", ip)
-        runBash("nautilus ~/PiBoot > /dev/null 2>&1 &")
-    else:
-        piboot = "/home/" + os.environ['SUDO_USER'] + "/PiBoot/"
-        copyFile("/opt/PiNet/PiBootBackup/", piboot)   ###########################
-        os.chown(piboot, pwd.getpwnam(os.environ['SUDO_USER']).pw_uid, grp.getgrnam(os.environ['SUDO_USER']).gr_gid)
-        if getConfigParameter("/etc/pinet", "NBD=") == "true":
-            removeFile(piboot+"/cmdline.txt")
-            copyFile(piboot+"/cmdlineNBD.txt", piboot+"/cmdline.txt")
-        else:
-            removeFile(piboot+"/cmdline.txt")
-            copyFile(piboot+"/cmdlineNFS.txt", piboot+"/cmdline.txt")
-        replaceBitOrAdd("~/PiBoot/cmdline.txt", "1.1.1.1", ip)
-        runBash('nautilus "/home/$SUDO_USER/PiBoot" > /dev/null 2>&1 &')
-
-def updateSDImage(ip = None):
-    if internet_on():
-        makeFolder("/opt/PiNet")
-        makeFolder("/opt/PiNet/PiBootBackup")
-        removeFile("/tmp/PiBoot")
-        runBash("git clone --no-single-branch --depth 1 " + Repository +".git /tmp/PiBoot")
-        getReleaseChannel()
-        print('(cd "/tmp/PiBoot"; git checkout ' + str(ReleaseBranch) + ')')
-        runBash('cd "/tmp/PiBoot"; git checkout ' + str(ReleaseBranch) + '') ###########
-        runBash("rm -rf /opt/PiNet/PiBootBackup/*")
-        runBash("cp -r /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/")
-        updateIPDialog(True)
-        toReturn = 0
-        ###
-    else:
-        if not checkFileFolderExists("/opt/PiNet/PiBootBackup"):
-            whiptailBox("msgbox", "Error", "You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again.", False)
-            toReturn = 1
-        else:
-            whiptailBox("msgbox", "Information", "I detected you are not connected to the internet. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address.", False)
-            updateIPDialog(True)
-            toReturn = 0
-    if checkFileFolderExists("/opt/ltsp/armhf/bootfiles"):
-        currentVersion = 0
-        newVersion = 0
-        currentVersion = int(getList("/opt/ltsp/armhf/bootfiles/version.txt")[0])
-        newVersion = int(getList("/opt/PiNet/PiBootBackup/version.txt")[0])
-        if newVersion > currentVersion:
-            removeFile("/opt/ltsp/armhf/bootfiles/")
-            copyFile("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles/")
-            removeFile("/opt/ltsp/armhf/bootfiles/cmdline.txt")
-            nbdRun()
-        else:
-            pass #No update to the Raspbian image with new SD card boot files (for auto updater) needed
-    else:
-        copyFile("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles/")
-        removeFile("/opt/ltsp/armhf/bootfiles/cmdline.txt")
-        nbdRun()
-    return toReturn
-
 #------------------------------Main program-------------------------
 
+getReleaseChannel()
 if len(sys.argv) == 1:
     print("This python script does nothing on its own, it must be passed stuff")
-    #installSoftwareList()
-    updateIPDialog()
-    #print(getConfigParameter("/etc/pinet", "NBD="))
+
+
 
 else:
     if sys.argv[1] == "replaceLineOrAdd":
@@ -1135,9 +691,3 @@ else:
         importFromCSV(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "checkIfFileContainsString":
         checkIfFileContains(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == "initialInstallSoftwareList":
-        installSoftwareList(True)
-    elif sys.argv[1] == "installSoftwareList":
-        installSoftwareList(False)
-    elif sys.argv[1] == "installSoftwareFromFile":
-        installSoftwareFromFile()
