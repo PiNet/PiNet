@@ -969,42 +969,42 @@ def nbdRun():
 
 
 #------------------------------Main program-------------------------
+if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        print("This python script does nothing on its own, it must be passed stuff")
+        installSoftwareList()
+        #print(getConfigParameter("/etc/pinet", "NBD="))
 
-if len(sys.argv) == 1:
-    print("This python script does nothing on its own, it must be passed stuff")
-    installSoftwareList()
-    #print(getConfigParameter("/etc/pinet", "NBD="))
-
-else:
-    if sys.argv[1] == "replaceLineOrAdd":
-        replaceLineOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
-    elif sys.argv[1] == "replaceBitOrAdd":
-        replaceBitOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
-    elif sys.argv[1] == "CheckInternet":
-        internet_on(sys.argv[2])
-    elif sys.argv[1] == "CheckUpdate":
-        checkUpdate(sys.argv[2])
-    elif sys.argv[1] == "CompareVersion":
-        compareVersions(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == "updatePiNet":
-        updatePiNet()
-    elif sys.argv[1] == "triggerInstall":
-        downloadFile("http://bit.ly/pinetinstall1", "/dev/null")
-    elif sys.argv[1] == "checkKernelFileUpdateWeb":
-        checkKernelFileUpdateWeb()
-    elif sys.argv[1] == "checkKernelUpdater":
-        checkKernelUpdater()
-    elif sys.argv[1] == "installCheckKernelUpdater":
-        installCheckKernelUpdater()
-    elif sys.argv[1] == "previousImport":
-        previousImport()
-    elif sys.argv[1] == "importFromCSV":
-        importFromCSV(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == "checkIfFileContainsString":
-        checkIfFileContains(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == "initialInstallSoftwareList":
-        installSoftwareList(True)
-    elif sys.argv[1] == "installSoftwareList":
-        installSoftwareList(False)
-    elif sys.argv[1] == "installSoftwareFromFile":
-        installSoftwareFromFile()
+    else:
+        if sys.argv[1] == "replaceLineOrAdd":
+            replaceLineOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
+        elif sys.argv[1] == "replaceBitOrAdd":
+            replaceBitOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
+        elif sys.argv[1] == "CheckInternet":
+            internet_on(sys.argv[2])
+        elif sys.argv[1] == "CheckUpdate":
+            checkUpdate(sys.argv[2])
+        elif sys.argv[1] == "CompareVersion":
+            compareVersions(sys.argv[2], sys.argv[3])
+        elif sys.argv[1] == "updatePiNet":
+            updatePiNet()
+        elif sys.argv[1] == "triggerInstall":
+            downloadFile("http://bit.ly/pinetinstall1", "/dev/null")
+        elif sys.argv[1] == "checkKernelFileUpdateWeb":
+            checkKernelFileUpdateWeb()
+        elif sys.argv[1] == "checkKernelUpdater":
+            checkKernelUpdater()
+        elif sys.argv[1] == "installCheckKernelUpdater":
+            installCheckKernelUpdater()
+        elif sys.argv[1] == "previousImport":
+            previousImport()
+        elif sys.argv[1] == "importFromCSV":
+            importFromCSV(sys.argv[2], sys.argv[3])
+        elif sys.argv[1] == "checkIfFileContainsString":
+            checkIfFileContains(sys.argv[2], sys.argv[3])
+        elif sys.argv[1] == "initialInstallSoftwareList":
+            installSoftwareList(True)
+        elif sys.argv[1] == "installSoftwareList":
+            installSoftwareList(False)
+        elif sys.argv[1] == "installSoftwareFromFile":
+            installSoftwareFromFile()
