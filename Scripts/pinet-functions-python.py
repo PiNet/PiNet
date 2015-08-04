@@ -19,6 +19,12 @@ from subprocess import Popen, PIPE, check_output
 import time
 import shutil
 import pwd, grp
+import urllib.request
+import xml.etree.ElementTree
+
+import feedparser
+
+DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
@@ -281,6 +287,7 @@ def findReplaceAnyLine(textFile, string, newString):
     Basic find and replace function for entire line.
     Pass it a text file in list form and it will search for strings.
     If it finds a string, it will replace the entire line with newString
+    If it doesn't find the string, it will add the new string to the end
     """
     unfound = True
     for i in range(0,len(textFile)):
@@ -315,7 +322,6 @@ def downloadFile(url, saveloc):
     """
     import traceback
     try:
-        import urllib.request
         req = urllib.request.Request(url)
         req.add_header('User-agent', 'Mozilla 5.10')
         f = urllib.request.urlopen(req)
@@ -396,7 +402,7 @@ def setConfigParameter(option, value, filep = "/etc/pinet"):
 #def selectFile(start = "/home/"+os.environ['SUDO_USER']+"/"):
 #    pass
 def returnData(data):
-    with open("/tmp/ltsptmp", "w+") as text_file:
+    with open(DATA_TRANSFER_FILEPATH, "w+") as text_file:
         text_file.write(str(data))
     return
     #return fileLoc
@@ -415,6 +421,20 @@ def copyFile(src, dest):
     shutil.copy(src, dest)
 
 #----------------Whiptail functions-----------------
+def whiptail(*args):
+    cmd = ["whiptail"] + list(args)
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    if p.returncode == 0:
+        updatePiNet()
+        returnData(1)
+        return True
+    elif p.returncode == 1:
+        returnData(0)
+        return False
+    else:
+        return "ERROR"
+
 def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False):
     cmd = ["whiptail", "--title", title, "--"+whiltailType, message, height, width]
     p = Popen(cmd,  stderr=PIPE)
@@ -494,7 +514,6 @@ def internet_on(timeoutLimit, returnType = True):
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
     """
-    import urllib.request
     #print("Checking internet")
     try:
         response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
@@ -575,12 +594,13 @@ def checkUpdate(currentVersion):
     if not internet_on(5, False):
         print("No Internet Connection")
         returnData(0)
-    import feedparser
-    import xml.etree.ElementTree
+        return
     downloadFile("http://bit.ly/pinetCheckCommits", "/dev/null")
     d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
-    data = (d.entries[0].content[0].get('value'))
+    entry = d.entries[0]
+    content = entry.content[0]
+    data = content.get("value")
     data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
     data = data.split("\n")
     thisVersion = GetVersionNum(data)
@@ -647,8 +667,6 @@ def installCheckKernelUpdater():
 
 def displayChangeLog(version):
     version = "Release " + version
-    import feedparser
-    import xml.etree.ElementTree
     d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
     for x in range(0, len(d.entries)):
@@ -674,18 +692,11 @@ def displayChangeLog(version):
     thing = ""
     for i in range(0, len(output)):
         thing = thing + output[i] + "\n"
-    cmd = ["whiptail", "--title", "Release history (Use arrow keys to scroll) - " + version, "--scrolltext", "--"+"yesno", "--yes-button", "Install " + output[0], "--no-button", "Cancel", thing, "24", "78"]
-    p = Popen(cmd,  stderr=PIPE)
-    out, err = p.communicate()
-    if p.returncode == 0:
+    whiptail_cmd = ["--title", "Release history (Use arrow keys to scroll) - " + version, "--scrolltext", "--"+"yesno", "--yes-button", "Install " + output[0], "--no-button", "Cancel", thing, "24", "78"]
+    result = whiptail(*whiptail_cmd)
+    if result:
         updatePiNet()
-        returnData(1)
-        return True
-    elif p.returncode == 1:
-        returnData(0)
-        return False
-    else:
-        return "ERROR"
+    return result
 
 def previousImport():
     items = ["passwd", "group", "shadow", "gshadow"]
