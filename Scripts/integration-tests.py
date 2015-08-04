@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, sys
+import configparser
 import datetime
 import shutil
 import tempfile
@@ -8,12 +9,24 @@ import unittest
 import urllib.request as _urllib_request
 import urllib.error as _urllib_error
 import uuid
+import warnings
 
 from feedparser import parse as _feedparser_parse
 
+#
+# Set up global config for use, eg, to skip destructive tests
+# or to limit long-running ones, or to set up monkeypatches.
+#
+HERE = os.path.dirname(__file__)
+NAME, _ = os.path.splitext(os.path.basename(__file__))
+config = configparser.ConfigParser()
+config.read(os.path.join(HERE, NAME + ".ini"))
+
+suppress_warnings = bool(int(config.get("testing", "suppress_warnings")))
+
 def _internet_is_available():
     try:
-        _urllib_request.urlopen("http://pinet.org")
+        _urllib_request.urlopen("http://pinet.org.uk")
     except _urllib_error.URLError:
         return False
     else:
@@ -41,8 +54,19 @@ def mock_feedparser_parse(version):
         return _feedparser_parse(xml)
     return _mock_feedparser_parse
 
+def mock_downloadFile(source_from, root_at):
+    """Mock out the downloadFile routine by having it source from a local
+    setup and write to a temp area
+    """
+    def _mock_downloadFile(url, filepath):
+        parsed = urllib.parse.urlparse(url)
+        source_filepath = os.path.join(source_from, parsed.netloc, parsed.path)
+        target_filepath = os.path.join(root_at, filepath.lstrip(os.path.sep))
+        shutil.copyfile(source_filepath, target_filepath)
+    return _mock_downloadFile
+
 def mock_do_nothing(*args, **kwargs):
-    return None
+        return None
     
 pinet_functions = __import__("pinet-functions-python")
 
@@ -223,6 +247,54 @@ class Test_checkIfFileContains(TestPiNet):
         pinet_functions.checkIfFileContains(self.filepath, "***")
         self.assertEqual(self.read_data(), "0")
 
+@unittest.skipUnless(internet_is_available, "No internet available")
+class Test_downloadFile(TestPiNet):
+    """Download a file and write to a position on the file system and
+    return True if successful, False otherwise.
+    
+    Although this isn't strictly an entry-point it's used so frequently
+    elsewhere (and mocked out for testing) that we'll test it works, as
+    long as the internet is available
+    """
+    
+    def setUp(self):
+        super().setUp()
+        self.download_filepath = tempfile.mktemp()
+        self.addCleanup(os.remove, self.download_filepath)
+        self.track_original(pinet_functions.urllib.request, "urlopen")
+    
+    def test_successful_download(self):
+        result = pinet_functions.downloadFile("http://pinet.org/", self.download_filepath)
+        self.assertTrue(result)
+        with open(self.download_filepath) as f:
+            self.assertIn("pinet.org", f.read())
+
+    def test_unsuccessful_download(self):
+        pinet_functions.urllib.request.urlopen = mock_urlopen(False)
+        result = pinet_functions.downloadFile("http://pinet.org/", self.download_filepath)
+        self.assertFalse(result)
+
+class Test_updatePiNet(TestPiNet):
+    
+    def setUp(self):
+        super().setUp()
+        dirpath = tempfile.mkdtemp()
+       
+        #
+        # Set up a fake download scheme where files are "uploaded"
+        # from one area of a temporary directory and "downloaded"
+        # to another.
+        #
+        self.upload_path = os.path.join(dirpath, "upload")
+        self.download_path = os.path.join(dirpath, "download")
+        os.mkdir(self.upload_path)
+        os.mkdir(self.download_path)
+        self.addCleanup(shutil.rmtree, dirpath)
+        self.track_original(pinet_functions, "downloadFile")
+        pinet_functions.downloadFile = mock_downloadFile(self.upload_path, self.download_path)
+
+    def test_update(self):
+        assert True
 
 if False:
 
@@ -262,4 +334,4 @@ if False:
             assert False
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(warnings="ignore" if suppress_warnings else None)
