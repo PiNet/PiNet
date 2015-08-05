@@ -25,13 +25,21 @@ import xml.etree.ElementTree
 import feedparser
 
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
+PINET_BINPATH = "/usr/local/bin"
 
-RepositoryBase="https://github.com/pinet/"
-RepositoryName="pinet"
-RawRepositoryBase="https://raw.github.com/pinet/"
-Repository=RepositoryBase + RepositoryName
-RawRepository=RawRepositoryBase + RepositoryName
+RepositoryBase = "https://github.com/pinet/"
+RepositoryName = "pinet"
+RawRepositoryBase = "https://raw.github.com/pinet/"
+Repository = RepositoryBase + RepositoryName
+RawRepository = RawRepositoryBase + RepositoryName
 ReleaseBranch = "master"
+
+CODE_DOWNLOAD_URL = RawRepository + "/" + ReleaseBranch
+PINET_BINARY = "pinet"
+PINET_PYTHON_BINARY = "Scripts/pinet-functions-python.py"
+PINET_DOWNLOAD_URL = CODE_DOWNLOAD_URL + "/" + PINET_BINARY
+PINET_PYTHON_DOWNLOAD_URL = CODE_DOWNLOAD_URL + "/" + PINET_PYTHON_BINARY
+
 configFileData = {}
 
 
@@ -535,18 +543,33 @@ def updatePiNet():
     """
     Fetches most recent PiNet and PiNet-functions-python.py
     """
+    #
+    # TODO: TJG not sure why this is here; my guess is that, at
+    # some point, the main pinet script ran from the user's home
+    # directory. If the policy is now to run from /usr/local/bin/pinet
+    # then we need to remove the copy in the home directory.
+    #
     try:
-        os.remove("/home/"+os.environ['SUDO_USER']+"/pinet")
-    except: pass
+        os.remove("/home/" + os.environ['SUDO_USER'] + "/pinet")
+        #
+        # FIXME: TJG Don't use a bare except
+        #
+    except: 
+        pass
+    
     print("")
     print("----------------------")
     print("Installing update")
     print("----------------------")
     print("")
     download = True
-    if not downloadFile(RawRepository +"/" + ReleaseBranch + "/pinet", "/usr/local/bin/pinet"):
+    #
+    # FIXME: TJG This if download... logic almost certainly doesn't do
+    # what's intended.
+    #
+    if not downloadFile(PINET_DOWNLOAD_URL, os.path.join(PINET_BINPATH, PINET_BINARY)):
         download = False
-    if not downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/pinet-functions-python.py", "/usr/local/bin/pinet-functions-python.py"):
+    if not downloadFile(PINET_PYTHON_DOWNLOAD_URL, os.path.join(PINET_BINPATH, PINET_PYTHON_BINARY)):
         download = False
     if download:
         print("----------------------")

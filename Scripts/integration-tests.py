@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os, sys
 import configparser
+import contextlib
 import datetime
 import shutil
 import tempfile
@@ -8,6 +9,7 @@ import test.support
 import unittest
 import urllib.request as _urllib_request
 import urllib.error as _urllib_error
+import urllib.parse
 import uuid
 import warnings
 
@@ -54,19 +56,28 @@ def mock_feedparser_parse(version):
         return _feedparser_parse(xml)
     return _mock_feedparser_parse
 
-def mock_downloadFile(source_from, root_at):
+def make_web_filepath(web_dirpath, url):
+    "Turn url into a filepath rooted at web_dirpath"
+    parsed = urllib.parse.urlparse(url)
+    return os.path.join(web_dirpath, parsed.netloc, parsed.path.lstrip(os.path.sep))
+
+def make_local_filepath(local_dirpath, filepath):
+    "Turn filepath into a local filepath rooted at local_dirpath"
+    return os.path.join(local_dirpath, filepath.lstrip(os.path.sep))
+
+def mock_downloadFile(web_dirpath, local_dirpath):
     """Mock out the downloadFile routine by having it source from a local
     setup and write to a temp area
     """
     def _mock_downloadFile(url, filepath):
-        parsed = urllib.parse.urlparse(url)
-        source_filepath = os.path.join(source_from, parsed.netloc, parsed.path)
-        target_filepath = os.path.join(root_at, filepath.lstrip(os.path.sep))
-        shutil.copyfile(source_filepath, target_filepath)
+        web_filepath = make_web_filepath(web_dirpath, url)
+        local_filepath = make_local_filepath(local_dirpath, filepath)
+        os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
+        shutil.copyfile(web_filepath, local_filepath)
     return _mock_downloadFile
 
 def mock_do_nothing(*args, **kwargs):
-        return None
+    return None
     
 pinet_functions = __import__("pinet-functions-python")
 
@@ -264,17 +275,17 @@ class Test_downloadFile(TestPiNet):
         self.track_original(pinet_functions.urllib.request, "urlopen")
     
     def test_successful_download(self):
-        result = pinet_functions.downloadFile("http://pinet.org/", self.download_filepath)
+        result = pinet_functions.downloadFile("http://pinet.org.uk", self.download_filepath)
         self.assertTrue(result)
         with open(self.download_filepath) as f:
-            self.assertIn("pinet.org", f.read())
+            self.assertIn("pinet.org.uk", f.read())
 
     def test_unsuccessful_download(self):
         pinet_functions.urllib.request.urlopen = mock_urlopen(False)
-        result = pinet_functions.downloadFile("http://pinet.org/", self.download_filepath)
+        result = pinet_functions.downloadFile("http://pinet.org.uk", self.download_filepath)
         self.assertFalse(result)
 
-class Test_updatePiNet(TestPiNet):
+class TestDownloads(TestPiNet):
     
     def setUp(self):
         super().setUp()
@@ -285,16 +296,58 @@ class Test_updatePiNet(TestPiNet):
         # from one area of a temporary directory and "downloaded"
         # to another.
         #
-        self.upload_path = os.path.join(dirpath, "upload")
-        self.download_path = os.path.join(dirpath, "download")
-        os.mkdir(self.upload_path)
-        os.mkdir(self.download_path)
+        self.web_dirpath = os.path.join(dirpath, "web")
+        self.local_dirpath = os.path.join(dirpath, "local")
+        os.mkdir(self.web_dirpath)
+        os.mkdir(self.local_dirpath)
         self.addCleanup(shutil.rmtree, dirpath)
         self.track_original(pinet_functions, "downloadFile")
-        pinet_functions.downloadFile = mock_downloadFile(self.upload_path, self.download_path)
+        pinet_functions.downloadFile = self.mock_downloadFile()
 
-    def test_update(self):
-        assert True
+    def make_web_filepath(self, url):
+        "Turn url into a filepath rooted at web_dirpath"
+        parsed = urllib.parse.urlparse(url)
+        return os.path.join(self.web_dirpath, parsed.netloc, parsed.path.lstrip(os.path.sep))
+
+    def make_local_filepath(self, filepath):
+        "Turn filepath into a local filepath rooted at local_dirpath"
+        return os.path.join(self.local_dirpath, filepath.lstrip(os.path.sep))
+
+    def mock_downloadFile(self):
+        """Mock out the downloadFile routine by having it source from a local
+        setup and write to a temp area
+        """
+        def _mock_downloadFile(url, filepath):
+            web_filepath = self.make_web_filepath(url)
+            local_filepath = self.make_local_filepath(filepath)
+            os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
+            shutil.copyfile(web_filepath, local_filepath)
+        return _mock_downloadFile
+        
+    def touch_web_file(self, url):
+        web_filepath = self.make_web_filepath(url)
+        os.makedirs(os.path.dirname(web_filepath), exist_ok=True)
+        with open(web_filepath, "w") as f:
+            f.write(url)
+
+class Test_updatePiNet(TestDownloads):
+     
+    def setUp(self):
+        super().setUp()
+         
+        self.touch_web_file(pinet_functions.PINET_DOWNLOAD_URL)
+        self.touch_web_file(pinet_functions.PINET_PYTHON_DOWNLOAD_URL)
+    
+    def test_updatePiNet(self):
+        pinet_functions.updatePiNet()
+        
+        pinet_binary_filepath = os.path.join(pinet_functions.PINET_BINPATH, pinet_functions.PINET_BINARY)
+        with open(self.make_local_filepath(pinet_binary_filepath)) as f:
+            self.assertEqual(f.read(), pinet_functions.PINET_DOWNLOAD_URL)
+        
+        pinet_python_binary_filepath = os.path.join(pinet_functions.PINET_BINPATH, pinet_functions.PINET_PYTHON_BINARY)
+        with open(self.make_local_filepath(pinet_python_binary_filepath)) as f:
+            self.assertEqual(f.read(), pinet_functions.PINET_PYTHON_DOWNLOAD_URL)
 
 if False:
 
@@ -303,12 +356,6 @@ if False:
         def test_no_args(self):
             assert False
         
-        def test_updatePiNet(self):
-            assert False
-
-        def test_downloadFile(self):
-            assert False
-
         def test_checkKernelFileUpdateWeb(self):
             assert False
 
@@ -334,4 +381,7 @@ if False:
             assert False
 
 if __name__ == '__main__':
-    unittest.main(warnings="ignore" if suppress_warnings else None)
+    stdout_logpath = os.path.join(HERE, "%s.log" % NAME)
+    with open(stdout_logpath, "w") as logfile:
+        with contextlib.redirect_stdout(logfile):
+            unittest.main(warnings="ignore" if suppress_warnings else None)
