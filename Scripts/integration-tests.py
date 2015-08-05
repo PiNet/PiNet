@@ -47,7 +47,7 @@ def mock_feedparser_parse(version):
     """Have feedparser.parse always read from a file of our choosing
     """
     def _mock_feedparser_parse(*args, **kwargs):
-        with open("commits.xml") as f:
+        with open(os.path.join(HERE, "commits.xml")) as f:
             xml = f.read().format(
                 guid=uuid.uuid1(), 
                 timestamp=datetime.datetime.now().isoformat(),

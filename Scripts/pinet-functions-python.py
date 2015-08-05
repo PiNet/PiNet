@@ -15,10 +15,13 @@
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 basicConfig(level=WARNING)
 import sys, os
+import crypt
+import csv
+import grp
+import pwd
 from subprocess import Popen, PIPE, check_output
 import time
 import shutil
-import pwd, grp
 import urllib.request
 import xml.etree.ElementTree
 
@@ -492,7 +495,12 @@ def whiptailCheckList(title, message, items, parameter1 = "", ):
     else:
         return("Cancel")
 
+def create_user(username, password):
+    subprocess.call(["useradd", "-m", "-s", "/bin/bash", "-p", password, username])
 
+def add_user_to_group(username, group):
+    subprocess.call(["usermod", "-a", "-G", group, username])
+   
 
 #---------------- Main functions -------------------
 
@@ -759,10 +767,8 @@ def previousImport():
         writeTextFile(etc, etcLoc)
 
 def importFromCSV(theFile, defaultPassword, test = True):
-    import csv
-    import os
-    from sys import exit
-    import crypt
+    """Import users from a space-delimited, pipe-separated .csv file
+    """
     userData=[]
     if test == "True" or True:
         test = True
@@ -790,21 +796,23 @@ def importFromCSV(theFile, defaultPassword, test = True):
                 else:
                     password=defaultPassword
                 userData.append([user, password])
+            
+            #
+            # FIXME TJG Not sure this "if test:" logic is doing what it
+            # should be
+            #
             if test:
                 thing = ""
                 for i in range(0, len(userData)):
                     thing = thing + "Username - " + userData[i][0] + " : Password - " + userData[i][1] + "\n"
-                cmd = ["whiptail", "--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "import" , "--no-button", "Cancel", thing, "24", "78"]
-                p = Popen(cmd,  stderr=PIPE)
-                out, err = p.communicate()
-                if p.returncode == 0:
+                whiptail_cmd = ["--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "import" , "--no-button", "Cancel", thing, "24", "78"]
+                result = whiptail(*whiptail_cmd)
+                if result == 0:
                     for x in range(0, len(userData)):
                         user = userData[x][0]
                         password = userData[x][1]
                         encPass = crypt.crypt(password,"22")
-                        cmd = ["useradd", "-m", "-s", "/bin/bash", "-p", encPass, user]
-                        p = Popen(cmd,  stderr=PIPE)
-                        out, err = p.communicate()
+                        create_user(user, encPass)
                         fixGroupSingle(user)
                         print("Import of " + user + " complete.")
                     whiptailBox("msgbox", "Complete", "Importing of CSV data has been complete.", False)
@@ -816,9 +824,7 @@ def importFromCSV(theFile, defaultPassword, test = True):
 def fixGroupSingle(username):
     groups = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
     for x in range(0, len(groups)):
-        cmd = ["usermod", "-a", "-G", groups[x], username]
-        p = Popen(cmd,  stderr=PIPE)
-        out, err = p.communicate()
+        add_user_to_group(username, groups[x])
 
 def checkIfFileContains(file, string):
     """
