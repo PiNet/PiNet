@@ -25,6 +25,7 @@ config = configparser.ConfigParser()
 config.read(os.path.join(HERE, NAME + ".ini"))
 
 suppress_warnings = bool(int(config.get("testing", "suppress_warnings")))
+i_am_root = os.geteuid() == 0
 
 def _internet_is_available():
     try:
@@ -78,7 +79,25 @@ def mock_downloadFile(web_dirpath, local_dirpath):
 
 def mock_do_nothing(*args, **kwargs):
     return None
+
+def mock_return_zero(*args, **kwargs):
+    with open(pinet_functions.DATA_TRANSFER_FILEPATH, "w") as f:
+        f.write("0")
+    return 0
     
+def suppress_whiptail(func):
+    def _suppress_whiptail(*args, **kwargs):
+        original_whiptailBox = pinet_functions.whiptailBox
+        original_whiptail = pinet_functions.whiptail
+        pinet_functions.whiptailBox = mock_return_zero
+        pinet_functions.whiptail = mock_return_zero
+        try:
+            return func(*args, **kwargs)
+        finally:
+            pinet_functions.whiptail = original_whiptail
+            pinet_functions.whiptailBox = original_whiptailBox
+    return _suppress_whiptail
+
 pinet_functions = __import__("pinet-functions-python")
 
 class TestPiNet(unittest.TestCase):
@@ -285,7 +304,18 @@ class Test_downloadFile(TestPiNet):
         result = pinet_functions.downloadFile("http://pinet.org.uk", self.download_filepath)
         self.assertFalse(result)
 
-class TestDownloads(TestPiNet):
+class TestMockFilesystemMixin:
+
+    def setUp(self):
+        super().setUp()
+        self.local_dirpath = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.local_dirpath)
+    
+    def make_local_filepath(self, filepath):
+        "Turn filepath into a local filepath rooted at local_dirpath"
+        return os.path.join(self.local_dirpath, filepath.lstrip(os.path.sep))
+        
+class TestDownloads(TestMockFilesystemMixin, TestPiNet):
     
     def setUp(self):
         super().setUp()
@@ -297,9 +327,7 @@ class TestDownloads(TestPiNet):
         # to another.
         #
         self.web_dirpath = os.path.join(dirpath, "web")
-        self.local_dirpath = os.path.join(dirpath, "local")
         os.mkdir(self.web_dirpath)
-        os.mkdir(self.local_dirpath)
         self.addCleanup(shutil.rmtree, dirpath)
         self.track_original(pinet_functions, "downloadFile")
         pinet_functions.downloadFile = self.mock_downloadFile()
@@ -308,10 +336,6 @@ class TestDownloads(TestPiNet):
         "Turn url into a filepath rooted at web_dirpath"
         parsed = urllib.parse.urlparse(url)
         return os.path.join(self.web_dirpath, parsed.netloc, parsed.path.lstrip(os.path.sep))
-
-    def make_local_filepath(self, filepath):
-        "Turn filepath into a local filepath rooted at local_dirpath"
-        return os.path.join(self.local_dirpath, filepath.lstrip(os.path.sep))
 
     def mock_downloadFile(self):
         """Mock out the downloadFile routine by having it source from a local
@@ -349,6 +373,100 @@ class Test_updatePiNet(TestDownloads):
         with open(self.make_local_filepath(pinet_python_binary_filepath)) as f:
             self.assertEqual(f.read(), pinet_functions.PINET_PYTHON_DOWNLOAD_URL)
 
+class Test_importFromCSV(TestPiNet):
+    
+    def setUp(self):
+        super().setUp()
+        
+        self.track_original(pinet_functions, "create_user")
+        self.track_original(pinet_functions, "add_user_to_group")
+        self.mocked_users = {}
+        self.mocked_user_groups = {}
+        pinet_functions.create_user = self.mock_create_user()
+        pinet_functions.add_user_to_group = self.mock_add_user_to_group()
+        
+        self.valid_csv_filepath = tempfile.mktemp()
+        self.addCleanup(os.remove, self.valid_csv_filepath)
+        self.invalid_csv_filepath = tempfile.mktemp()
+        self.addCleanup(os.remove, self.invalid_csv_filepath)
+        
+        with open(self.valid_csv_filepath, "w") as f:
+            f.write("username1,password1\n")
+            f.write("username2,password2\n")
+        
+        with open(self.invalid_csv_filepath, "w") as f:
+            f.write("user name1,password1\n")
+            f.write("user name2,password2\n")
+    
+    def mock_create_user(self):
+        def _mock_create_user(username, password):
+            self.mocked_users[username] = password
+        return _mock_create_user
+    
+    def mock_add_user_to_group(self):
+        def _mock_add_user_to_group(username, group):
+            self.mocked_user_groups.setdefault(username, []).append(group)
+        return _mock_add_user_to_group
+    
+    @suppress_whiptail        
+    def test_import_from_valid_file(self):
+        pinet_functions.importFromCSV(self.valid_csv_filepath, "PASSWORD", True)
+        self.assertEquals(
+            self.mocked_users, 
+            {
+                "username1" : pinet_functions.encrypted_password("password1"),
+                "username2" : pinet_functions.encrypted_password("password2"),
+            }
+        )
+        for username, groups in self.mocked_user_groups.items():
+            self.assertEquals(groups, pinet_functions.PINET_USER_GROUPS)
+        self.assertEquals(self.read_data(), "0")
+        
+@unittest.skipUnless(i_am_root, "Must be root to run this tests - it reads from /etc/shadow")
+class Test_previousImport(TestMockFilesystemMixin, TestPiNet):
+    
+    MIGRATIONS = {
+        "shadow" : "{guid}:!:1:0:99999:1:::\n",
+        "passwd" : "{guid}:x:0:0:root:/root:/bin/bash\n",
+        "gshadow" : "{guid}:!:1:0:99999:7:::\n",
+        "group" : "{guid}:x:0:\n"
+    }
+    
+    def setUp(self):
+        super().setUp()
+        
+        self.track_original(pinet_functions, "writeTextFile")
+        self._original_writeTextFile = pinet_functions.writeTextFile
+        pinet_functions.writeTextFile = self.mock_writeTextFile
+        
+        self.migration_dirpath = os.path.join(self.local_dirpath, "etc")
+        os.makedirs(self.migration_dirpath)
+        
+        guid = uuid.uuid1()
+        self.migrations = []
+        for filename, entry in self.MIGRATIONS.items():
+            filepath = os.path.join(self.migration_dirpath, filename + ".mig") 
+            migrated_entry = entry.format(guid=guid)
+            with open(filepath, "w") as f:
+                f.write(migrated_entry)
+            self.migrations.append((filename, migrated_entry))
+        
+    def mock_writeTextFile(self, textlist, filepath):
+        return self._original_writeTextFile(textlist, self.make_local_filepath(filepath))
+    
+    def test_import(self):
+        """Attempt to import from a set of migrated files. Each migrated file
+        consists of just one entry with a GUID unique across all test runs.
+        This should end up at the end of the corresponding local file.
+        """
+        pinet_functions.previousImport(self.migration_dirpath)
+        for filename, entry in self.migrations:
+            filepath = os.path.join(self.migration_dirpath, filename)
+            print(filepath)
+            with open(filepath) as f:
+                lines = list(f)
+            self.assertEquals(lines[-1], entry)                    
+        
 if False:
 
     class TestEntryPoints(TestPiNet):
@@ -363,12 +481,6 @@ if False:
             assert False
 
         def test_installCheckKernelUpdater(self):
-            assert False
-
-        def test_previousImport(self):
-            assert False
-
-        def test_importFromCSV(self):
             assert False
 
         def test_installSoftwareList(self):

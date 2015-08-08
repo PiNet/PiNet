@@ -43,6 +43,7 @@ PINET_PYTHON_BINARY = "Scripts/pinet-functions-python.py"
 PINET_DOWNLOAD_URL = CODE_DOWNLOAD_URL + "/" + PINET_BINARY
 PINET_PYTHON_DOWNLOAD_URL = CODE_DOWNLOAD_URL + "/" + PINET_PYTHON_BINARY
 
+PINET_USER_GROUPS = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
 configFileData = {}
 
 
@@ -495,12 +496,16 @@ def whiptailCheckList(title, message, items, parameter1 = "", ):
     else:
         return("Cancel")
 
+#------------------ Utility functions ---------------
+
 def create_user(username, password):
     subprocess.call(["useradd", "-m", "-s", "/bin/bash", "-p", password, username])
 
 def add_user_to_group(username, group):
     subprocess.call(["usermod", "-a", "-G", group, username])
-   
+
+def encrypted_password(password):
+    return crypt.crypt(password, "22")
 
 #---------------- Main functions -------------------
 
@@ -729,24 +734,35 @@ def displayChangeLog(version):
         updatePiNet()
     return result
 
-def previousImport():
+def previousImport(migration_dirpath="/root/move"):
+    #
+    # Before this is run, four files will have been unpacked into /root/move:
+    # passwd.mig, group.mig, shadow.mig, gshadow.mig
+    #
+    # Take each of these files and add their contents into the
+    # corresponding /etc file, skipping those which already exist
+    #
     items = ["passwd", "group", "shadow", "gshadow"]
     #items = ["group",]
     toAdd = []
     for x in range(0, len(items)):
         #migLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x] + ".mig"
         #etcLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x]
-        migLoc = "/root/move/" + items[x] + ".mig"
+        migLoc = os.path.join(migration_dirpath, items[x] + ".mig")
         etcLoc = "/etc/" + items[x]
+        print("migLoc", migLoc)
+        print("etcLoc", etcLoc)
         debug("mig loc " + migLoc)
         debug("etc loc " + etcLoc)
         mig = getList(migLoc)
+        print("mig", mig)
         etc = getList(etcLoc)
         for i in range(0, len(mig)):
             mig[i] = str(mig[i]).split(":")
         for i in range(0, len(etc)):
             etc[i] = str(etc[i]).split(":")
         for i in range(0, len(mig)):
+            print("mig[i]", mig[i])
             unFound = True
             for y in range(0, len(etc)):
                 bob = mig[i][0]
@@ -755,19 +771,24 @@ def previousImport():
                     unFound = False
             if unFound:
                 toAdd.append(mig[i])
+        print("toAdd", toAdd)
         for i in range(0, len(toAdd)):
             etc.append(toAdd[i])
         for i in range(0, len(etc)):
-            line = ""
-            for y in range(0, len(etc[i])):
-                line = line  + etc[i][y] + ":"
-            line = line[0:len(line) - 1]
-            etc[i] = line
+            etc[i] = ":".join(etc[i])
+            #~ line = ""
+            #~ for y in range(0, len(etc[i])):
+                #~ line = line  + etc[i][y] + ":"
+            #~ line = line[0:len(line) - 1]
+            #~ etc[i] = line
         debug(etc)
         writeTextFile(etc, etcLoc)
 
 def importFromCSV(theFile, defaultPassword, test = True):
-    """Import users from a space-delimited, pipe-separated .csv file
+    """Import users from a space-delimited, pipe-quoted .csv file
+    
+    FIXME TJG except that it seems to be loading from a conventional,
+    comma-separated file.
     """
     userData=[]
     if test == "True" or True:
@@ -781,13 +802,12 @@ def importFromCSV(theFile, defaultPassword, test = True):
                 try:
                     theRow=str(row[0]).split(",")
                 except:
-                    whiptailBox("msgbox", "Error!", "CSV file invalid!", False)
-                    sys.exit()
+                    raise RuntimeError("Invalid data in CSV file %s" % theFile)
                 user=theRow[0]
                 if " " in user:
                     whiptailBox("msgbox", "Error!", "CSV file names column (1st column) contains spaces in the usernames! This isn't supported.", False)
                     returnData("1")
-                    sys.exit()
+                    raise RuntimeError("Usernames with spaces are unsupported")
                 if len(theRow) >= 2:
                     if theRow[1] == "":
                         password=defaultPassword
@@ -811,18 +831,18 @@ def importFromCSV(theFile, defaultPassword, test = True):
                     for x in range(0, len(userData)):
                         user = userData[x][0]
                         password = userData[x][1]
-                        encPass = crypt.crypt(password,"22")
+                        encPass = encrypted_password(password)
                         create_user(user, encPass)
                         fixGroupSingle(user)
                         print("Import of " + user + " complete.")
                     whiptailBox("msgbox", "Complete", "Importing of CSV data has been complete.", False)
                 else:
-                    sys.exit()
+                    raise RuntimeError("Some Problem")
     else:
         print("Error! CSV file not found at " + theFile)
 
 def fixGroupSingle(username):
-    groups = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
+    groups = PINET_USER_GROUPS
     for x in range(0, len(groups)):
         add_user_to_group(username, groups[x])
 
