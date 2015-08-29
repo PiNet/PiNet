@@ -812,7 +812,7 @@ def importFromCSV(theFile, defaultPassword, test = True):
                 thing = ""
                 for i in range(0, len(userData)):
                     thing = thing + "Username - " + userData[i][0] + " : Password - " + userData[i][1] + "\n"
-                cmd = ["whiptail", "--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "import" , "--no-button", "Cancel", thing, "24", "78"]
+                cmd = ["whiptail", "--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "Import" , "--no-button", "Cancel", thing, "24", "78"]
                 p = Popen(cmd,  stderr=PIPE)
                 out, err = p.communicate()
                 if p.returncode == 0:

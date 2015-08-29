@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.14
+version=1.0.15
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -400,6 +400,7 @@ else
         sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/PiBoot/cmdline.txt"
         nautilus "/home/$SUDO_USER/PiBoot" > /dev/null 2>&1 &
 fi
+CreateSDCardImageFile
 
 
 }
@@ -2162,6 +2163,30 @@ CheckInstallSuccess(){
 		whiptail --title "Installation error" --msgbox "An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
 		exit
 	fi
+}
+
+CreatePartitionTable() {
+  #Directly borrowed from Spindle - https://github.com/asb/spindle/blob/master/wheezy-stage0
+  sudo parted $1 <<EOF
+  unit b
+  mklabel msdos
+  mkpart primary fat32 $(expr 4 \* 1024 \* 1024) $(expr 60 \* 1024 \* 1024 - 1)
+  print
+  quit
+EOF
+}
+
+CreateSDCardImageFile(){
+	fileName="/tmp/pinet.img"
+	dd if=/dev/zero of=$fileName bs=512 count=208845
+	create_partition_table $fileName
+	sudo mkdosfs -n PINET -S 512 -s 16 -v $fileName
+	mkdir /mnt/sdimage
+	mount $fileName /mnt/sdimage
+	cp -r /home/techcamp/PiBoot/* /mnt/sdimage/
+	umount /mnt/sdimage
+	rm -r /mnt/sdimage
+	mv $fileName /home/$SUDO_USER/pinetSDImage.img
 }
 
 
