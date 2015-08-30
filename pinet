@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.14
+version=1.0.15
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -22,8 +22,10 @@ PythonStart="python3"
 p="$PythonStart $PythonFunctions"
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
+BootRepositoryName="PiNet-Boot"
 RawRepositoryBase="https://raw.github.com/pinet/"
 Repository="$RepositoryBase$RepositoryName"
+BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
 ReleaseBranch="master"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
@@ -290,7 +292,7 @@ if [ $Internet -eq 0 ]; then
 		mkdir /opt/PiNet/PiBootBackup
 	fi
 	rm -rf /tmp/PiBoot
-	git clone --no-single-branch --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
+	git clone --no-single-branch --depth 1 $BootRepository.git /tmp/PiBoot #Clones main repository, including boot files
 	(cd "/tmp/PiBoot"; git checkout "$ReleaseBranch")
 	rm -rf /opt/PiNet/PiBootBackup/*
 	cp -r /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/
@@ -311,7 +313,6 @@ if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
 	local newVersion=0
 	local currentVersion=$(head -n 1 "/opt/ltsp/armhf/bootfiles/version.txt")
 	local newVersion=$(head -n 1 "/opt/PiNet/PiBootBackup/version.txt")
-	echo "$currentVersion $newVersion"
 	if (( $currentVersion < $newVersion )); then 
 		rm -rf "/opt/ltsp/armhf/bootfiles/"
 		cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
@@ -674,6 +675,9 @@ ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
 
+ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
+ltsp-chroot --arch armhf apt-get install -y sense-hat
+
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
 
 sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi
@@ -683,6 +687,9 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
     cp -r /tmp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
 fi
+
+#Install pillow which is required for Raspberry Pi Sense HAT.
+sudo ltsp-chroot sudo pip-3.2 install pillow
 
 #Server software
 apt-get install -y bindfs python3-feedparser ntp
@@ -1480,7 +1487,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
+		whiptail --title "WARNING!!" --msgbox "Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1662,7 +1669,7 @@ AddDesktopShortcutToUser() {
 if [ ! -f "/home/$1/Desktop/pinet.desktop" ]; then
 	cat <<EOF1 >> /home/$1/Desktop/pinet.desktop
 [Desktop Entry]
-Version=1.0
+Version=2.0
 Name=PiNet
 Comment=Raspberry Pi LTSP       
 Exec=sudo bash pinet
@@ -2594,7 +2601,7 @@ FullInstall(){
 		FixDesktopIcons   #Adds desktop icons
 		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
+		#whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		#ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		$p installSoftwareFromFile
 		DisableI2C_SPI

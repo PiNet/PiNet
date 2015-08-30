@@ -22,9 +22,11 @@ import pwd, grp
 
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
+BootRepository="PiNet-Boot"
 RawRepositoryBase="https://raw.github.com/pinet/"
 Repository=RepositoryBase + RepositoryName
 RawRepository=RawRepositoryBase + RepositoryName
+RawBootRepository=RawRepositoryBase + BootRepository
 ReleaseBranch = "master"
 configFileData = {}
 
@@ -489,7 +491,7 @@ def replaceBitOrAdd(file, string, newString):
     textfile = findReplaceSection(textfile, string, newString)
     writeTextFile(textfile, file)
 
-def internet_on(timeoutLimit, returnType = True):
+def internet_on(timeoutLimit = 5, returnType = True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
@@ -497,13 +499,19 @@ def internet_on(timeoutLimit, returnType = True):
     import urllib.request
     #print("Checking internet")
     try:
-        response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
+        response=urllib.request.urlopen('http://www.google.com',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
     except:  pass
     try:
-        response=urllib.request.urlopen('http://74.125.228.100',timeout=int(timeoutLimit))
+        response=urllib.request.urlopen('http://mirrordirector.raspbian.org/',timeout=int(timeoutLimit))
+        returnData(0)
+        #print("returning 0")
+        return True
+    except:  pass
+    try:
+        response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
@@ -591,7 +599,7 @@ def checkUpdate(currentVersion):
         whiptailBox("msgbox", "Update detected", "An update has been detected for PiNet. Select OK to view the Release History.", False)
         displayChangeLog(currentVersion)
     else:
-        print("No updates found")
+        print("No PiNet software updates found")
         #print(thisVersion)
         #print(currentVersion)
         returnData(0)
@@ -599,7 +607,8 @@ def checkUpdate(currentVersion):
 
 
 def checkKernelFileUpdateWeb():
-    downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    #downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    downloadFile(RawBootRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
     currentPath="/home/"+user+"/PiBoot/version.txt"
@@ -611,9 +620,11 @@ def checkKernelFileUpdateWeb():
             return False
         else:
             returnData(0)
+            print("No kernel updates found")
             return True
     else:
         returnData(0)
+        print("No kernel updates found")
 
 def checkKernelUpdater():
     downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
@@ -889,7 +900,7 @@ def installSoftwareList(holdOffInstall = False):
     software.append(softwarePackage("Libreoffice", "A free office suite, similar to Microsoft office", "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
     software.append(softwarePackage("Arduino-IDE", "Programming environment for Arduino microcontrollers", "apt", ["arduino",]))
     software.append(softwarePackage("Scratch-gpio", "A special version of scratch for GPIO work" , "scratchGPIO", ["",]))
-    software.append(softwarePackage("Python-hardware", "Python libraries for some addon boards", "pip", ["pibrella skywriter unicornhat piglow"]))
+    software.append(softwarePackage("Python-hardware", "Python libraries for a number of Pimoroni addon boards", "pip", ["pibrella skywriter unicornhat piglow"]))
     software.append(softwarePackage("Epoptes", "Free and open source classroom management software", "epoptes", ["",]))
     software.append(softwarePackage("BlueJ", "A Java IDE for developing programs quickly and easily", "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
     software.append(softwarePackage("Custom-package", "Allows you to enter the name of a package from Raspbian repository", "customApt", ["",]))
@@ -972,10 +983,9 @@ def nbdRun():
 
 if len(sys.argv) == 1:
     print("This python script does nothing on its own, it must be passed stuff")
-    installSoftwareList()
-    #print(getConfigParameter("/etc/pinet", "NBD="))
 
 else:
+    getReleaseChannel()
     if sys.argv[1] == "replaceLineOrAdd":
         replaceLineOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
     elif sys.argv[1] == "replaceBitOrAdd":
