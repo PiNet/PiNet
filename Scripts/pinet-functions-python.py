@@ -905,6 +905,7 @@ def installSoftwareList(holdOffInstall = False):
     software.append(softwarePackage("BlueJ", "A Java IDE for developing programs quickly and easily", "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
     software.append(softwarePackage("Custom-package", "Allows you to enter the name of a package from Raspbian repository", "customApt", ["",]))
     software.append(softwarePackage("Custom-python", "Allows you to enter the name of a Python library from pip.", "customPip", ["",]))
+    software.append(softwarePackage("Python-hardware", "Python libraries for a number of additional addon boards", "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode"]))
     softwareList = []
     for i in software:
         softwareList.append([i.name, i.description])
@@ -912,11 +913,15 @@ def installSoftwareList(holdOffInstall = False):
     if (shutil.get_terminal_size()[0] < 105) or (shutil.get_terminal_size()[0] < 30):
         print("\x1b[8;30;105t")
         time.sleep(0.05)
-        print("Resizing")
+        #print("Resizing")
     while done == False:
         whiptailBox("msgbox", "Additional Software", "In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished.", False)
         result = (whiptailCheckList("Extra Software Submenu", "Select any software you want to install. Use space bar to select then enter to continue.", softwareList))
         result = result.decode("utf-8")
+        try:
+            result = result.decode("utf-8")
+        except AttributeError:
+            return
         result = result.replace('"', '')
         if result != "Cancel":
             if result == "":
