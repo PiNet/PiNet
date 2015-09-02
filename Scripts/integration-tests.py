@@ -304,7 +304,7 @@ class Test_downloadFile(TestPiNet):
         result = pinet_functions.downloadFile("http://pinet.org.uk", self.download_filepath)
         self.assertFalse(result)
 
-class TestMockFilesystemMixin:
+class MockFilesystemMixin:
 
     def setUp(self):
         super().setUp()
@@ -315,7 +315,7 @@ class TestMockFilesystemMixin:
         "Turn filepath into a local filepath rooted at local_dirpath"
         return os.path.join(self.local_dirpath, filepath.lstrip(os.path.sep))
         
-class TestDownloads(TestMockFilesystemMixin, TestPiNet):
+class TestDownloads(MockFilesystemMixin, TestPiNet):
     
     def setUp(self):
         super().setUp()
@@ -423,7 +423,7 @@ class Test_importFromCSV(TestPiNet):
         self.assertEquals(self.read_data(), "0")
         
 @unittest.skipUnless(i_am_root, "Must be root to run this tests - it reads from /etc/shadow")
-class Test_previousImport(TestMockFilesystemMixin, TestPiNet):
+class Test_previousImport(MockFilesystemMixin, TestPiNet):
     
     MIGRATIONS = {
         "shadow" : "{guid}:!:1:0:99999:1:::\n",
@@ -465,8 +465,8 @@ class Test_previousImport(TestMockFilesystemMixin, TestPiNet):
             print(filepath)
             with open(filepath) as f:
                 lines = list(f)
-            self.assertEquals(lines[-1], entry)                    
-        
+            self.assertEquals(lines[-1], entry)
+
 if False:
 
     class TestEntryPoints(TestPiNet):
