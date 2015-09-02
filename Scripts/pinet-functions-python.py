@@ -537,13 +537,19 @@ def internet_on(timeoutLimit, returnType = True):
     """
     #print("Checking internet")
     try:
-        response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
+        response=urllib.request.urlopen('http://www.google.com',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
     except:  pass
     try:
-        response=urllib.request.urlopen('http://74.125.228.100',timeout=int(timeoutLimit))
+        response=urllib.request.urlopen('http://mirrordirector.raspbian.org/',timeout=int(timeoutLimit))
+        returnData(0)
+        #print("returning 0")
+        return True
+    except:  pass
+    try:
+        response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
@@ -647,7 +653,7 @@ def checkUpdate(currentVersion):
         whiptailBox("msgbox", "Update detected", "An update has been detected for PiNet. Select OK to view the Release History.", False)
         displayChangeLog(currentVersion)
     else:
-        print("No updates found")
+        print("No PiNet software updates found")
         #print(thisVersion)
         #print(currentVersion)
         returnData(0)
@@ -655,7 +661,8 @@ def checkUpdate(currentVersion):
 
 
 def checkKernelFileUpdateWeb():
-    downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    #downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    downloadFile(RawBootRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
     currentPath="/home/"+user+"/PiBoot/version.txt"
@@ -667,9 +674,11 @@ def checkKernelFileUpdateWeb():
             return False
         else:
             returnData(0)
+            print("No kernel updates found")
             return True
     else:
         returnData(0)
+        print("No kernel updates found")
 
 def checkKernelUpdater():
     downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
@@ -954,6 +963,7 @@ def installSoftwareList(holdOffInstall = False):
     software.append(softwarePackage("BlueJ", "A Java IDE for developing programs quickly and easily", "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
     software.append(softwarePackage("Custom-package", "Allows you to enter the name of a package from Raspbian repository", "customApt", ["",]))
     software.append(softwarePackage("Custom-python", "Allows you to enter the name of a Python library from pip.", "customPip", ["",]))
+    software.append(softwarePackage("Python-hardware", "Python libraries for a number of additional addon boards", "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode"]))
     softwareList = []
     for i in software:
         softwareList.append([i.name, i.description])
@@ -1030,12 +1040,12 @@ def nbdRun():
 
 #------------------------------Main program-------------------------
 if __name__ == '__main__':
+
     if len(sys.argv) == 1:
         print("This python script does nothing on its own, it must be passed stuff")
-        installSoftwareList()
-        #print(getConfigParameter("/etc/pinet", "NBD="))
 
     else:
+        getReleaseChannel()
         if sys.argv[1] == "replaceLineOrAdd":
             replaceLineOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
         elif sys.argv[1] == "replaceBitOrAdd":
