@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.16
+version=1.0.17
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -78,14 +78,14 @@ LegacyFixes() {
 	
 	if [ -f "/opt/ltsp/armhf/usr/bin/scratch.old" ]; then
 		echo "-------------------------------------------------------------------------------------------------"
-		echo "NuScratch detected. It fails to work correctly with PiNet at this time, so I will remove it."
+		echo $"NuScratch detected. It fails to work correctly with PiNet at this time, so I will remove it."
 		echo "-------------------------------------------------------------------------------------------------"
 		ltsp-chroot apt-get purge -y nuscratch
 		UpdateConfig NBDBuildNeeded true
 	fi
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
-		echo "A required system update has been found. I will now compress the operating system again to apply this update"
+		echo $"A required system update has been found. I will now compress the operating system again to apply this update"
 		NBDRun
 	fi
 	
@@ -163,7 +163,7 @@ apt-get update && apt-get upgrade -y
 apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools bindfs
 exitstatus=$?
 if ! [ $exitstatus = 0 ]; then
-	whiptail --title "ERROR!" --msgbox "No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
+	whiptail --title $"ERROR!" --msgbox $"No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
 	exit 1
 fi
 	
@@ -299,10 +299,10 @@ if [ $Internet -eq 0 ]; then
 	toReturn=0
 else
 	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
-		whiptail --title "Error" --msgbox "You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
+		whiptail --title $"Error" --msgbox $"You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
 		toReturn=1
 	else
-		whiptail --title "Internet" --msgbox "I detected you are not connected to the internet. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
+		whiptail --title $"Internet" --msgbox $"I detected you are not connected to the internet. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
 		UpdateIP
 		toReturn=0
 	fi
@@ -333,11 +333,11 @@ UpdateIP(){
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
 
-whiptail --title "Ip address" --yesno "Would you like to stick with your current IP address for the SD cards? (Recommended)" 8 78 #Check with this use that the IP address is correct
+whiptail --title $"IP address" --yesno $"Would you like to stick with your current IP address for the SD cards? (Recommended)" 8 78 #Check with this use that the IP address is correct
 
 exitstatus=$?
 if [ ! $exitstatus = 0 ]; then
-	IP=$(whiptail --inputbox "Please enter an IP address to use on the SD cards" 8 78 $IP --title "IP address" 3>&1 1>&2 2>&3)
+	IP=$(whiptail --title $"IP address" --inputbox $"Please enter an IP address to use on the SD cards" 8 78 $IP 3>&1 1>&2 2>&3)
 	exitstatus=$?
 fi
 
@@ -499,6 +499,7 @@ ltsp-chroot --arch armhf apt-get update
 }
 
 InstallProgram() {
+#No longer used, been replaced by python
 #Installing custom programs into the chroot using apt-get install x
 INSTALLP=$(whiptail --inputbox "What program would you like to install?" 8 78 $INIT --title "You can enter multiple programs by leaving a space between each" 3>&1 1>&2 2>&3)
  
@@ -534,6 +535,7 @@ fi
 }
 
 InstallPythonLib() {
+#No longer used, been replaced by python
 #Installing custom programs into the chroot using apt-get install x
 INSTALLP=$(whiptail --inputbox "What Python library would you like to install? PiNet will attempt to install it for both Python 2.7 and 3.2. You can enter multiple Python libraries by leaving a space between each" 11 78 $INIT --title "Python Library installation." 3>&1 1>&2 2>&3)
  
@@ -587,7 +589,7 @@ fi
 
 Finished() {
 #Function performing any actions that should happen after the boot image has been created
-whiptail --title "Install complete" --msgbox "The client install is complete, a boot.img file has been placed in /root folder, write this to an sd card" 16 78
+whiptail --title $"Install complete" --msgbox $"The client install is complete, a boot.img file has been placed in /root folder, write this to an sd card" 16 78
 
 
 }
@@ -615,12 +617,12 @@ ConfigFileRead
 if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
 	if [ "$NBDuse" = "true" ]; then  #If temporarily NBD is disable
 		echo "--------------------------------------------------------"
-		echo "Compressing the image, this will take roughly 5 minutes"
+		echo $"Compressing the image, this will take roughly 5 minutes"
 		echo "--------------------------------------------------------"
 		ltsp-update-image /opt/ltsp/armhf  #If NBD is enabled, recompress the image
 		UpdateConfig NBDBuildNeeded false
 	else
-		whiptail --title "WARNING" --msgbox "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
+		whiptail --title $"WARNING" --msgbox $"Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
 	fi
 fi
 }
@@ -628,7 +630,7 @@ fi
 NBDSetup() {
 #Setup function for NBD, asks user if they wish to use it, if not it defaults to NFS
 
-whiptail --title "Network technology" --yesno  "2 network technologies are available for PiNet. NBD and NFS. NBD uses compression dramatically improving application loading times. The tradeoff though is after every modification to the operating system, the image must be recompressed which can take around 5 minutes. NFS is slower but does not need compressed, all changes run live. If in doubt, select NBD." --yes-button "NBD" --no-button "NFS" 11 78
+whiptail --title $"Network technology" --yesno  $"2 network technologies are available for PiNet. NBD and NFS. NBD uses compression dramatically improving application loading times. The tradeoff though is after every modification to the operating system, the image must be recompressed which can take around 5 minutes. NFS is slower but does not need compressed, all changes run live. If in doubt, select NBD." --yes-button "NBD" --no-button "NFS" 11 78
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
@@ -762,7 +764,7 @@ local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
 if [ ! "$teacherID" = "2123" ]; then
 	groupdel teacher
 	groupadd teacher -g 2123
-	whiptail --title "Reboot required" --msgbox "Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
+	whiptail --title $"Reboot required" --msgbox $"Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
 	fixGroups
 fi	
 
@@ -803,12 +805,12 @@ fixGroupsSingle() {
 
 AddTeacher() {
 	#Adds a new teacher user to the system
-	whiptail --title "Teacher" --msgbox "Teachers have full admin access on the server (so can run PiNet), full read/write access to all shared folders and Epoptes teacher level (so can control students computers)." 9 78
-	username=$(SelectUser "to add to the teacher group.")
+	whiptail --title $"Teacher" --msgbox $"Teachers have full admin access on the server (so can run PiNet), full read/write access to all shared folders and Epoptes teacher level (so can control students computers)." 9 78
+	username=$(SelectUser $"to add to the teacher group.")
 	if [ ! $username = 1 ]; then
 		INIT=""
 		AddUserToTeacher $username
-		whiptail --title "Success" --msgbox "The user $username has been added to the teacher group." 8 78
+		whiptail --title $"Success" --msgbox "The user $username has been added to the teacher group." 8 78
 	fi
 }
 
@@ -862,11 +864,11 @@ AddPasswordReset
 CollectWork(){
 #A work collection system. It grabs files from students "handin" folders, copies them to "submitted" folder on the server and changes their owner
 INIT="$SUDO_USER"
-USERHAND=$(whiptail --inputbox "Enter the username of the user account you want to save the collected work to. This is usually your own account name" 8 78 $INIT --title "User selection" 3>&1 1>&2 2>&3)
+USERHAND=$(whiptail --inputbox $"Enter the username of the user account you want to save the collected work to. This is usually your own account name" 8 78 $INIT --title $"User selection" 3>&1 1>&2 2>&3)
  
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-	whiptail --title "WARNING" --yesno "The current submitted folder will be deleted, are you sure?" 8 78
+	whiptail --title $"WARNING" --yesno $"The current submitted folder will be deleted, are you sure?" 8 78
  
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
@@ -879,24 +881,24 @@ if [ $exitstatus = 0 ]; then
 				do
         			if groups "$user" | grep -q -E ' pupil(\s|$)'; then
         				if [ -d "/home/$user/handin" ]; then
-							echo "The user $user has a handin folder"
+							echo $"The user $user has a handin folder"
 							cp -r "/home/$user/handin/" "/home/$USERHAND/submitted/$user/"
 					
 						fi
 				
                 		else
-                			echo "The user $user does not have a handin folder"
+                			echo $"The user $user does not have a handin folder"
 
 					fi
 				done
 				
 				chown -R "$USERHAND" /home/"$USERHAND"/submitted
-				whiptail --title "Complete" --msgbox "Students work has been collected and can be found in /home/$USERHAND/submitted/" 8 78
+				whiptail --title $"Complete" --msgbox $"Students work has been collected and can be found in /home/$USERHAND/submitted/" 8 78
 			else
-			whiptail --title "ERROR" --msgbox "The username can't be blank!" 8 78
+			whiptail --title $"ERROR" --msgbox $"The username can't be blank!" 8 78
 			fi
 		else
-			whiptail --title "ERROR" --msgbox "The user $USERHAND was not found!" 8 78
+			whiptail --title $"ERROR" --msgbox $"The user $USERHAND was not found!" 8 78
 			
 		fi
 	fi
@@ -935,7 +937,7 @@ fi
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
 
-whiptail --title "WARNING" --yesno 'Would you like to enable Sudo use for pupils? Giving pupils access to Sudo can be dangerous, they could do nasty things! But Sudo is required for GPIO use. It should only be enabled if needed. You can change your mind later the in Manage-Users submenu.' 10 78 
+whiptail --title $"WARNING" --yesno $"Would you like to enable Sudo use for pupils? Giving pupils access to Sudo can be dangerous, they could do nasty things! But Sudo is required for GPIO use. It should only be enabled if needed. You can change your mind later the in Manage-Users submenu." 10 78 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
@@ -948,7 +950,7 @@ fi
 
 FinishedInstallingSoftware(){
 #Checks if the user has finished installing software. Reason for this is so we don't have to recompress the OS after each package installed, can do in groups
-whiptail --title "Finished?" --yesno 'Are you finished installing software?' 10 78 
+whiptail --title $"Finished?" --yesno $"Are you finished installing software?" 10 78 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	if [ "$NBDBuildNeeded" = "true" ]; then
@@ -962,7 +964,7 @@ fi
 
 fileSelect(){
 #Selects a folder using some BASH/Whiptail trickery
-results=$(whiptail --title "Current location $(pwd)"  --menu "Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `for x in $(ls -pa | grep "/"); do echo $x "-"; done` 2>&1 >/dev/tty)
+results=$(whiptail --title $"Current location $(pwd)"  --menu $"Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `for x in $(ls -pa | grep "/"); do echo $x "-"; done` 2>&1 >/dev/tty)
 exitstatus=$?
 if [ "$exitstatus" = "1" ]; then
         echo "The user canceled :( "
@@ -970,7 +972,7 @@ if [ "$exitstatus" = "1" ]; then
 else
         if [ "$results" = "./" ]; then
                 location=$(pwd)
-                echo "chosen location is $location"
+                echo $"chosen location is $location"
         else
                 cd "$results"
                 fileSelect
@@ -981,7 +983,7 @@ fi
 
 SingleFileSelect(){
 #Selects a folder using some BASH/Whiptail trickery
-results=$(whiptail --title "Current location $(pwd)"  --menu "Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `echo "../ -"; for x in $(ls -p); do echo $x "-"; done` 2>&1 >/dev/tty)
+results=$(whiptail --title $"Current location $(pwd)"  --menu $"Select a folder. To select this folder, select ./ and to go up a folder, select ../ " 20 80 10 `echo "../ -"; for x in $(ls -p); do echo $x "-"; done` 2>&1 >/dev/tty)
 exitstatus=$?
 if [ "$exitstatus" = "1" ]; then
         echo "The user canceled :("
@@ -1034,30 +1036,29 @@ chmod +x /usr/local/bin/pinet-backup.sh
 
 AddUsers(){
 #Add users to the system. Manually adds the user hash instead of using adduser
-	username=$(whiptail --inputbox "Enter new username" 8 78 $INIT --title "Username" 3>&1 1>&2 2>&3)
+	username=$(whiptail --inputbox $"Enter new username" 8 78 $INIT --title $"Username" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ "$exitstatus" = "0" ]; then
-		password=$(whiptail --inputbox "Enter new password" 8 78 $INIT --title "Password" 3>&1 1>&2 2>&3)
+		password=$(whiptail --inputbox $"Enter new password" 8 78 $INIT --title $"Password" 3>&1 1>&2 2>&3)
 		exitstatus=$?
 		if [ "$exitstatus" = "0" ]; then
 			egrep "^$username" /etc/passwd >/dev/null
 			if [ $? -eq 0 ]; then
-				whiptail --title "Error" --msgbox "Username already exists!" 8 78
+				whiptail --title "Error" --msgbox $"Username already exists!" 8 78
 			else
 				pass=$(perl -e 'print crypt($ARGV[0], "password")' $password)
 				useradd -m -s /bin/bash -p $pass $username
-			[ $? -eq 0 ] && echo "$username has been added to system!" || echo "Failed to add a user!"
+			[ $? -eq 0 ] && echo $"$username has been added to system!" || echo $"Failed to add a user!"
 			fixGroupsSingle $username
-			whiptail --title "Permission level" --yesno "Is $username a pupil or a teacher?
-Teachers have a lot more permissions including write access to all shared folders, Epoptes teacher access and the ability to run PiNet control software." --yes-button "Pupil" --no-button "Teacher" 8 78
+			whiptail --title $"Permission level" --yesno $"Is $username a pupil or a teacher? Teachers have a lot more permissions including write access to all shared folders, Epoptes teacher access and the ability to run PiNet control software." --yes-button $"Pupil" --no-button $"Teacher" 8 78  ############
 			if [ ! $? -eq 0 ]; then
 				AddUserToTeacher $username
-				whiptail --title "Success" --msgbox "A new teacher user has been added to the system successfully with the name - $username" 8 78
+				whiptail --title $"Success" --msgbox $"A new teacher user has been added to the system successfully with the name - $username" 8 78
 			else
-				whiptail --title "Success" --msgbox "A new student user has been added to the system successfully with the name - $username" 8 78
+				whiptail --title $"Success" --msgbox $"A new student user has been added to the system successfully with the name - $username" 8 78
 			fi
 			fi
-			whiptail --title "Another user" --yesno "Would you like to add another user?" 8 78
+			whiptail --title $"Another user" --yesno $"Would you like to add another user?" 8 78
 			if [ $? -eq 0 ]; then
 				AddUsers
 			fi
@@ -1069,13 +1070,13 @@ RemoveUser(){
 	#Removes user from list
 	username=$(SelectUser "to remove.")
 	if [ ! $username = 1 ]; then
-		whiptail --title "Are you sure?" --yesno "Are you sure you want to delete $username and all $username's user files?" 8 78
+		whiptail --title $"Are you sure?" --yesno $"Are you sure you want to delete $username and all $username's user files?" 8 78
 		if [ $? -eq 0 ]; then
 			userdel -rf $username
-			whiptail --title "Successful" --msgbox "User successfully removed" 8 78
+			whiptail --title $"Successful" --msgbox $"User successfully removed" 8 78
 		fi
 	fi
-	whiptail --title "Another user" --yesno "Would you like to delete another user?" 8 78
+	whiptail --title $"Another user" --yesno $"Would you like to delete another user?" 8 78
 	if [ $? -eq 0 ]; then
 		RemoveUser
 	fi
@@ -1084,17 +1085,17 @@ RemoveUser(){
 
 ChangeUserPassword(){
 	#Change a users password
-	username=$(SelectUser "to change the password of.")
+	username=$(SelectUser $"to change the password of.")
 	if [ ! $username = 1 ]; then
-		password=$(whiptail --inputbox "Enter the new password" 8 78 $INIT --title "Password" 3>&1 1>&2 2>&3)
+		password=$(whiptail --inputbox $"Enter the new password" 8 78 $INIT --title $"Password" 3>&1 1>&2 2>&3)
 			if ! [ "$password" = "" ]; then
 				echo -e "$password\n$password" | passwd $username
-				whiptail --title "Successful" --msgbox "Password successfully changed" 8 78
+				whiptail --title $"Successful" --msgbox $"Password successfully changed" 8 78
 			else
-				whiptail --title "Error" --msgbox "Password not valid" 8 78
+				whiptail --title $"Error" --msgbox $"Password not valid" 8 78
 			fi
 	fi
-	whiptail --title "Another user" --yesno "Would you like to change another users password?" 8 78
+	whiptail --title $"Another user" --yesno $"Would you like to change another users password?" 8 78
 		if [ $? -eq 0 ]; then
 			ChangeUserPassword
 		fi
@@ -1104,15 +1105,14 @@ ChangeUserPassword(){
 		
 
 RestoreBackup() {  #Currently incomplete
-	whiptail --title "Select backup" --msgbox "Please select a backup file. They are normally the date, time followed by Raspi-Users-Backup.tar.gz" 8 78
+	whiptail --title $"Select backup" --msgbox $"Please select a backup file. They are normally the date, time followed by Raspi-Users-Backup.tar.gz" 8 78
 
 }
 
 SelectUser(){
 #Using some BASH/Whiptail magic, builds a list of users, formats it perfectly and hads it to whiptail
-users=$(cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | awk -F':' '{ print $1"\na"}')
-user=$(whiptail --title "Users" --menu "Select a user $1" 16 78 5 $users --noitem 3>&1 1>&2 2>&3)
 users=$(cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | sort | awk -F':' '{ print $1"\na"}')
+user=$(whiptail --title $"Users" --menu $"Select a user $1" 16 78 5 $users --noitem 3>&1 1>&2 2>&3)
 if [ $? -eq 0 ]; then
 	echo $user
 else
@@ -1122,62 +1122,52 @@ fi
 
 TroubleShooter(){
 #PiNet troubleshooter - Needs some more answers built in
-	whiptail --title "Troubleshooter" --msgbox "Welcome to PiNet troubleshooter. The troubleshooter goes over a few possible issues you may be having with your setup and offers advice.
-	WARNING - This troubleshooter is experimental, feel free to open issue reports at $Repository/issues if you have any additional issues." 16 78
-	whiptail --title "Boot" --yesno "Have you got as far as your Raspberry Pi starting up?" 8 78
+	whiptail --title $"Troubleshooter" --msgbox $"Welcome to PiNet troubleshooter. The troubleshooter goes over a few possible issues you may be having with your setup and offers advice. WARNING - This troubleshooter is experimental, feel free to open issue reports at $Repository/issues if you have any additional issues." 16 78
+	whiptail --title $"Boot" --yesno $"Have you got as far as your Raspberry Pi starting up?" 8 78
 	if [ $? -eq 0 ]; then
-		whiptail --title "Login screen" --yesno "Have you got as far as the login screen displaying?" 8 78
+		whiptail --title $"Login screen" --yesno $"Have you got as far as the login screen displaying?" 8 78
 		if [ $? -eq 0 ]; then
-			whiptail --title "Login screen" --yesno "Are you having login issues?" 8 78
+			whiptail --title $"Login screen" --yesno $"Are you having login issues?" 8 78
 			if [ $? -eq 0 ]; then
-				whiptail --title "Login" --msgbox "LDM (login screen) does not handle incorrect passwords very well. If you enter an incorrect set of credentials, it just restarts itself. Don't worry about this.
+				whiptail --title $"Login" --msgbox $"LDM (login screen) does not handle incorrect passwords very well. If you enter an incorrect set of credentials, it just restarts itself. Don't worry about this.
 				If you are unsure about your password, remember you can easily change it in the Manage-users submenu" 16 78
 			else
-				whiptail --title "USB drivers" --yesno "Is your keyboard working?" 8 78
+				whiptail --title $"USB drivers" --yesno $"Is your keyboard working?" 8 78
 				if [ ! $? -eq 0 ]; then
-					whiptail --title "Kernel misaligned" --msgbox "9/10 times, this means your kernels are misaligned. Basically there is a kernel on the SD card and as it boots and connects to the PiNet server, it
-					loads the required additional modules (for stuff like USB) from the server. If the server has modules compiled for a more recent kernel, they are misaligned and don't work.
-					To fix this, make sure you are running the most recent version of PiNet, also hit the update-sd option and reflash your SD card to see if that fixes it. If not, a patched set of boot files may not
-					be available yet (they have to be prepared by hand). Best thing you can do is drop support an email and let them know that you are having keyboard/mouse issues. Visit http://pinet.org.uk/articles/support.html" 17 78
-					
+					whiptail --title $"Kernel misaligned" --msgbox $"9/10 times, this means your kernels are misaligned. Basically there is a kernel on the SD card and as it boots and connects to the PiNet server, it loads the required additional modules (for stuff like USB) from the server. If the server has modules compiled for a more recent kernel, they are misaligned and don't work. To fix this, make sure you are running the most recent version of PiNet, also hit the update-sd option and reflash your SD card to see if that fixes it. If not, a patched set of boot files may not be available yet (they have to be prepared by hand). Best thing you can do is drop support an email and let them know that you are having keyboard/mouse issues. Visit http://pinet.org.uk/articles/support.html" 17 78	
 				else
-					whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
+					whiptail --title $"???" --msgbox $"I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
 				fi
 			fi
 		else
 			resetAndCleanup
-			whiptail --title "Fixed?" --yesno "Is it fixed now? I just reset some of the networking services." 8 78
+			whiptail --title $"Fixed?" --yesno $"Is it fixed now? I just reset some of the networking services." 8 78
 			if [ ! $? -eq 0 ]; then
-				whiptail --title "Connection refused" --yesno "Are you getting connection refused or connection timed out error?" 8 78
+				whiptail --title $"Connection refused" --yesno $"Are you getting connection refused or connection timed out error?" 8 78
 				if [ $? -eq 0 ]; then
 					IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
-					whiptail --title "Troubleshooter" --msgbox "This is a common error, it occurs when the IP address of the server on the SD card is incorrect. Insert the SD card into a computer and open the cmdline.txt file. Find NBDRoot= (or NFSRoot=) and make sure the address that follows it is $IP 
-					If it isn't, change it so it is.
-					If it is currently 1.1.1.1 the server was unable to get your current address when it created the SD card.
-					If it is a different address, your server may have been assigned a new IP address. It would be a good idea to assign a static IP address to your server. Talk to your technician about this." 16 78
-			
+					whiptail --title $"Troubleshooter" --msgbox $"This is a common error, it occurs when the IP address of the server on the SD card is incorrect. Insert the SD card into a computer and open the cmdline.txt file. Find NBDRoot= (or NFSRoot=) and make sure the address that follows it is $IP  If it isn't, change it so it is. If it is currently 1.1.1.1 the server was unable to get your current address when it created the SD card. If it is a different address, your server may have been assigned a new IP address. It would be a good idea to assign a static IP address to your server. Talk to your technician about this." 16 78
 				else
-					whiptail --title "Giving up" --yesno "Are you getting a number of 'giving up' errors?" 8 78
+					whiptail --title $"Giving up" --yesno $"Are you getting a number of 'giving up' errors?" 8 78
 					if [ $? -eq 0 ]; then
-						whiptail --title "Giving up" --msgbox "This usually means the Raspberry Pi isn't physically connected to the network, check the ethernet cable is correctly plugged in (wifi is not supported) and is connected to your main switch." 16 78
+						whiptail --title $"Giving up" --msgbox $"This usually means the Raspberry Pi isn't physically connected to the network, check the ethernet cable is correctly plugged in (wifi is not supported) and is connected to your main switch." 16 78
 					else
-						whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78		
+						whiptail --title $"???" --msgbox $"I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78		
 					fi
 				fi
 			fi
 		fi
 	else
-		whiptail --title "SD card" --yesno "Are you having issues with loading the files onto the SD card?" 8 78
+		whiptail --title $"SD card" --yesno $"Are you having issues with loading the files onto the SD card?" 8 78
 		if [ $? -eq 0 ]; then
-			whiptail --title "Partitions" --yesno "Are you having issues with there being 2-3 partitions on the SD card?" 8 78
+			whiptail --title $"Partitions" --yesno $"Are you having issues with there being 2-3 partitions on the SD card?" 8 78
 			if [ $? -eq 0 ]; then
-				whiptail --title "Formating partitions" --msgbox "When flashing Raspbian or another Raspberry Pi operating system onto SD cards, a number of partitions are created. PiNet only needs a single partition, the boot partition.
-				This is usually a small (~50mb) partition which is formatted as fat32. If you wish to format the entire SD card (which if you are having issues, you may want to), please refer to the userguide section on formatting SD cards. " 16 78	
+				whiptail --title $"Formating partitions" --msgbox $"When flashing Raspbian or another Raspberry Pi operating system onto SD cards, a number of partitions are created. PiNet only needs a single partition, the boot partition. This is usually a small (~50mb) partition which is formatted as fat32. If you wish to format the entire SD card (which if you are having issues, you may want to), please refer to the userguide section on formatting SD cards. " 16 78	
 			else
-				whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78	
+				whiptail --title $"???" --msgbox $"I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78	
 			fi
 		else
-			whiptail --title "???" --msgbox "I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
+			whiptail --title $"???" --msgbox $"I am not aware of any other issues in this area. Please create a support ticket at $Repository/issues" 8 78
 		fi
 	fi
 }
@@ -1188,17 +1178,17 @@ DisplayUsers(){
 clear
 local TEACHER=$(cat /etc/group | grep --regex "^teacher:.*" | awk -F: '{print $4}')
 echo "-------------------"
-echo "Current Linux users"
+echo $"Current Linux users"
 echo "-------------------"
 cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
 	do
 		echo "$user"
 	done
 echo "---------------"
-echo "Current Linux users in the teacher group"
+echo $"Current Linux users in the teacher group"
 echo "$TEACHER"
 echo "---------------"
-echo "Press enter to continue"
+echo $"Press enter to continue"
 read
 
 }
@@ -1222,10 +1212,10 @@ SetupSambaPi(){
 
 AfterUpdate(){
 #Code run after a successful update on the BASH side, given that most update code is handled via Python
-whiptail --title "Update complete" --msgbox "The update succeeded. PiNet is now up to date." 8 78
+whiptail --title $"Update complete" --msgbox $"The update succeeded. PiNet is now up to date." 8 78
 #if [ $exitstatus = "0" ]; then
 
-		whiptail --title "Update-all" --yesno "After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+		whiptail --title $"Update-all" --yesno $"After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 			exec /bin/bash pinet Update-All
@@ -1245,7 +1235,7 @@ Updater(){
 	if [ $exitstatus = 0 ]; then 
 		AfterUpdate
 	else
-		whiptail --title "Update failed" --msgbox "The auto update failed. This usually means you aren't connected to the internet" 8 78
+		whiptail --title $"Update failed" --msgbox $"The auto update failed. This usually means you aren't connected to the internet" 8 78
 		exec /bin/bash pinet
 	fi
 	
@@ -1313,9 +1303,9 @@ UpdateAll(){
 		ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
 		AddSoftware
 		NBDRun
-		whiptail --title "Update complete" --msgbox "Updates are complete" 7 78
+		whiptail --title $"Update complete" --msgbox $"Updates are complete" 7 78
 	else
-		whiptail --title "Error" --msgbox "No internet connection, unable to update software..." 8 78
+		whiptail --title $"Error" --msgbox $"No internet connection, unable to update software..." 8 78
 	fi
 
 }
@@ -1331,8 +1321,8 @@ SetupSharedStandalone() {
 
 SetupShared(){
 	#User frontend for SetupSharedStandalone() for when it is not run directly
-	echo "Setting up shared folders"
-	whiptail --title "Setting up shared folders" --msgbox "As this is the first time you are using shared folders, I have to set them up. This may take a few minutes." 8 78
+	echo $"Setting up shared folders"
+	whiptail --title $"Setting up shared folders" --msgbox $"As this is the first time you are using shared folders, I have to set them up. This may take a few minutes." 8 78
 	SetupSharedStandalone
 	NBDRun
 
@@ -1342,7 +1332,7 @@ CreateSharedFolder(){
 	#Create a new shared folder on the Raspberry Pis
 	mkdir /home/shared/$1
 	if [ ! $? -eq 0 ]; then
-		whiptail --title "Error" --msgbox "The shared folder at /home/shared/$1 could not be created. It may already exist." 8 78
+		whiptail --title $"Error" --msgbox $"The shared folder at /home/shared/$1 could not be created. It may already exist." 8 78
 		return 1
 	else
 		chown root: /home/shared/$1
@@ -1376,7 +1366,7 @@ fi
 
 CreateSharedFoldersDialog(){
 	#Main dialog for creating new shared folders. Checks if they are installed, if so, displays all current shared folders, then asks for name, then adds it as a bindfs mount for the Pis
-	whiptail --title "Create shared folder" --yesno "Shared folders are accessible on all the Raspberry Pis and appear on the left in the file manager. Would you like to add one?" 8 78	
+	whiptail --title $"Create shared folder" --yesno $"Shared folders are accessible on all the Raspberry Pis and appear on the left in the file manager. Would you like to add one?" 8 78	
 	if [ $? -eq 0 ]; then
 		if [ ! -d /home/shared ]; then 
 			SetupShared
@@ -1385,19 +1375,19 @@ CreateSharedFoldersDialog(){
 		clear
 		echo ""
 		echo "----------------------"
-		echo "Current shared folders"
+		echo $"Current shared folders"
 		echo "----------------------"
 		echo ""
 		ls /home/shared -1
 		echo ""
-		echo "Hit enter to continue"
+		echo $"Hit enter to continue"
 		read
-		FolderName=$(whiptail --inputbox "Enter the name of the new shared folder" 8 78 --title "Shared folder" 3>&1 1>&2 2>&3)
+		FolderName=$(whiptail --inputbox $"Enter the name of the new shared folder" 8 78 --title $"Shared folder" 3>&1 1>&2 2>&3)
 		if [ $? -eq 0 ]; then
 			if ! [ "$FolderName" = "" ]; then
 				CreateSharedFolder "$FolderName"
 				if [ $? -eq 0 ]; then
-					whiptail --title "Pupil write access" --yesno 'Should pupils have read/write access to this shared folder or just read access? (Default read only)' --yes-button "Read" --no-button "Read/Write" 8 78
+					whiptail --title $"Pupil write access" --yesno $"Should pupils have read/write access to this shared folder or just read access? (Default read only)" --yes-button $"Read" --no-button $"Read/Write" 8 78
 					if [ ! $? -eq 0 ]; then 
 						ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=pupil /home/shared/$FolderName /home/shared/$FolderName"
 					else
@@ -1405,11 +1395,11 @@ CreateSharedFoldersDialog(){
 					fi
 					RebuildGTKBookmarks
 					service bindfs-mount restart
-					whiptail --title "Complete" --msgbox "The shared folder at /home/shared/$FolderName has been created! To access it reboot your Raspberry Pis." 8 78
+					whiptail --title $"Complete" --msgbox $"The shared folder at /home/shared/$FolderName has been created! To access it reboot your Raspberry Pis." 8 78
 					
 				fi
 			else
-				whiptail --title "Error" --msgbox "Folder name can not be blank!" 8 78
+				whiptail --title $"Error" --msgbox $"Folder name can not be blank!" 8 78
 			fi
 		fi
 	fi		
@@ -1419,21 +1409,21 @@ CreateSharedFoldersDialog(){
 	
 RemoveSharedFolder(){
 	#Used to remove shared folders. Involves removing the GTK bookmark, then removing the bindfs mount. Finally the actual folder is deleted
-	whiptail --title "Warning!" --yesno "Warning! If you delete a shared folder, you must reboot all Raspberry Pis currently on as they may get confused. Would you like to continue?" 8 78
+	whiptail --title $"Warning!" --yesno $"Warning! If you delete a shared folder, you must reboot all Raspberry Pis currently on as they may get confused. Would you like to continue?" 8 78
 	if [ $? -eq 0 ]; then
 		toDelete=$(SelectSharedFolder "to remove.")
 		if [ ! $toDelete = 1 ]; then
-			whiptail --title "Are you sure?" --yesno "Are you sure you want to permanently delete /home/shared/$toDelete ?" 8 78
+			whiptail --title $"Are you sure?" --yesno $"Are you sure you want to permanently delete /home/shared/$toDelete ?" 8 78
 			if [ $? -eq 0 ]; then
 				RebuildGTKBookmarks
-				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$toDelete" ""
+				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount $"/home/shared/$toDelete" ""
 				if [ $? -eq 0 ]; then
 					service bindfs-mount restart
 					rm -rf "/home/shared/$toDelete"
-					whiptail --title "Success" --msgbox "The folder /home/shared/$toDelete has been successfully deleted." 8 78
+					whiptail --title $"Success" --msgbox $"The folder /home/shared/$toDelete has been successfully deleted." 8 78
 				else
 					service bindfs-mount restart
-					whiptail --title "Error" --msgbox "There was an issue removing the mount from /usr/local/bin/bindfs-mount... Please try again." 8 78
+					whiptail --title $"Error" --msgbox $"There was an issue removing the mount from /usr/local/bin/bindfs-mount... Please try again." 8 78
 				fi	
 			fi
 		fi
@@ -1449,15 +1439,15 @@ SharedFolderPerm(){
 		FolderName=$1	
 	fi
 	if [ ! $FolderName = 1 ]; then
-		whiptail --title "Pupil write access" --yesno "Should $FolderName be Read/Write access for students or read only?" --yes-button "Read" --no-button "Read/Write" 8 78
+		whiptail --title $"Pupil write access" --yesno $"Should $FolderName be Read/Write access for students or read only?" --yes-button $"Read" --no-button $"Read/Write" 8 78
 			if [ ! $? -eq 0 ]; then 
 				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=pupil /home/shared/$FolderName /home/shared/$FolderName"
 				service bindfs-mount restart
-				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read/write access in /home/shared/$FolderName" 8 78	
+				whiptail --title $"Complete" --msgbox $"Permissions change complete, students now have read/write access in /home/shared/$FolderName" 8 78	
 			else
 				ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/$FolderName" "bindfs -o perms=0775,force-group=teacher /home/shared/$FolderName /home/shared/$FolderName"
 				service bindfs-mount restart
-				whiptail --title "Complete" --msgbox "Permissions change complete, students now have read only access in /home/shared/$FolderName" 8 78	
+				whiptail --title $"Complete" --msgbox $"Permissions change complete, students now have read only access in /home/shared/$FolderName" 8 78	
 			fi
 	fi
 }
@@ -1467,12 +1457,12 @@ DisplaySharedFolders(){
 	clear
 	echo ""
 	echo "----------------------"
-	echo "Current shared folders"
+	echo $"Current shared folders"
 	echo "----------------------"
 	echo ""
 	ls /home/shared -1
 	echo ""
-	echo "Hit enter to continue"
+	echo $"Hit enter to continue"
 	read
 }
 
@@ -1487,7 +1477,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title "WARNING!!" --msgbox "Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
+		whiptail --title $"WARNING!!" --msgbox $"Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1572,9 +1562,9 @@ CheckOS(){
 	OS=$(lsb_release -si)
 	if [ ! $OS == "Ubuntu" ]; then
 		if [ $OS == "Debian" ]; then
-			whiptail --title "WARNING!!" --msgbox "Debian is no longer officially supported by PiNet! Please use Ubuntu 14.04 or later. Mileage may vary with Debian and PiNet..." 8 78	
+			whiptail --title $"WARNING!!" --msgbox $"Debian is no longer officially supported by PiNet! Please use Ubuntu 14.04 or later. Mileage may vary with Debian and PiNet..." 8 78	
 		else
-			whiptail --title "WARNING!!" --msgbox "I don't recognise this operating system. Please use Ubuntu 14.04 or later. Mileage will vary greatly with other distributions and no support will be provided." 8 78	
+			whiptail --title $"WARNING!!" --msgbox $"I don't recognise this operating system. Please use Ubuntu 14.04 or later. Mileage will vary greatly with other distributions and no support will be provided." 8 78	
 		fi
 	fi
 }
@@ -1804,8 +1794,7 @@ fi
 
 CreateMoveBackup() {
 #Create a full backup of all users and groups data for moving to a clean system
-whiptail --title "Warning" --yesno "This process is only designed to move user files to a completely fresh Ubuntu install in which PiNet is not installed. Please make sure to verify all user data is imported correctly on the new PiNet server. Visit http://PiNet.org.uk/manage-users/migration.html for full instructions.
-Are you sure you want to proceed?" 11 78
+whiptail --title $"Warning" --yesno $"This process is only designed to move user files to a completely fresh Ubuntu install in which PiNet is not installed. Please make sure to verify all user data is imported correctly on the new PiNet server. Visit http://PiNet.org.uk/manage-users/migration.html for full instructions. Are you sure you want to proceed?" 11 78
 if [ $? -eq 0 ]; then 
 	mkdir /root/move/
 	export UGIDLIMIT=1000
@@ -1817,7 +1806,7 @@ if [ $? -eq 0 ]; then
 	tar -zcvpf /home/$SUDO_USER/toMove.tar.gz /root/move
 	chown $SUDO_USER /home/$SUDO_USER/toMove.tar.gz
 	rm -rf /root/move/
-	whiptail --title "Complete" --msgbox "The process is now complete. A zipped file called toMove.tar.gz has been saved in /home/$SUDO_USER/toMove.tar.gz. Please copy this to /home/youruser/toMove.tar.gz on the new server (via a pendrive for example) then run PiNet and select yes when asked about importing users." 11 78
+	whiptail --title $"Complete" --msgbox $"The process is now complete. A zipped file called toMove.tar.gz has been saved in /home/$SUDO_USER/toMove.tar.gz. Please copy this to /home/youruser/toMove.tar.gz on the new server (via a pendrive for example) then run PiNet and select yes when asked about importing users." 11 78
 fi
 }
 
@@ -1825,7 +1814,7 @@ CheckRestoreMoveBackup(){
 #Checks if LTSP is already installed as importing user data with a server already running PiNet can cause issues..
 if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 	if [ -d /opt/ltsp ]; then
-		whiptail --title "WARNING!!" --yesno "I have detected that it looks like PiNet is already installed. It is highly recommended against importing users with a previous PiNet install. You have been warned! Would you like to import them anyway?" 10 78
+		whiptail --title $"WARNING!!" --yesno $"I have detected that it looks like PiNet is already installed. It is highly recommended against importing users with a previous PiNet install. You have been warned! Would you like to import them anyway?" 10 78
 		if [ $? -eq 0 ]; then 
 			RestoreMoveBackup
 		fi	
@@ -1835,13 +1824,13 @@ if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 	
 else
 	
-	whiptail --title "Error" --msgbox "The zipped file of user data can't be found at /home/$SUDO_USER/toMove.tar.gz." 8 78
+	whiptail --title $"Error" --msgbox $"The zipped file of user data can't be found at /home/$SUDO_USER/toMove.tar.gz." 8 78
 fi
 }
 
 RestoreMoveBackup() {
 #Restore full backup of all users and group data
-whiptail --title "Warning" --yesno "Importing should only be performed on a completely fresh Ubuntu install. PiNet or Raspi-LTSP must not already be installed. Make sure to manually check all files have copied correctly. Do you want to proceed?" 10 78
+whiptail --title $"Warning" --yesno $"Importing should only be performed on a completely fresh Ubuntu install. PiNet or Raspi-LTSP must not already be installed. Make sure to manually check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 		mkdir /root/newsusers.bak
@@ -1859,14 +1848,14 @@ if [ $? -eq 0 ]; then
 		fixGroups
 		rm /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
 		AddDesktopShortcutToUser
-		whiptail --title "Reboot" --yesno "I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
+		whiptail --title $"Reboot" --yesno $"I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
 		if [ $? -eq 0 ]; then
 			reboot
 		else
 			exit
 		fi
 	else
-		whiptail --title "Import failed" --yesno "The user import has failed, /home/$SUDO_USER/toMove.tar.gz wasn't found? Are you sure you copied it to that location? Would you like to try again?" 9 78
+		whiptail --title $"Import failed" --yesno $"The user import has failed, /home/$SUDO_USER/toMove.tar.gz wasn't found? Are you sure you copied it to that location? Would you like to try again?" 9 78
 		if [ $? -eq 0 ]; then
 			RestoreMoveBackup
 		else
@@ -1881,7 +1870,7 @@ fi
 
 InstallScratchGPIO(){
 #Installs ScratchGPIO 5 by manually pushing an install script to each user
-	whiptail --title "Note" --msgbox "ScratchGPIO can't be directly installed, each user must install it. A desktop shortcut has been added to each user account called \"Install ScratchGPIO\". Get each student to run this the first time they want to use the software." 10 78
+	whiptail --title $"Note" --msgbox $"ScratchGPIO can't be directly installed, each user must install it. A desktop shortcut has been added to each user account called \"Install ScratchGPIO\". Get each student to run this the first time they want to use the software." 10 78
 	rm -rf /tmp/isgh7.sh
 	rm -rf /opt/ltsp/armhf/usr/local/bin/isgh5.sh
 	rm -rf /opt/ltsp/armhf/usr/local/bin/scratchSudo.sh
@@ -1929,7 +1918,7 @@ fi
 FirstTimeImportUsers(){
 #Asks user if they want to import users on the first startup of PiNet
 if [ ! -f /home/$SUDO_USER/Desktop/lxterminal.desktop ]; then
-	whiptail --title "Importing users"  --defaultno --yesno "Would you like to import user data from a previous PiNet (or Raspi-LTSP) server? This can only be done now on installation. If in doubt, select no." 8 78
+	whiptail --title $"Importing users"  --defaultno --yesno $"Would you like to import user data from a previous PiNet (or Raspi-LTSP) server? This can only be done now on installation. If in doubt, select no." 8 78
 	if [ $? -eq 0 ]; then 
 		RestoreMoveBackup
 	fi
@@ -1965,9 +1954,7 @@ checkPythonFunctionsInstalled(){
 	if [ ! -f $PythonFunctions ]; then
 		wget $RawRepository/$ReleaseBranch/Scripts/pinet-functions-python.py -O $PythonFunctions
 		if [ ! $? -eq 0 ]; then 
-			whiptail --title "Error!" --msgbox "I am sorry, there has been a critical error with pinet. A required library file could not be acquired. PiNet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem.
-Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions
-If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
+			whiptail --title $"Error!" --msgbox $"I am sorry, there has been a critical error with pinet. A required library file could not be acquired. PiNet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem. Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions. If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
 			rm -rf $PythonFunctions
 			exit
 		fi
@@ -1982,12 +1969,9 @@ checkKernelFileUpdateWeb(){
 	if [ $KernelV = "1" ]; then
 		current=$(head -n 1 /home/$SUDO_USER/PiBoot/version.txt)
 		newVersion=$(head -n 1 /tmp/kernelVersion.txt)
-		whiptail --title "Kernel file update" --yesno "An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, PiNet will attempt to load these new files onto your SD cards on boot up.
-This update is highly recommended.
-You currently are using version $current and the most up to date version is $newVersion
-Would you like me to update them and your system?" 12 78
+		whiptail --title $"Kernel file update" --yesno $"An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, PiNet will attempt to load these new files onto your SD cards on boot up. This update is highly recommended. You currently are using version $current and the most up to date version is $newVersion. Would you like me to update them and your system?" 12 78
 		if [ $? -eq 0 ]; then 
-			whiptail --title "Auto reboot" --msgbox "Your Raspberry Pis will attempt to auto update their SD cards (by grabbing the version from the server) on next reboot. They will do this in the background and reboot when the update is complete **without warning**." 9 78
+			whiptail --title $"Auto reboot" --msgbox $"Your Raspberry Pis will attempt to auto update their SD cards (by grabbing the version from the server) on next reboot. They will do this in the background and reboot when the update is complete **without warning**." 9 78
 			installKernelUpdater ""
 			UpdateSD
 			UpdateAll
@@ -2011,7 +1995,7 @@ installKernelUpdater(){
 	if [ "$exitstatus" = "1" ]; then
 		if [ "$compress" = "NBD" ]; then
 			echo "----------------------------------------------------------------------------------------------"
-			echo "An update for the kernel update program has been detected, this will be applied automatically"
+			echo $"An update for the kernel update program has been detected, this will be applied automatically"
 			echo "----------------------------------------------------------------------------------------------"
 			NBDRun
 		fi
@@ -2084,7 +2068,7 @@ InstallRaspberryPiUIMods(){
 }
 
 ChooseReleaseChannel(){
-	whiptail --title "Release channels" --yesno --yes-button "Stable" --no-button "Bleeding edge" "Would you like to use the stable or bleeding edge (developer) software update channels? Stable is recommended." 8 78 
+	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Bleeding edge" $"Would you like to use the stable or bleeding edge (developer) software update channels? Stable is recommended." 8 78 
 	if [ $? -eq 0 ]; then 
 		UpdateConfig ReleaseChannel "Stable"
 	else
@@ -2100,22 +2084,22 @@ ChooseReleaseChannel(){
 
 GroupCheck(){
 	#Checks if all users permissions are correct in groups. Front end for fixGroups
-	whiptail --title "Groupcheck" --msgbox "Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
+	whiptail --title $"Groupcheck" --msgbox $"Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
 	fixGroups
 	CheckRaspberryPiUIModsAllUsers
-	whiptail --title "Complete" --msgbox "All user groups have been checked and if need be, corrected." 8 78
+	whiptail --title $"Complete" --msgbox $"All user groups have been checked and if need be, corrected." 8 78
 }
 
 CheckForRaspiLTSP(){
 	#Checks if Raspi-LTSP is installed and warns the user if it is.
 	if [ -f /etc/raspi-ltsp ]; then
-		whiptail --title "Raspi-LTSP found!" --msgbox "A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
-		echo "Raspi-LTSP configuration file found at /etc/raspi-ltsp"
+		whiptail --title $"Raspi-LTSP found!" --msgbox $"A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
+		echo $"Raspi-LTSP configuration file found at /etc/raspi-ltsp"
 		exit
 	else
 		if [ -d /opt/raspiLTSP ]; then
-			whiptail --title "Raspi-LTSP found!" --msgbox "A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
-			echo "Raspi-LTSP configuration folder found at /opt/raspiLTSP"
+			whiptail --title $"Raspi-LTSP found!" --msgbox $"A previous Raspi-LTSP installation has been found! PiNet and Raspi-LTSP can not be installed at the same time! Please reinstall Ubuntu then run PiNet." 9 78
+			echo $"Raspi-LTSP configuration folder found at /opt/raspiLTSP"
 			exit
 		fi
 	fi
@@ -2123,15 +2107,15 @@ CheckForRaspiLTSP(){
 
 
 ImportUsersFromCSV(){
-	whiptail --title "Import from CSV" --yesno "PiNet supports importing users from a CSV file. Many user management systems can export a CSV file with usernames and passwords (or just usernames). The required format is 1st column is username and 2nd coloum is password. If the password column is left blank, a default password you select will be used. Would you like to continue?" 11 78
+	whiptail --title $"Import from CSV" --yesno $"PiNet supports importing users from a CSV file. Many user management systems can export a CSV file with usernames and passwords (or just usernames). The required format is 1st column is username and 2nd coloum is password. If the password column is left blank, a default password you select will be used. Would you like to continue?" 11 78
 	if [ $? -eq 0 ]; then 
-		whiptail --title "Select CSV" --msgbox "Please now select your CSV file." 9 78
+		whiptail --title $"Select CSV" --msgbox $"Please now select your CSV file." 9 78
 		cd /home/$SUDO_USER
 		local fileLoc=$(SingleFileSelect)
 		if [ ! fileLoc = "The user canceled :(" ]; then
-			password=$(whiptail --inputbox "Enter a default password to use if I am unable to find one." 8 78 --title "Password" 3>&1 1>&2 2>&3)
+			password=$(whiptail --inputbox $"Enter a default password to use if I am unable to find one." 8 78 --title $"Password" 3>&1 1>&2 2>&3)
 			if [ password = "" ]; then
-				whiptail --title "Error" --msgbox "Default password box can't be left blank!" 9 78
+				whiptail --title $"Error" --msgbox $"Default password box can't be left blank!" 9 78
 			else
 				$p importFromCSV $fileLoc $password
 			fi
@@ -2141,7 +2125,7 @@ ImportUsersFromCSV(){
 
 CheckInstallSuccess(){
 	if [ -d "/opt/ltsp/armhf/debootstrap" ]; then
-		whiptail --title "Installation error" --msgbox "An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
 		exit
 	fi
 }
@@ -2149,11 +2133,11 @@ CheckInstallSuccess(){
 
 #***************************************************************************************************
 backupDeleteTime(){
-  MENUEPT=$(whiptail --menu "How long would you like to store backups? Note this only runs when a backup runs." 20 85 10 \
-    "Ten-Days" "Backups will be kept for 10 days then deleted" \
-    "Thirty-Days" "Backups will be kept for 30 days then deleted" \
-    "Ninety-Days" "Backups will be kept for 90 days then deleted" \
-    "Forever" "I will delete my backups manually" \
+  MENUEPT=$(whiptail --menu $"How long would you like to store backups? Note this only runs when a backup runs." 20 85 10 \
+    "Ten-Days" $"Backups will be kept for 10 days then deleted" \
+    "Thirty-Days" $"Backups will be kept for 30 days then deleted" \
+    "Ninety-Days" $"Backups will be kept for 90 days then deleted" \
+    "Forever" $"I will delete my backups manually" \
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
@@ -2181,10 +2165,10 @@ esac
 	
 #***************************************************************************************************
 backupFrequency(){
-  MENUEPT=$(whiptail --menu "How often should I create a backup?" 20 85 10 \
-    "Every-day" "Will create a new backup every day" \
-    "Twice-weekly" "Will create a backup on Tuesday and Thursday" \
-    "Once-a-week" "Will create a backup every Friday" \
+  MENUEPT=$(whiptail --menu $"How often should I create a backup?" 20 85 10 \
+    "Every-day" $"Will create a new backup every day" \
+    "Twice-weekly" $"Will create a backup on Tuesday and Thursday" \
+    "Once-a-week" $"Will create a backup every Friday" \
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
@@ -2215,15 +2199,15 @@ esac
 #***************************************************************************************************
 OtherMenu() {
 
-  MENUEPT=$(whiptail --title "Other Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 85 10 \
-    "Refresh-System" "Refreshes network services. Useful if having boot issues" \
-    "Network-technology" "Select your preferred network technology, NBD or NFS" \
-    "NBD-recompress" "Force an NBD compress if changes are made outside PiNet" \
-    "NBD-compress-disable" "Disable auto NBD recompression after every change" \
-    "NBD-compress-enable" "Enable auto NBD recompression after every change (default)" \
-    "Export-users" "Export all user data for migrating to new PiNet server" \
-		"Change-release-channel" "Change your current update channel to dev or stable" \
-		"Full-Install" "Full install of PiNet server" \
+  MENUEPT=$(whiptail --title $"Other Submenu" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"What would you like to do?" 20 85 10 \
+    "Refresh-System" $"Refreshes network services. Useful if having boot issues" \
+    "Network-technology" $"Select your preferred network technology, NBD or NFS" \
+    "NBD-recompress" $"Force an NBD compress if changes are made outside PiNet" \
+    "NBD-compress-disable" $"Disable auto NBD recompression after every change" \
+    "NBD-compress-enable" $"Enable auto NBD recompression after every change (default)" \
+    "Export-users" $"Export all user data for migrating to new PiNet server" \
+		"Change-release-channel" $"Change your current update channel to dev or stable" \
+		"Full-Install" $"Full install of PiNet server" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
@@ -2247,7 +2231,7 @@ case "$MENUEPT" in
     Menu
     ;;
     Network-technology)
-		whiptail --title "Option disabled" --msgbox "This option has been disabled for now. NFS is currently broken in 3.18 kernels, so NBD is the only option." 8 78
+		whiptail --title $"Option disabled" --msgbox $"This option has been disabled for now. NFS is currently broken in 3.18 kernels, so NBD is the only option." 8 78
 		#NBDSetup
 		#UpdateSD
 		#whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/YourUser/PiBoot folder to the root of an SD card." 16 78
@@ -2274,7 +2258,7 @@ case "$MENUEPT" in
 	;;
 	Full-Install)
 	if [ -d /opt/ltsp/armhf ]; then
-		whiptail --title "Error" --yesno "An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
+		whiptail --title $"Error" --yesno $"An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
 			echo ""
@@ -2295,12 +2279,12 @@ esac
 
 SharedFolderMenu() {
 
-  MENUEPT=$(whiptail --title "Shared folders" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 85 10 \
-    "Create-Shared-Folder" "Create a new shared folder" \
-    "Remove-Shared-Folder" "Remove a shared folder" \
-    "Change-Permissions" "Changes shared folder permissions" \
-    "DisplayShared-Folders" "Display a list of all shared folders" \
-    "Add-Teacher" "Add a new account to the teacher group" \
+  MENUEPT=$(whiptail --title $"Shared folders" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"What would you like to do?" 20 85 10 \
+    "Create-Shared-Folder" $"Create a new shared folder" \
+    "Remove-Shared-Folder" $"Remove a shared folder" \
+    "Change-Permissions" $"Changes shared folder permissions" \
+    "Display-Shared-Folders" $"Display a list of all shared folders" \
+    "Add-Teacher" $"Add a new account to the teacher group" \
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
@@ -2316,7 +2300,7 @@ case "$MENUEPT" in
     SharedFolderPerm
 	Menu
 	;;
-	DisplayShared-Folders)
+	Display-Shared-Folders)
 	DisplaySharedFolders
     ;;
     Add-Teacher) 
@@ -2333,24 +2317,24 @@ esac
 
 EpoptesMenu() {
 
-  MENUEPT=$(whiptail --title "Epoptes Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "Epoptes classroom management software is a free, open source and easy to use computer lab management and monitoring tool. What would you like to do?" 20 80 10 \
-    "Install-Epoptes" "Install Epoptes onto the server and Raspberry Pis" \
-    "Epoptes-launch" "Launches Epoptes, it must be installed first though" \
-    "Add-Teacher" "Add a new account to the teacher group" \
-    "Remove-epoptes" "Uninstall Epoptes from the server and Raspberry Pis" \
+  MENUEPT=$(whiptail --title $"Epoptes Submenu" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"Epoptes classroom management software is a free, open source and easy to use computer lab management and monitoring tool. What would you like to do?" 20 80 10 \
+    "Install-Epoptes" $"Install Epoptes onto the server and Raspberry Pis" \
+    "Epoptes-launch" $"Launches Epoptes, it must be installed first though" \
+    "Add-Teacher" $"Add a new account to the teacher group" \
+    "Remove-epoptes" $"Uninstall Epoptes from the server and Raspberry Pis" \
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
     Install-Epoptes) 
     if [ $(checkInternet) -eq 0 ]; then
-    	whiptail --title "Epoptes install" --yesno "I am now going to install Epoptes classroom management software on the server and Raspberry Pis. Would you like to continue?" 8 78
+    	whiptail --title $"Epoptes install" --yesno $"I am now going to install Epoptes classroom management software on the server and Raspberry Pis. Would you like to continue?" 8 78
     	if [ $? -eq 0 ];then
     	
     		EpoptesInstaller
     		NBDRun
     	fi
     else
-		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+		whiptail --title $"Error" --msgbox $"No internet connection, unable to proceed..." 8 78
 	fi
 	Menu
     ;;
@@ -2366,7 +2350,7 @@ case "$MENUEPT" in
 	ltsp-chroot --arch armhf apt-get remove -y epoptes-client
     ltsp-chroot --arch armhf apt-get -y autoremove
     NBDRun
-    whiptail --title "Epoptes" --msgbox "Epoptes has been removed from the pi image" 16 78
+    whiptail --title $"Epoptes" --msgbox $"Epoptes has been removed from the pi image" 16 78
     Menu
     ;;
     *)
@@ -2380,17 +2364,17 @@ esac
 ##### WIP ##########################
 BackupMenu() {
 
-  MENUEPT=$(whiptail --title "Backup Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
-    "Configure-backup" "Configure and enable backups. Also use to make changes" \
-    "Disable-backup" "Disables backup daemon, old backups will not be deleted" \
-    "Display-Logs" "Displays logs for the backup daemon, check these regularly!" \
+  MENUEPT=$(whiptail --title $"Backup Submenu" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"What would you like to do?" 20 80 10 \
+    "Configure-backup" $"Configure and enable backups. Also use to make changes" \
+    "Disable-backup" $"Disables backup daemon, old backups will not be deleted" \
+    "Display-Logs" $"Displays logs for the backup daemon, check these regularly!" \
     3>&1 1>&2 2>&3)
 
 #<<COMMENT1
 #if [$MENUOPT -eq 0]; then
 case "$MENUEPT" in
     Configure-backup) 
-    whiptail --title "Select Location" --msgbox 'Select the location where you wish to save the backups. An external hard drive is highly recommended! Even a large (16gb+) pendrive should be sufficient. In Linux external drives are attached in /media so you will start there. Do not save backups on the same hard drive as the /home folder!' 12 78
+    whiptail --title $"Select Location" --msgbox $"Select the location where you wish to save the backups. An external hard drive is highly recommended! Even a large (16gb+) pendrive should be sufficient. In Linux external drives are attached in /media so you will start there. Do not save backups on the same hard drive as the /home folder!" 12 78
     cd /media
     fileSelect
     if [ "$location" = "1" ]; then
@@ -2404,7 +2388,7 @@ case "$MENUEPT" in
 		currentTime=`date +"%H:%M"`
     	#echo "Hello $location $currentDate-$currentTime" >> /var/log/Raspi-backup.log
     	logger -s "$currentDate $currentTime - Backup configured. Folder chosen is $location" 2>> /var/log/Raspi-backup.log
-    	whiptail --title "Backup setup" --msgbox 'The backup is now configured, the logs can be viewed at any time by checking /var/log/Raspi-backup.log' 12 78
+    	whiptail --title $"Backup setup" --msgbox $"The backup is now configured, the logs can be viewed at any time by checking /var/log/Raspi-backup.log" 12 78
     fi
 	Menu
     ;;
@@ -2414,18 +2398,18 @@ case "$MENUEPT" in
     currentDate=`date +"%d-%m-%y"`
 	currentTime=`date +"%H:%M"`
     logger -s "$currentDate $currentTime - Backup disabled from PiNet" 2>> /var/log/Raspi-backup.log
-    whiptail --title "Backup disabled" --msgbox 'The backup daemon has now been disabled, no more backups will be performed till it is enabled again with Configure-backup. All old backups have been kept.' 12 78
+    whiptail --title $"Backup disabled" --msgbox $"The backup daemon has now been disabled, no more backups will be performed till it is enabled again with Configure-backup. All old backups have been kept." 12 78
     Menu
     ;;
     Display-Logs)
     clear
     echo "-------------------"
-    echo "PiNet log file"
+    echo $"PiNet log file"
     echo "-------------------"
     echo " "
     echo "$(cat /var/log/Raspi-backup.log)"
     echo " "
-    echo "Hit enter to continue"
+    echo $"Hit enter to continue"
     read 
     Menu
     ;;
@@ -2442,17 +2426,17 @@ esac
 #***************************************************************************************************
 UserGroups() {
 
-  MENUEPT=$(whiptail --title "Manage-users Submenu" --cancel-button "Main Menu" --ok-button "Select" --menu "What would you like to do?" 20 80 10 \
-  	"Add-user" "Add a new Linux user" \
-  	"Remove-user" "Remove a Linux user" \
-  	"Change-password" "Change password of a user" \
-  	"Display-users" "List all the users on the system" \
-  	"Add-teacher" "Add user to the staff permission group" \
-		"Import-Users" "Import usernames and passwords from a CSV file" \
-    "Enable-Sudo" "Enables the use of sudo for pupils. Used for GPIO access" \
-    "Disable-Sudo" "Disables the use of sudo for pupils" \
-		"Group-check" "Checks all users are in the correct system groups" \
-    "Export-users" "Export all user data for migrating to new PiNet server" \
+  MENUEPT=$(whiptail --title $"Manage-users Submenu" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"What would you like to do?" 20 80 10 \
+  	"Add-user" $"Add a new Linux user" \
+  	"Remove-user" $"Remove a Linux user" \
+  	"Change-password" $"Change password of a user" \
+  	"Display-users" $"List all the users on the system" \
+  	"Add-teacher" $"Add user to the staff permission group" \
+		"Import-Users" $"Import usernames and passwords from a CSV file" \
+    "Enable-Sudo" $"Enables the use of sudo for pupils. Used for GPIO access" \
+    "Disable-Sudo" $"Disables the use of sudo for pupils" \
+		"Group-check" $"Checks all users are in the correct system groups" \
+    "Export-users" $"Export all user data for migrating to new PiNet server" \
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
@@ -2521,6 +2505,7 @@ esac
 } #***************************************************************************************************
 
 ExtraSoftware() {
+#No longer used, replaced with installSoftwareList() in pinet-functions-python.py
 
 if [ $(checkInternet) -eq 0 ]; then
   MENUEPT=$(whiptail --title "Extra Software Submenu" --cancel-button "Finished" --menu "What would you like to do?" 20 100 10 \
@@ -2552,10 +2537,11 @@ case "$MENUEPT" in
 	FinishedInstallingSoftware
     ;;
     Install-Python-hardware) 
-    ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat piglow
-		ltsp-chroot --arch armhf pip-3.2 install pibrella unicornhat
-    UpdateConfig NBDBuildNeeded true
-    FinishedInstallingSoftware
+		ltsp-chroot --arch armhf apt-get install python3-microstacknode
+		ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat piglow pianohat explorerhat
+		ltsp-chroot --arch armhf pip-3.2 install pibrella unicornhat pianohat explorerhat
+		UpdateConfig NBDBuildNeeded true
+		FinishedInstallingSoftware
     ;;
     Install-Epoptes)
     EpoptesInstaller
@@ -2595,7 +2581,7 @@ FullInstall(){
 		FirstTimeImportUsers
 		ChooseReleaseChannel 1
 		$p initialInstallSoftwareList
-		whiptail --title "Full Install" --msgbox "A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
+		whiptail --title $"Full Install" --msgbox $"A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
 		installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
 		buildClient   #Creates config file to build Raspbian with LTSP and builds it
 		OneTimeFixes   #Runs some one off config changes, these are not repeated at any time later
@@ -2619,7 +2605,7 @@ FullInstall(){
 		SetupSharedStandalone
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
-		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
+		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		fixGroups   #Adds all current users to the pupil and video group
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes
@@ -2637,20 +2623,20 @@ FullInstall(){
 Menu() {
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 
-  MENUOPT=$(whiptail --title "PiNet $version Main Menu - $IP" --cancel-button "Quit" --ok-button "Select" --menu "What would you like to do?" 22 80 14 \
-  	"System-Status" "Display status of key parts of your PiNet server" \
-  	"Install-Program" "Install a new program on the Raspberry Pi's" \
-    "Manage-Users" "Add new users, change passwords and delete users" \
-    "Update-All" "Run an automatic update on server and Raspbian" \
-    "Backup-Menu" "User files backup submenu" \
-    "Shared-Folders" "Manage and create shared folders" \
-    "Collect-work" "Collects students work in a single folder" \
-    "Update-SD" "Update the SD card image. This includes IP address changes" \
-    "Rebuild-OS" "Rebuilds the LTSP Raspberry Pi image from scratch again" \
-    "Epoptes-Menu" "Epoptes classroom management submenu" \
-    "Troubleshooter" "Having issues? Try running the troubleshooter" \
-    "Other" "Other options and utilities for management" \
-    "Update-PiNet" "Forces PiNet to update itself" \
+  MENUOPT=$(whiptail --title $"PiNet $version Main Menu - $IP" --cancel-button $"Quit" --ok-button $"Select" --menu $"What would you like to do?" 22 80 14 \
+  	"System-Status" $"Display status of key parts of your PiNet server" \
+  	"Install-Program" $"Install a new program on the Raspberry Pi's" \
+    "Manage-Users" $"Add new users, change passwords and delete users" \
+    "Update-All" $"Run an automatic update on server and Raspbian" \
+    "Backup-Menu" $"User files backup submenu" \
+    "Shared-Folders" $"Manage and create shared folders" \
+    "Collect-work" $"Collects students work in a single folder" \
+    "Update-SD" $"Update the SD card image. This includes IP address changes" \
+    "Rebuild-OS" $"Rebuilds the LTSP Raspberry Pi image from scratch again" \
+    "Epoptes-Menu" $"Epoptes classroom management submenu" \
+    "Troubleshooter" $"Having issues? Try running the troubleshooter" \
+    "Other" $"Other options and utilities for management" \
+    "Update-PiNet" $"Forces PiNet to update itself" \
     3>&1 1>&2 2>&3)
 
 case "$MENUOPT" in 
@@ -2661,7 +2647,7 @@ case "$MENUOPT" in
 Update-SD)
 	UpdateSD
 	if [ $? -eq 0 ]; then
-		whiptail --title "SD image updated" --msgbox "SD card image updated. Please copy the files found in /home/$SUDO_USER/PiBoot folder (I also tried to just open the folder for you) onto a blank SD card." 9 78
+		whiptail --title $"SD image updated" --msgbox $"SD card image updated. Please copy the files found in /home/$SUDO_USER/PiBoot folder (I also tried to just open the folder for you) onto a blank SD card." 9 78
 	fi
 	Menu
 	;;
@@ -2675,7 +2661,7 @@ Shared-Folders)
 	Menu
 	;;
 Rebuild-OS)
-	whiptail --title "WARNING!!" --yesno "Warning, you are about to delete the entire Raspbian OS from the server and rebuild it. Students files are not affected but any custom programs added will need to be re-added. This will take 1-2 hours. Are you sure?" 9 78
+	whiptail --title $"WARNING!!" --yesno $"Warning, you are about to delete the entire Raspbian OS from the server and rebuild it. Students files are not affected but any custom programs added will need to be re-added. This will take 1-2 hours. Are you sure?" 9 78
  
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
@@ -2690,7 +2676,7 @@ Rebuild-OS)
     		RaspiTheme
 				InstallRaspberryPiUIMods
     		EnableNBDswap
-    		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+    		whiptail --title $"Extra software" --msgbox $"Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 			$p installSoftwareFromFile
 			DisableSPI
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
@@ -2698,14 +2684,14 @@ Rebuild-OS)
     		addSoundcardDefault
     		installKernelUpdater ""
 			$p checkKernelFileUpdateWeb
-    		whiptail --title "Compression" --msgbox "The operating system will now be compressed. This normally takes around 5 minutes." 8 78
+    		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
     		LegacyFixes
 				EnableNBD
     		resetAndCleanup
 				CheckInstallSuccess
-			whiptail --title "Rebuild complete" --msgbox "PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+			whiptail --title $"Rebuild complete" --msgbox $"PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
 		else
-			whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+			whiptail --title $"Error" --msgbox $"No internet connection, unable to proceed..." 8 78
 		fi
 	fi
 	Menu
@@ -2757,18 +2743,18 @@ Update-PiNet)
 #************************************* Startup stuff **************************************************************
 
 if [ "$(id -u)" != "0" ]; then  #Check if script is being run as root
-   echo "This script must be run as root" 1>&2
+   echo $"This script must be run as root" 1>&2
    exit 1
 fi
 
 if [ ! "$BASH_VERSION" ] ; then   #Checks that PiNet is being run using bash and not ash (aka sh)
-	whiptail --title "Shell error" --msgbox "Please do not run PiNet with sudo sh $0. Please run it with bash using     sudo bash $0" 8 78
-    echo "Please do not run PiNet with sh $0. Please run it with bash using     sudo bash $0" 1>&2
+	whiptail --title $"Shell error" --msgbox $"Please do not run PiNet with sudo sh $0. Please run it with bash using     sudo bash $0" 8 78
+    echo $"Please do not run PiNet with sh $0. Please run it with bash using     sudo bash $0" 1>&2
     exit 1
 fi
 CheckOS   #Checks if running Ubuntu, if not complains a little
 if [ "$SUDO_USER" = "" ]; then
-	SUDO_USER=$(whiptail --inputbox "No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 --title "Unsupported operating system" 3>&1 1>&2 2>&3)  #Sometimes can't detect username to run program as.
+	SUDO_USER=$(whiptail --inputbox $"No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 --title $"Unsupported operating system" 3>&1 1>&2 2>&3)  #Sometimes can't detect username to run program as.
 fi	
 
 case "$1" in  #Checks if I need to run an update all, usually run after an update when the software is launched by itself
@@ -2779,13 +2765,13 @@ esac
 
 checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to move it
 
-echo "Starting PiNet - Please wait"
+echo $"Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
 CheckForRaspiLTSP
 
 
 if [ ! -d /opt/ltsp/armhf ]; then
-    	whiptail --title "Welcome" --yesno 'Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full install?' 8 78 
+    	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full install?" 8 78 
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 			UpdateConfig FirstUser $SUDO_USER
