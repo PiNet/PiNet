@@ -94,7 +94,7 @@ class softwarePackage():
         elif self.installType == "scratchGPIO":
             installScratchGPIO()
         else:
-            print("Error in installing " + self.name + " due to invalid install type.")
+            print(_("Error in installing") + " " + self.name + " " + _("due to invalid install type."))
             self.marked = False
 
     def customAptPip(self):
@@ -469,8 +469,7 @@ def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", wid
     else:
         return p.returncode
 
-def whiptailSelectMenu(title, message, items):
-    height, width, other = "16", "78", "5"
+def whiptailSelectMenu(title, message, items, height = "16", width = "78", other = "5"):
     cmd = ["whiptail", "--title", title, "--menu", message ,height, width, other]
     itemsList = ""
     for x in range(0, len(items)):
