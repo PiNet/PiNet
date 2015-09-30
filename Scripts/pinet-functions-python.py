@@ -40,6 +40,7 @@ ReleaseBranch = "master"
 
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 PINET_BINPATH = "/usr/local/bin"
+PINET_CONF_FILEPATH = "/etc/pinet"
 
 CODE_DOWNLOAD_URL = RawRepository + "/" + ReleaseBranch
 PINET_BINARY = "pinet"
