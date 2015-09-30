@@ -452,8 +452,8 @@ def whiptail(*args):
     else:
         return "ERROR"
 
-def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False):
-    cmd = ["whiptail", "--title", title, "--"+whiltailType, message, height, width]
+def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False, other=""):
+    cmd = ["whiptail", "--title", title, "--"+whiltailType, message, height, width, other]
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
 
@@ -485,7 +485,7 @@ def whiptailSelectMenu(title, message, items):
     else:
         return("Cancel")
 
-def whiptailCheckList(title, message, items, parameter1 = "", ):
+def whiptailCheckList(title, message, items):
     height, width, other = "20", "100", str(len(items)) #"16", "78", "5"
     cmd = ["whiptail", "--title", title, "--checklist", message ,height, width, other]
     itemsList = ""
@@ -583,7 +583,7 @@ def updatePiNet():
     
     print("")
     print("----------------------")
-    print("Installing update")
+    print(_("Installing update"))
     print("----------------------")
     print("")
     download = True
@@ -597,14 +597,14 @@ def updatePiNet():
         download = False
     if download:
         print("----------------------")
-        print("Update complete")
+        print(_("Update complete"))
         print("----------------------")
         print("")
         returnData(0)
     else:
         print("")
         print("----------------------")
-        print("Update failed...")
+        print(_("Update failed..."))
         print("----------------------")
         print("")
         returnData(1)
@@ -625,8 +625,8 @@ def checkUpdate2():
         version = version[8:len(version)]
         print(version)
     else:
-        print("ERROR")
-        print("No release update found!")
+        print(_("ERROR"))
+        print(_("No release update found!"))
 
 def GetVersionNum(data):
     for i in range(0, len(data)):
@@ -639,15 +639,13 @@ def GetVersionNum(data):
 
 def checkUpdate(currentVersion):
     if not internet_on(5, False):
-        print("No Internet Connection")
+        print(_("No Internet Connection"))
         returnData(0)
         return
     downloadFile("http://bit.ly/pinetCheckCommits", "/dev/null")
     d = feedparser.parse(Repository +'/commits/' +ReleaseBranch + '.atom')
     releases = []
-    entry = d.entries[0]
-    content = entry.content[0]
-    data = content.get("value")
+    data = (d.entries[0].content[0].get('value'))
     data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
     data = data.split("\n")
     thisVersion = GetVersionNum(data)
@@ -658,7 +656,7 @@ def checkUpdate(currentVersion):
         whiptailBox("msgbox", _("Update detected"), _("An update has been detected for PiNet. Select OK to view the Release History."), False)
         displayChangeLog(currentVersion)
     else:
-        print("No PiNet software updates found")
+        print(_("No PiNet software updates found"))
         #print(thisVersion)
         #print(currentVersion)
         returnData(0)
@@ -679,11 +677,11 @@ def checkKernelFileUpdateWeb():
             return False
         else:
             returnData(0)
-            print("No kernel updates found")
+            print(_("No kernel updates found"))
             return True
     else:
         returnData(0)
-        print("No kernel updates found")
+        print(_("No kernel updates found"))
 
 def checkKernelUpdater():
     downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
@@ -742,7 +740,7 @@ def displayChangeLog(version):
     thing = ""
     for i in range(0, len(output)):
         thing = thing + output[i] + "\n"
-    whiptail_cmd = ["--title", "Release history (Use arrow keys to scroll) - " + version, "--scrolltext", "--"+"yesno", "--yes-button", "Install " + output[0], "--no-button", "Cancel", thing, "24", "78"]
+    whiptail_cmd = ["whiptail", "--title", _("Release history (Use arrow keys to scroll)") + " - " + version, "--scrolltext", "--"+"yesno", "--yes-button", _("Install") + output[0], "--no-button", _("Cancel"), thing, "24", "78"]
     result = whiptail(*whiptail_cmd)
     if result:
         updatePiNet()
@@ -764,19 +762,15 @@ def previousImport(migration_dirpath="/root/move"):
         #etcLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x]
         migLoc = os.path.join(migration_dirpath, items[x] + ".mig")
         etcLoc = "/etc/" + items[x]
-        print("migLoc", migLoc)
-        print("etcLoc", etcLoc)
         debug("mig loc " + migLoc)
         debug("etc loc " + etcLoc)
         mig = getList(migLoc)
-        print("mig", mig)
         etc = getList(etcLoc)
         for i in range(0, len(mig)):
             mig[i] = str(mig[i]).split(":")
         for i in range(0, len(etc)):
             etc[i] = str(etc[i]).split(":")
         for i in range(0, len(mig)):
-            print("mig[i]", mig[i])
             unFound = True
             for y in range(0, len(etc)):
                 bob = mig[i][0]
@@ -785,7 +779,6 @@ def previousImport(migration_dirpath="/root/move"):
                     unFound = False
             if unFound:
                 toAdd.append(mig[i])
-        print("toAdd", toAdd)
         for i in range(0, len(toAdd)):
             etc.append(toAdd[i])
         for i in range(0, len(etc)):
@@ -833,8 +826,8 @@ def importFromCSV(theFile, defaultPassword, test = True):
             if test:
                 thing = ""
                 for i in range(0, len(userData)):
-                    thing = thing + "Username - " + userData[i][0] + " : Password - " + userData[i][1] + "\n"
-                whiptail_cmd = ["--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "import" , "--no-button", "Cancel", thing, "24", "78"]
+                    thing = thing + _("Username") + " - " + userData[i][0] + " : " + _("Password - ") + userData[i][1] + "\n"
+                whiptail_cmd = ["whiptail", "--title", _("About to import (Use arrow keys to scroll)") ,"--scrolltext", "--"+"yesno", "--yes-button", _("Import") , "--no-button", _("Cancel"), thing, "24", "78"]
                 result = whiptail(*whiptail_cmd)
                 if result == 0:
                     for x in range(0, len(userData)):
@@ -848,7 +841,7 @@ def importFromCSV(theFile, defaultPassword, test = True):
                 else:
                     raise RuntimeError("Some Problem")
     else:
-        print("Error! CSV file not found at " + theFile)
+        print(_("Error! CSV file not found at") + " " + theFile)
 
 def fixGroupSingle(username):
     groups = PINET_USER_GROUPS
@@ -875,7 +868,7 @@ def checkIfFileContains(file, string):
     else:
         returnData(1)
 
-def saveSoftwareToDo(toSave, path = "/tmp/pinetSoftware.dump"):
+def savePickled(toSave, path = "/tmp/pinetSoftware.dump"):
     """
     Saves list of softwarePackage objects.
     """
@@ -883,7 +876,7 @@ def saveSoftwareToDo(toSave, path = "/tmp/pinetSoftware.dump"):
     with open(path, "wb") as output:
         pickle.dump(toSave, output, pickle.HIGHEST_PROTOCOL)
 
-def loadSoftwareToDo(path= "/tmp/pinetSoftware.dump", deleteAfter = True):
+def loadPickled(path= "/tmp/pinetSoftware.dump", deleteAfter = True):
     """
     Loads list of softwarePackage objects ready to be used.
     """
@@ -955,15 +948,14 @@ def installSoftwareList(holdOffInstall = False):
     Checks what options the user has collected, then saves the packages list to file (using pickle). If holdOffInstall is False, then runs installSoftwareFromFile().
     """
     software = []
-    software.append(softwarePackage("Libreoffice", "A free office suite, similar to Microsoft office", "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
-    software.append(softwarePackage("Arduino-IDE", "Programming environment for Arduino microcontrollers", "apt", ["arduino",]))
-    software.append(softwarePackage("Scratch-gpio", "A special version of scratch for GPIO work" , "scratchGPIO", ["",]))
-    software.append(softwarePackage("Python-hardware", "Python libraries for a number of Pimoroni addon boards", "pip", ["pibrella skywriter unicornhat piglow"]))
-    software.append(softwarePackage("Epoptes", "Free and open source classroom management software", "epoptes", ["",]))
-    software.append(softwarePackage("BlueJ", "A Java IDE for developing programs quickly and easily", "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
-    software.append(softwarePackage("Custom-package", "Allows you to enter the name of a package from Raspbian repository", "customApt", ["",]))
-    software.append(softwarePackage("Custom-python", "Allows you to enter the name of a Python library from pip.", "customPip", ["",]))
-    software.append(softwarePackage("Python-hardware", "Python libraries for a number of additional addon boards", "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode"]))
+    software.append(softwarePackage("Libreoffice", _("A free office suite, similar to Microsoft office"), "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
+    software.append(softwarePackage("Arduino-IDE", _("Programming environment for Arduino microcontrollers"), "apt", ["arduino",]))
+    software.append(softwarePackage("Scratch-gpio", _("A special version of scratch for GPIO work") , "scratchGPIO", ["",]))
+    software.append(softwarePackage("Python-hardware", _("Python libraries for a number of additional addon boards"), "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode twython"]))
+    software.append(softwarePackage("Epoptes", _("Free and open source classroom management software"), "epoptes", ["",]))
+    software.append(softwarePackage("BlueJ", _("A Java IDE for developing programs quickly and easily"), "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
+    software.append(softwarePackage("Custom-package", _("Allows you to enter the name of a package from Raspbian repository"), "customApt", ["",]))
+    software.append(softwarePackage("Custom-python", _("Allows you to enter the name of a Python library from pip."), "customPip", ["",]))
     softwareList = []
     for i in software:
         softwareList.append([i.name, i.description])
@@ -975,7 +967,6 @@ def installSoftwareList(holdOffInstall = False):
     while done == False:
         whiptailBox("msgbox", _("Additional Software"), _("In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished."), False)
         result = (whiptailCheckList(_("Extra Software Submenu"), _("Select any software you want to install. Use space bar to select then enter to continue."), softwareList))
-        result = result.decode("utf-8")
         try:
             result = result.decode("utf-8")
         except AttributeError:
@@ -985,18 +976,18 @@ def installSoftwareList(holdOffInstall = False):
             if result == "":
                 yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you don't want to install any additional software?"), True)
                 if yesno:
-                    saveSoftwareToDo(software)
+                    savePickled(software)
                     done = True
             else:
                 resultList = result.split(" ")
-                yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to install this software? \n") + (result.replace(" ", "\n")), True, height=str(7+len(result.split(" "))))
+                yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to install this software?") + " \n" + (result.replace(" ", "\n")), True, height=str(7+len(result.split(" "))))
                 if yesno:
                     for i in software:
                         if i.name in resultList:
                             i.customAptPip()
                             #i.marked = True
                     done = True
-                    saveSoftwareToDo(software)
+                    savePickled(software)
 
     if holdOffInstall == False:
         installSoftwareFromFile()
@@ -1008,10 +999,10 @@ def installSoftwareFromFile(packages = None):
     """
     needCompress = False
     if packages == None:
-        packages = loadSoftwareToDo()
+        packages = loadPickled()
     for i in packages:
         if i.marked == True:
-            print("Installing " + str(i.name))
+            print(_("Installing") + " " + str(i.name))
             if needCompress == False:
                 ltspChroot("apt-get update")
             i.installPackage()
