@@ -24,6 +24,11 @@ import pwd, grp
 import urllib.request
 import xml.etree.ElementTree
 import feedparser
+import gettext
+
+def _(placeholder):
+    #GNU Gettext placeholder
+    return(placeholder)
 
 RepositoryBase = "https://github.com/pinet/"
 RepositoryName = "pinet"
@@ -96,9 +101,9 @@ class softwarePackage():
         done = False
         while done == False:
             if self.installType == "customApt":
-                packageName = whiptailBox("inputbox", "Custom package", "Enter the name of the name of your package from apt you wish to install.", False, returnErr = True)
+                packageName = whiptailBox("inputbox", _("Custom package"), _("Enter the name of the name of your package from apt you wish to install."), False, returnErr = True)
                 if packageName == "":
-                    yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you want to cancel the installation of a custom apt package?", True)
+                    yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to cancel the installation of a custom apt package?"), True)
                     if yesno:
                         self.marked = False
                         done = True
@@ -112,9 +117,9 @@ class softwarePackage():
                     done = True
 
             elif self.installType == "customPip":
-                packageName = whiptailBox("inputbox", "Custom package", "Enter the name of the name of your python package from pip you wish to install.", False, returnErr = True)
+                packageName = whiptailBox("inputbox", _("Custom package"), _("Enter the name of the name of your python package from pip you wish to install."), False, returnErr = True)
                 if packageName == "":
-                    yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you want to cancel the installation of a custom pip package?", True)
+                    yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to cancel the installation of a custom pip package?"), True)
                     if yesno:
                         self.marked = False
                         done = True
@@ -650,7 +655,7 @@ def checkUpdate(currentVersion):
     #thisVersion = thisVersion[8:len(thisVersion)]
 
     if compareVersions(currentVersion, thisVersion):
-        whiptailBox("msgbox", "Update detected", "An update has been detected for PiNet. Select OK to view the Release History.", False)
+        whiptailBox("msgbox", _("Update detected"), _("An update has been detected for PiNet. Select OK to view the Release History."), False)
         displayChangeLog(currentVersion)
     else:
         print("No PiNet software updates found")
@@ -809,7 +814,7 @@ def importFromCSV(theFile, defaultPassword, test = True):
                     raise RuntimeError("Invalid data in CSV file %s" % theFile)
                 user=theRow[0]
                 if " " in user:
-                    whiptailBox("msgbox", "Error!", "CSV file names column (1st column) contains spaces in the usernames! This isn't supported.", False)
+                    whiptailBox("msgbox", _("Error!"), _("CSV file names column (1st column) contains spaces in the usernames! This isn't supported."), False)
                     returnData("1")
                     raise RuntimeError("Usernames with spaces are unsupported")
                 if len(theRow) >= 2:
@@ -839,7 +844,7 @@ def importFromCSV(theFile, defaultPassword, test = True):
                         create_user(user, encPass)
                         fixGroupSingle(user)
                         print("Import of " + user + " complete.")
-                    whiptailBox("msgbox", "Complete", "Importing of CSV data has been complete.", False)
+                    whiptailBox("msgbox", _("Complete"), _("Importing of CSV data has been complete."), False)
                 else:
                     raise RuntimeError("Some Problem")
     else:
@@ -968,8 +973,8 @@ def installSoftwareList(holdOffInstall = False):
         time.sleep(0.05)
         #print("Resizing")
     while done == False:
-        whiptailBox("msgbox", "Additional Software", "In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished.", False)
-        result = (whiptailCheckList("Extra Software Submenu", "Select any software you want to install. Use space bar to select then enter to continue.", softwareList))
+        whiptailBox("msgbox", _("Additional Software"), _("In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished."), False)
+        result = (whiptailCheckList(_("Extra Software Submenu"), _("Select any software you want to install. Use space bar to select then enter to continue."), softwareList))
         result = result.decode("utf-8")
         try:
             result = result.decode("utf-8")
@@ -978,13 +983,13 @@ def installSoftwareList(holdOffInstall = False):
         result = result.replace('"', '')
         if result != "Cancel":
             if result == "":
-                yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you don't want to install any additional software?", True)
+                yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you don't want to install any additional software?"), True)
                 if yesno:
                     saveSoftwareToDo(software)
                     done = True
             else:
                 resultList = result.split(" ")
-                yesno = whiptailBox("yesno", "Are you sure?", "Are you sure you want to install this software? \n" + (result.replace(" ", "\n")), True, height=str(7+len(result.split(" "))))
+                yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to install this software? \n") + (result.replace(" ", "\n")), True, height=str(7+len(result.split(" "))))
                 if yesno:
                     for i in software:
                         if i.name in resultList:
@@ -1028,12 +1033,12 @@ def nbdRun():
     if getConfigParameter("/etc/pinet", "NBD=") == "true":
         if getConfigParameter("/etc/pinet", "NBDuse=") == "true":
             print("--------------------------------------------------------")
-            print("Compressing the image, this will take roughly 5 minutes")
+            print(_("Compressing the image, this will take roughly 5 minutes"))
             print("--------------------------------------------------------")
             runBash("ltsp-update-image /opt/ltsp/armhf")
             setConfigParameter("NBDBuildNeeded", "false")
         else:
-            whiptailBox("msgbox", "WARNING", "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu.", False)
+            whiptailBox("msgbox", _("WARNING"), _("Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu."), False)
 
 
 
@@ -1041,7 +1046,7 @@ def nbdRun():
 if __name__ == '__main__':
 
     if len(sys.argv) == 1:
-        print("This python script does nothing on its own, it must be passed stuff")
+        print(_("This python script does nothing on its own, it must be passed stuff"))
 
     else:
         getReleaseChannel()
