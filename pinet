@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.14
+version=1.0.16
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -22,8 +22,10 @@ PythonStart="python3"
 p="$PythonStart $PythonFunctions"
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
+BootRepositoryName="PiNet-Boot"
 RawRepositoryBase="https://raw.github.com/pinet/"
 Repository="$RepositoryBase$RepositoryName"
+BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
 ReleaseBranch="master"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
@@ -73,7 +75,6 @@ LegacyFixes() {
 	if [ "$exitcode" = "1" ]; then
 		UpdateConfig NBDBuildNeeded true
 	fi
-	DisableI2C_SPI
 	
 	if [ -f "/opt/ltsp/armhf/usr/bin/scratch.old" ]; then
 		echo "-------------------------------------------------------------------------------------------------"
@@ -290,7 +291,7 @@ if [ $Internet -eq 0 ]; then
 		mkdir /opt/PiNet/PiBootBackup
 	fi
 	rm -rf /tmp/PiBoot
-	git clone --no-single-branch --depth 1 $Repository.git /tmp/PiBoot #Clones main repository, including boot files
+	git clone --no-single-branch --depth 1 $BootRepository.git /tmp/PiBoot #Clones main repository, including boot files
 	(cd "/tmp/PiBoot"; git checkout "$ReleaseBranch")
 	rm -rf /opt/PiNet/PiBootBackup/*
 	cp -r /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/
@@ -311,7 +312,6 @@ if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
 	local newVersion=0
 	local currentVersion=$(head -n 1 "/opt/ltsp/armhf/bootfiles/version.txt")
 	local newVersion=$(head -n 1 "/opt/PiNet/PiBootBackup/version.txt")
-	echo "$currentVersion $newVersion"
 	if (( $currentVersion < $newVersion )); then 
 		rm -rf "/opt/ltsp/armhf/bootfiles/"
 		cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
@@ -665,7 +665,7 @@ ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc s
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python3-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools man-db
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
-ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby iputils-ping
+ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus dosfstools ruby iputils-ping scrot
 ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
 ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser cgroup-bin
 ltsp-chroot --arch armhf apt-get install -y -o Dpkg::Options::="--force-confnew" raspberrypi-net-mods
@@ -673,6 +673,9 @@ ltsp-chroot --arch armhf apt-get install -y java-common oracle-java8-jdk apt-uti
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
+
+ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
+ltsp-chroot --arch armhf apt-get install -y sense-hat
 
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
 
@@ -683,6 +686,9 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
     cp -r /tmp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
 fi
+
+#Install pillow which is required for Raspberry Pi Sense HAT.
+sudo ltsp-chroot sudo pip-3.2 install pillow
 
 #Server software
 apt-get install -y bindfs python3-feedparser ntp
@@ -1106,6 +1112,7 @@ SelectUser(){
 #Using some BASH/Whiptail magic, builds a list of users, formats it perfectly and hads it to whiptail
 users=$(cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | awk -F':' '{ print $1"\na"}')
 user=$(whiptail --title "Users" --menu "Select a user $1" 16 78 5 $users --noitem 3>&1 1>&2 2>&3)
+users=$(cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | sort | awk -F':' '{ print $1"\na"}')
 if [ $? -eq 0 ]; then
 	echo $user
 else
@@ -1480,7 +1487,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title "WARNING!!" --msgbox "Warning - The your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
+		whiptail --title "WARNING!!" --msgbox "Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1662,7 +1669,7 @@ AddDesktopShortcutToUser() {
 if [ ! -f "/home/$1/Desktop/pinet.desktop" ]; then
 	cat <<EOF1 >> /home/$1/Desktop/pinet.desktop
 [Desktop Entry]
-Version=1.0
+Version=2.0
 Name=PiNet
 Comment=Raspberry Pi LTSP       
 Exec=sudo bash pinet
@@ -1930,12 +1937,18 @@ fi
 }
 
 DisableI2C_SPI(){
-#Disables I2C and SPI to allow pins to be used for other stuff
+#Disables both I2C and SPI to allow the pins to be used as general purpose IO
 	if [ ! -f /opt/ltsp/armhf/etc/modprobe.d/raspi-blacklist.conf ]; then
 		echo "blacklist spi-bcm2708 
 blacklist i2c-bcm2708 " > /opt/ltsp/armhf/etc/modprobe.d/raspi-blacklist.conf
 	UpdateConfig NBDBuildNeeded true
 	fi
+}
+
+DisableSPI(){
+#Disables SPI (and enables I2C) to allow the SPI pins to be used as general purpose IO
+	echo "blacklist spi-bcm2708" > /opt/ltsp/armhf/etc/modprobe.d/raspi-blacklist.conf
+	UpdateConfig NBDBuildNeeded true
 }
 
 InstallBlueJ(){
@@ -2594,10 +2607,10 @@ FullInstall(){
 		FixDesktopIcons   #Adds desktop icons
 		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
+		#whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		#ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		$p installSoftwareFromFile
-		DisableI2C_SPI
+		DisableSPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
 		UpdateConfig NBD true
 		UpdateConfig NBDuse true
@@ -2679,7 +2692,7 @@ Rebuild-OS)
     		EnableNBDswap
     		whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
 			$p installSoftwareFromFile
-			DisableI2C_SPI
+			DisableSPI
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
     		UpdateSD
     		addSoundcardDefault

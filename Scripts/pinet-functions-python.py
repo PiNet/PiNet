@@ -17,25 +17,25 @@ basicConfig(level=WARNING)
 import sys, os
 import crypt
 import csv
-import grp
-import pwd
 from subprocess import Popen, PIPE, check_output
 import time
 import shutil
+import pwd, grp
 import urllib.request
 import xml.etree.ElementTree
-
 import feedparser
-
-DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
-PINET_BINPATH = "/usr/local/bin"
 
 RepositoryBase = "https://github.com/pinet/"
 RepositoryName = "pinet"
+BootRepository="PiNet-Boot"
 RawRepositoryBase = "https://raw.github.com/pinet/"
 Repository = RepositoryBase + RepositoryName
 RawRepository = RawRepositoryBase + RepositoryName
+RawBootRepository=RawRepositoryBase + BootRepository
 ReleaseBranch = "master"
+
+DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
+PINET_BINPATH = "/usr/local/bin"
 
 CODE_DOWNLOAD_URL = RawRepository + "/" + ReleaseBranch
 PINET_BINARY = "pinet"
@@ -785,11 +785,6 @@ def previousImport(migration_dirpath="/root/move"):
             etc.append(toAdd[i])
         for i in range(0, len(etc)):
             etc[i] = ":".join(etc[i])
-            #~ line = ""
-            #~ for y in range(0, len(etc[i])):
-                #~ line = line  + etc[i][y] + ":"
-            #~ line = line[0:len(line) - 1]
-            #~ etc[i] = line
         debug(etc)
         writeTextFile(etc, etcLoc)
 
@@ -958,7 +953,7 @@ def installSoftwareList(holdOffInstall = False):
     software.append(softwarePackage("Libreoffice", "A free office suite, similar to Microsoft office", "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
     software.append(softwarePackage("Arduino-IDE", "Programming environment for Arduino microcontrollers", "apt", ["arduino",]))
     software.append(softwarePackage("Scratch-gpio", "A special version of scratch for GPIO work" , "scratchGPIO", ["",]))
-    software.append(softwarePackage("Python-hardware", "Python libraries for some addon boards", "pip", ["pibrella skywriter unicornhat piglow"]))
+    software.append(softwarePackage("Python-hardware", "Python libraries for a number of Pimoroni addon boards", "pip", ["pibrella skywriter unicornhat piglow"]))
     software.append(softwarePackage("Epoptes", "Free and open source classroom management software", "epoptes", ["",]))
     software.append(softwarePackage("BlueJ", "A Java IDE for developing programs quickly and easily", "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
     software.append(softwarePackage("Custom-package", "Allows you to enter the name of a package from Raspbian repository", "customApt", ["",]))
@@ -971,11 +966,15 @@ def installSoftwareList(holdOffInstall = False):
     if (shutil.get_terminal_size()[0] < 105) or (shutil.get_terminal_size()[0] < 30):
         print("\x1b[8;30;105t")
         time.sleep(0.05)
-        print("Resizing")
+        #print("Resizing")
     while done == False:
         whiptailBox("msgbox", "Additional Software", "In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished.", False)
         result = (whiptailCheckList("Extra Software Submenu", "Select any software you want to install. Use space bar to select then enter to continue.", softwareList))
         result = result.decode("utf-8")
+        try:
+            result = result.decode("utf-8")
+        except AttributeError:
+            return
         result = result.replace('"', '')
         if result != "Cancel":
             if result == "":
