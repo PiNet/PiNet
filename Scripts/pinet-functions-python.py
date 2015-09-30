@@ -11,7 +11,6 @@
 
 #PiNet is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
 
-
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 basicConfig(level=WARNING)
 import sys, os
@@ -186,9 +185,9 @@ def makeFolder(directory):
         os.makedirs(directory)
 
 
-def getReleaseChannel():
+def getReleaseChannel(filepath=PINET_CONF_FILEPATH):
     Channel = "Stable"
-    configFile = getList("/etc/pinet")
+    configFile = getList(filepath)
     for i in range(0, len(configFile)):
         if configFile[i][0:14] == "ReleaseChannel":
             Channel = configFile[i][15:len(configFile[i])]
@@ -425,7 +424,7 @@ def returnData(data):
     #return fileLoc
 
 def readReturn():
-    with open("/tmp/ltsptmp", "r") as text_file:
+    with open(DATA_TRANSFER_FILEPATH, "r") as text_file:
         print(text_file.read())
 
 def removeFile(file):
@@ -534,7 +533,7 @@ def replaceBitOrAdd(file, string, newString):
     textfile = findReplaceSection(textfile, string, newString)
     writeTextFile(textfile, file)
 
-def internet_on(timeoutLimit, returnType = True):
+def internet_on(timeoutLimit = 5, returnType = True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
