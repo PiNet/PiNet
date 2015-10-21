@@ -19,6 +19,7 @@ import time
 import shutil
 import pwd, grp
 from copy import deepcopy
+import random
 #from gettext import gettext as _
 #gettext.textdomain(pinetPython)
 import gettext
@@ -123,7 +124,6 @@ class softwarePackage():
                 self.marked = True
                 done = True
         debug(self.marked, self.installType, self.installCommands, self.name)
-
 
 def runBash(command):
     if type(command) == str:
@@ -581,9 +581,9 @@ def checkUpdate2():
 
 def GetVersionNum(data):
     for i in range(0, len(data)):
-        bob = data[i][0:8]
+        line = data[i][0:8]
         if data[i][0:7] == "Release":
-            bob = data[i]
+            line = data[i]
             version = str(data[i][8:len(data[i])]).rstrip()
             return version
 
@@ -989,6 +989,102 @@ def nbdRun():
         else:
             whiptailBox("msgbox", _("WARNING"), _("Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu."), False)
 
+def generateServerID():
+    """
+    Generates random server ID for use with stats system.
+    """
+    ID = random.randint(10000000000,99999999999)
+    setConfigParameter("ServerID", str(ID))
+
+def getIPAddress():
+    """
+    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    If there is any issues, defaults to returning 0.0.0.0.
+    """
+    try:
+        import urllib.request
+        import socket
+        with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
+            IP = url.read().decode()
+            socket.inet_aton(IP)
+    except:
+        IP = "0.0.0.0"
+    return IP
+
+
+def sendStats():
+    """
+    Upload anonymous stats to the secure PiNet server (over encrypted SSL).
+    """
+    DisableMetrics = str(getConfigParameter("/etc/pinet", "DisableMetrics="))
+    ServerID = str(getConfigParameter("/etc/pinet", "ServerID="))
+    if ServerID == "None":
+        generateServerID()
+        ServerID = str(getConfigParameter("/etc/pinet", "ServerID="))
+    if DisableMetrics.lower() == "true":
+        PiNetVersion="0.0.0"
+        Users="0"
+        KernelVersion = "000"
+        ReleaseChannel = "0"
+        City = "Blank"
+        OrganisationType = "Blank"
+        OrganisationName = "Blank"
+    else:
+        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version="))
+        Users = str(len(getUsers()))
+        if os.path.exists("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt"):
+            KernelVersion = str(getCleanList("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt")[0])
+        else:
+            KernelVersion = "000"
+        City = str(getConfigParameter("/etc/pinet", "City="))
+        OrganisationType = str(getConfigParameter("/etc/pinet", "OrganisationType="))
+        OrganisationName = str(getConfigParameter("/etc/pinet", "OrganisationName="))
+        ReleaseChannel = str(getConfigParameter("/etc/pinet", "ReleaseChannel="))
+
+    IPAddress = getIPAddress()
+
+    command = 'curl --connect-timeout 2 --data "ServerID='+ ServerID + "&" + "PiNetVersion=" + PiNetVersion +  "&" + "Users=" + Users + "&" +  "KernelVersion=" + KernelVersion +  "&" +  "ReleaseChannel=" + ReleaseChannel + "&" + "IPAddress=" + IPAddress + "&" + "City=" + City + "&" + "OrganisationType=" + OrganisationType + "&" + "OrganisationName=" + OrganisationName + '"  https://secure.pinet.org.uk/pinetstatsv1.php -s -o /dev/null 2>&1'
+    runBash(command)
+
+def checkStatsNotification():
+    """
+    Displays a one time notification to the user only once on the metrics.
+    """
+    ShownStatsNotification = str(getConfigParameter("/etc/pinet", "ShownStatsNotification="))
+    if ShownStatsNotification == "true":
+        pass #Don't display anything
+    else:
+        whiptailBox("msgbox", _("Stats"), _("Please be aware PiNet now collects very basic usage stats. These stats are uploaded to the secure PiNet metrics server over an encrypted 2048 bit SSL/TLS connection. The stats logged are PiNet version, Raspbian kernel version, number of users, development channel (stable or dev), external IP address, a randomly generated unique ID and any additional information you choose to add. These stats are uploaded in the background when PiNet checks for updates. Should you wish to disable the stats, see - http://pinet.org.uk/articles/advanced/metrics.html"), False, height="14")
+        setConfigParameter("ShownStatsNotification", "true", "/etc/pinet")
+        askExtraStatsInfo()
+
+def askExtraStatsInfo():
+    import re
+    """
+    Ask the user for additional stats information.
+    """
+    whiptailBox("msgbox", _("Additional information"), _("It is really awesome to see and hear from users across the world using PiNet. So we can start plotting schools/organisations using PiNet on a map, feel free to add any extra information to your PiNet server. It hugely helps us out also for internationalisation/localisation of PiNet. If you do not want to attach any extra information, please simply leave the following prompts blank."), False, height="13")
+    city = whiptailBox("inputbox", _("Nearest major city"), _("To help with putting a dot on the map for your server, what is your nearest major town or city? Leave blank if you don't want to answer."), False, returnErr = True)
+    organisationType = whiptailSelectMenu(_("Organisation type"), _("What type of organisation are you setting PiNet up for? Leave on blank if you don't want to answer."), ["Blank", "School", "Non Commercial Organisation", "Commercial Organisation", "Raspberry Jam/Club", "N/A"])
+    organisationName = whiptailBox("inputbox", _("School/organisation name"), _("What is the name of your organisation? Leave blank if you don't want to answer."), False, returnErr = True)
+    whiptailBox("msgbox", _("Additional information"), _('Thanks for taking the time to read through (and if possible fill in) additional information. If you ever want to edit your information supplied, you can do so by selecting the "Other" menu and selecting "Edit-Information".'), False, height="11")
+    try:
+        organisationType = organisationType.decode("utf-8")
+    except:
+        organisationType = "Blank"
+    if city == "":
+        city = "Blank"
+    if organisationType == "":
+        organisationType = "Blank"
+    if organisationName == "":
+        organisationName = "Blank"
+    city =  re.sub('[^0-9a-zA-Z]+', '_', city)
+    organisationType = re.sub('[^0-9a-zA-Z]+', '_', organisationType)
+    organisationName = re.sub('[^0-9a-zA-Z]+', '_', organisationName)
+    setConfigParameter("City", city)
+    setConfigParameter("OrganisationType", organisationType)
+    setConfigParameter("OrganisationName", organisationName)
+    sendStats()
 
 
 #------------------------------Main program-------------------------
@@ -1029,3 +1125,7 @@ else:
         installSoftwareList(False)
     elif sys.argv[1] == "installSoftwareFromFile":
         installSoftwareFromFile()
+    elif sys.argv[1] == "sendStats":
+        sendStats()
+    elif sys.argv[1] == "checkStatsNotification":
+        checkStatsNotification()

@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.17
+version=1.0.18
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -88,6 +88,7 @@ LegacyFixes() {
 		echo $"A required system update has been found. I will now compress the operating system again to apply this update"
 		NBDRun
 	fi
+	$p "checkStatsNotification"
 	
 }
 
@@ -333,7 +334,7 @@ UpdateIP(){
 
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
 
-whiptail --title $"IP address" --yesno $"Would you like to stick with your current IP address for the SD cards? (Recommended)" 8 78 #Check with this use that the IP address is correct
+whiptail --title $"IP address" --yesno $"I have detected your current IP address is $IP. Would you like to setup the SD card image with it? (Recommended)" 8 78 #Check with this use that the IP address is correct
 
 exitstatus=$?
 if [ ! $exitstatus = 0 ]; then
@@ -369,7 +370,7 @@ else
         sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/PiBoot/cmdline.txt"
         nautilus "/home/$SUDO_USER/PiBoot" > /dev/null 2>&1 &
 fi
-
+CreateSDCardImageFile
 
 }
 
@@ -662,7 +663,7 @@ AddSoftware(){
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
-ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python3-pygame python-tk sudo sshpass pcmanfm chromium python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools mpg123
+ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python3-pygame python-tk sudo sshpass pcmanfm python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools mpg123
 ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
 ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python3-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
 ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools man-db
@@ -675,6 +676,7 @@ ltsp-chroot --arch armhf apt-get install -y java-common oracle-java8-jdk apt-uti
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
+ltsp-chroot --arch armhf apt-get install -y chromium
 
 ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
 ltsp-chroot --arch armhf apt-get install -y sense-hat
@@ -690,7 +692,11 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
 fi
 
 #Install pillow which is required for Raspberry Pi Sense HAT.
-sudo ltsp-chroot sudo pip-3.2 install pillow
+sudo ltsp-chroot --arch armhf sudo pip-3.2 install pillow
+
+#Install Pygame Zero and gpiozero
+sudo ltsp-chroot --arch armhf pip install gpiozero
+sudo ltsp-chroot --arch armhf pip-3.2 install pgzero gpiozero
 
 #Server software
 apt-get install -y bindfs python3-feedparser ntp
@@ -1243,8 +1249,9 @@ Updater(){
 }
 
 CheckReleases(){
-#Checks if there is a new software release. Mainly uses CheckUpdate on Python side
+#Checks if there is a new software release. Mainly uses CheckUpdate on Python side. Also runs sendStats.
 	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install python3-feedparser  )
+	$p sendStats
 	$p CheckUpdate $version
 	exitstatus=$(gp)
 	#echo $exitstatus
@@ -2061,14 +2068,14 @@ CheckRaspberryPiUIModsAllUsers(){
 InstallRaspberryPiUIMods(){
 #Installs the new Raspberry Pi UI mods, but fixes the mistakes made in the wallpaper setting
 		ltsp-chroot apt-get update
-		ltsp-chroot apt-get -o Dpkg::Options::="--force-overwrite --force-confnew" install -y raspberrypi-ui-mods 
+		ltsp-chroot apt-get -o Dpkg::Options::="--force-confnew" install -y raspberrypi-ui-mods 
 		FixUIConfigFile "System" "pcmanfm.conf"
 		FixUIConfigFile "System" "desktop-items-0.conf"
 		CheckRaspberryPiUIModsAllUsers 
 }
 
 ChooseReleaseChannel(){
-	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Bleeding edge" $"Would you like to use the stable or bleeding edge (developer) software update channels? Stable is recommended." 8 78 
+	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Development" $"Would you like to use the stable or development (dev) software update channels? Stable is recommended. Do not use the development (dev) channels in a production environment (for example a school) as stability is not guaranteed. " 8 78 
 	if [ $? -eq 0 ]; then 
 		UpdateConfig ReleaseChannel "Stable"
 	else
@@ -2128,6 +2135,29 @@ CheckInstallSuccess(){
 		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
 		exit
 	fi
+}
+
+CreatePartitionTable() {
+  #Directly borrowed from Spindle - https://github.com/asb/spindle/blob/master/wheezy-stage0
+  sudo parted $1 <<EOF
+  unit b
+  mklabel msdos
+  mkpart primary fat32 $(expr 4 \* 1024 \* 1024) $(expr 60 \* 1024 \* 1024 - 1)
+  print
+  quit
+EOF
+}
+CreateSDCardImageFile(){
+	fileName="/tmp/pinet.img"
+	dd if=/dev/zero of=$fileName bs=512 count=208845
+	create_partition_table $fileName
+	sudo mkdosfs -n PINET -S 512 -s 16 -v $fileName
+	mkdir /mnt/sdimage
+	mount $fileName /mnt/sdimage
+	cp -r /home/$SUDO_USER/PiBoot/* /mnt/sdimage/
+	umount /mnt/sdimage
+	rm -r /mnt/sdimage
+	mv $fileName /home/$SUDO_USER/pinetSDImage.img
 }
 
 
@@ -2207,6 +2237,7 @@ OtherMenu() {
     "NBD-compress-enable" $"Enable auto NBD recompression after every change (default)" \
     "Export-users" $"Export all user data for migrating to new PiNet server" \
 		"Change-release-channel" $"Change your current update channel to dev or stable" \
+		"Edit-Information" $"Edit information attached to the PiNet server" \
 		"Full-Install" $"Full install of PiNet server" \
     3>&1 1>&2 2>&3)
 
@@ -2251,6 +2282,10 @@ case "$MENUEPT" in
 	;;
 	Export-users)
 	CreateMoveBackup
+	Menu
+	;;
+	Edit-Information)
+	$p "askExtraStatsInfo"
 	Menu
 	;;
 	Change-release-channel)
@@ -2647,7 +2682,7 @@ case "$MENUOPT" in
 Update-SD)
 	UpdateSD
 	if [ $? -eq 0 ]; then
-		whiptail --title $"SD image updated" --msgbox $"SD card image updated. Please copy the files found in /home/$SUDO_USER/PiBoot folder (I also tried to just open the folder for you) onto a blank SD card." 9 78
+		whiptail --title $"SD image updated" --msgbox $"SD card image updated. A folder of boot files in /home/$SUDO_USER/PiBoot has been created. An experimental disk image ready to flash onto the SD card has also been created at /home/$SUDO_USER/pinetSDImage.img. You can use either option. See http://pinet.org.uk/articles/installation/sd-card-copy.html for help." 11 78
 	fi
 	Menu
 	;;
@@ -2794,6 +2829,7 @@ if [ $intStat -eq 0 ]; then
 	CheckReleases
 	checkKernelFileUpdateWeb
 	checkKernelUpdater "NBD"
+	
 fi
 LegacyFixes #Makes sure all configuration data is correctly configured
 CheckInstallSuccess
