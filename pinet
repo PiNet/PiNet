@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.0.18
+version=1.0.19
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -679,6 +679,8 @@ ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-i
 ltsp-chroot --arch armhf apt-get install -y chromium
 
 ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
+ltsp-chroot --arch armhf apt-get install libjpeg-dev #Required due to a dependancy issue with pillow
+sudo ltsp-chroot --arch armhf sudo pip-3.2 install pillow #Install pillow which is required for Raspberry Pi Sense HAT on Python 3.
 ltsp-chroot --arch armhf apt-get install -y sense-hat
 
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
@@ -690,9 +692,6 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
     cp -r /tmp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
 fi
-
-#Install pillow which is required for Raspberry Pi Sense HAT.
-sudo ltsp-chroot --arch armhf sudo pip-3.2 install pillow
 
 #Install Pygame Zero and gpiozero
 sudo ltsp-chroot --arch armhf pip install gpiozero
@@ -2640,10 +2639,10 @@ FullInstall(){
 		SetupSharedStandalone
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
-		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		fixGroups   #Adds all current users to the pupil and video group
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes
+		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
@@ -2826,10 +2825,11 @@ SetupRepositories #Sets up the correct branch varliables as selected in ChooseRe
 
 intStat=$(checkInternet)  #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
 if [ $intStat -eq 0 ]; then
-	CheckReleases
-	checkKernelFileUpdateWeb
-	checkKernelUpdater "NBD"
-	
+	if [ ! "$DisableUpdateChecking" = "true" ]; then
+			CheckReleases
+			checkKernelFileUpdateWeb
+			checkKernelUpdater "NBD"
+	fi	
 fi
 LegacyFixes #Makes sure all configuration data is correctly configured
 CheckInstallSuccess

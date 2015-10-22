@@ -1129,3 +1129,5 @@ else:
         sendStats()
     elif sys.argv[1] == "checkStatsNotification":
         checkStatsNotification()
+    elif sys.argv[1] == "askExtraStatsInfo":
+        askExtraStatsInfo()
