@@ -11,19 +11,169 @@
 
 #PiNet is a utility for setting up and configuring a Linux Terminal Server Project (LTSP) network for Raspberry Pi's
 
-
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 basicConfig(level=WARNING)
 import sys, os
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, check_output
 import time
+import shutil
+import pwd, grp
+from copy import deepcopy
+import random
+#from gettext import gettext as _
+#gettext.textdomain(pinetPython)
+import gettext
+# Set up message catalog access
+#t = gettext.translation('pinetPython', 'locale', fallback=True)
+#_ = t.ugettext
+
+def _(placeholder):
+    #GNU Gettext placeholder
+    return(placeholder)
 
 RepositoryBase="https://github.com/pinet/"
 RepositoryName="pinet"
+BootRepository="PiNet-Boot"
 RawRepositoryBase="https://raw.github.com/pinet/"
 Repository=RepositoryBase + RepositoryName
 RawRepository=RawRepositoryBase + RepositoryName
+RawBootRepository=RawRepositoryBase + BootRepository
 ReleaseBranch = "master"
+configFileData = {}
+
+
+class softwarePackage():
+    """
+    Class for possible software packages.
+    """
+
+    name = ""
+    description = ""
+    installType = ""
+    installCommands = []
+    marked = False
+
+    def __init__(self, name, description, installType, installCommands):
+        super(softwarePackage, self).__init__()
+        self.name = name
+        self.description = description
+        self.installType = installType
+        self.installCommands = installCommands
+
+    def installPackage(self):
+        debug("Installing " +  self.name)
+        debug(self.installCommands)
+        if len(self.installCommands) > 0:
+            programs = " ".join(self.installCommands)
+        else:
+            programs = self.installCommands
+        if self.installType == "pip":
+            self.marked = False
+            py2 = runBash("ltsp-chroot pip install " + programs)
+            py3 = runBash("ltsp-chroot pip-3.2 install " + programs)
+            return
+        elif self.installType == "apt":
+            self.marked = False
+            return runBash("ltsp-chroot apt-get install " + programs + " -y")
+        elif self.installType == "script":
+            for i in self.installCommands:
+                runBash("ltsp-chroot --arch armhf " + i)
+            self.marked = False
+        elif self.installType == "epoptes":
+            installEpoptes()
+        elif self.installType == "scratchGPIO":
+            installScratchGPIO()
+        else:
+            print(_("Error in installing") + " " + self.name + " " + _("due to invalid install type."))
+            self.marked = False
+
+    def customAptPip(self):
+        done = False
+        while done == False:
+            if self.installType == "customApt":
+                packageName = whiptailBox("inputbox", _("Custom package"), _("Enter the name of the name of your package from apt you wish to install."), False, returnErr = True)
+                if packageName == "":
+                    yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to cancel the installation of a custom apt package?"), True)
+                    if yesno:
+                        self.marked = False
+                        done = True
+                    #else:
+                        #print("Setting marked to false")
+                        #self.marked = False
+                else:
+                    self.installType = "apt"
+                    self.installCommands = [packageName,]
+                    self.marked = True
+                    done = True
+
+            elif self.installType == "customPip":
+                packageName = whiptailBox("inputbox", _("Custom package"), _("Enter the name of the name of your python package from pip you wish to install."), False, returnErr = True)
+                if packageName == "":
+                    yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to cancel the installation of a custom pip package?"), True)
+                    if yesno:
+                        self.marked = False
+                        done = True
+                    else:
+                        self.marked = False
+                else:
+                    self.installType = "pip"
+                    self.installCommands = [packageName,]
+                    self.marked = True
+                    done = True
+            else:
+                self.marked = True
+                done = True
+        debug(self.marked, self.installType, self.installCommands, self.name)
+
+def runBash(command):
+    if type(command) == str:
+        p = Popen("sudo " + command, shell=True)
+        p.wait()
+        return p.returncode
+    else:
+        p = Popen(command)
+        p.wait()
+        return p.returncode
+
+def runBashOutput(command):
+    output = check_output("sudo " + command, shell=True)
+    return output
+
+def getUsers(includeRoot=False):
+    users = []
+    for p in pwd.getpwall():
+        if (len(str(p[2])) > 3) and (str(p[5])[0:5] == "/home"): #or (str(p[5])[0:5] == "/root"):
+            users.append(p[0].lower())
+    return users
+
+def ltspChroot(command):
+    runBash("ltsp-chroot --arch armhf " + command)
+
+def installPackage(toInstall, update=False, upgrade=False, InstallOnServer=False):
+    toInstall = toInstall.split(" ")
+    totalPackages = ""
+    for i in range(0, len(toInstall)):
+        totalPackages = totalPackages + " " + toInstall[i]
+    if update:
+        runBash("apt-get update")
+    if update:
+        runBash("apt-get upgrade -y")
+    if InstallOnServer:
+        runBash("apt-get install -y " + str(totalPackages))
+    else:
+        ltspChroot("apt-get install -y " + str(totalPackages))
+
+
+def createTextFile(location, text):
+    newText = text.split("\n")
+    newText = stripStartWhitespaces(newText)
+    newText = stripEndWhitespaces(newText)
+    writeTextFile(newText, location)
+
+def makeFolder(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
 
 def getReleaseChannel():
     Channel = "Stable"
@@ -56,6 +206,8 @@ def getTextFile(filep):
     Each line is a new object in the list
 
     """
+    if not os.path.exists(filep):
+        return []
     file = open(filep)
     filelist = []
     while 1:
@@ -122,6 +274,19 @@ def getList(file):
     Creates list from the passed text file with each line a new object in the list
     """
     return removeN(getTextFile(file))
+
+def checkStringExists(filename, toSearchFor):
+    textFile = getList(filename)
+    unfound = True
+    for i in range(0,len(textFile)):
+        found = textFile[i].find(toSearchFor)
+        if (found != -1):
+            unfound = False
+            break
+    if unfound:
+        return False
+
+    return True
 
 def findReplaceAnyLine(textFile, string, newString):
     """
@@ -227,18 +392,18 @@ def getConfigParameter(filep, searchfor):
     textFile = stripEndWhitespaces(textFile)
     value = ""
     for i in range(0,len(textFile)):
-        #print(textFile[i])
         found = textFile[i].find(searchfor)
         if (found != -1):
-            #print(textFile[i])
-            bob = found+len(searchfor)
-            jill = len(searchfor)
             value = textFile[i][found+len(searchfor):len(textFile[i])]
 
     if value == "":
         value = "None"
 
     return value
+
+def setConfigParameter(option, value, filep = "/etc/pinet"):
+    newValue = option + "=" + value
+    replaceLineOrAdd(filep, option, newValue)
 
 #def selectFile(start = "/home/"+os.environ['SUDO_USER']+"/"):
 #    pass
@@ -252,30 +417,56 @@ def readReturn():
     with open("/tmp/ltsptmp", "r") as text_file:
         print(text_file.read())
 
+def removeFile(file):
+    try:
+        shutil.rmtree(file)
+    except (OSError, IOError):
+        pass
+
+def copyFile(src, dest):
+    shutil.copy(src, dest)
+
 #----------------Whiptail functions-----------------
-def whiptailBox(type, title, message, returnTF ,height = "8", width= "78"):
-    cmd = ["whiptail", "--title", title, "--"+type, message, height, width]
+def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False, other = ""):
+    cmd = ["whiptail", "--title", title, "--"+whiltailType, message, height, width, other]
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
 
-    if returnTF:
+    if returnTrueFalse:
         if p.returncode == 0:
             return True
         elif p.returncode == 1:
             return False
         else:
             return "ERROR"
+    elif returnErr:
+        return err.decode()
     else:
         return p.returncode
 
-def whiptailSelectMenu(title, message, items):
-    height, width, other = "16", "78", "5"
+def whiptailSelectMenu(title, message, items, height = "16", width = "78", other = "5"):
     cmd = ["whiptail", "--title", title, "--menu", message ,height, width, other]
     itemsList = ""
     for x in range(0, len(items)):
         cmd.append(items[x])
         cmd.append("a")
     cmd.append("--noitem")
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    returnCode = p.returncode
+    if str(returnCode) == "0":
+        return(err)
+    else:
+        return("Cancel")
+
+def whiptailCheckList(title, message, items):
+    height, width, other = "20", "100", str(len(items)) #"16", "78", "5"
+    cmd = ["whiptail", "--title", title, "--checklist", message ,height, width, other]
+    itemsList = ""
+    for x in range(0, len(items)):
+        cmd.append(items[x][0])
+        cmd.append(items[x][1])
+        cmd.append("OFF")
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
     returnCode = p.returncode
@@ -309,7 +500,7 @@ def replaceBitOrAdd(file, string, newString):
     textfile = findReplaceSection(textfile, string, newString)
     writeTextFile(textfile, file)
 
-def internet_on(timeoutLimit, returnType = True):
+def internet_on(timeoutLimit = 5, returnType = True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
@@ -317,13 +508,19 @@ def internet_on(timeoutLimit, returnType = True):
     import urllib.request
     #print("Checking internet")
     try:
-        response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
+        response=urllib.request.urlopen('http://www.google.com',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
     except:  pass
     try:
-        response=urllib.request.urlopen('http://74.125.228.100',timeout=int(timeoutLimit))
+        response=urllib.request.urlopen('http://mirrordirector.raspbian.org/',timeout=int(timeoutLimit))
+        returnData(0)
+        #print("returning 0")
+        return True
+    except:  pass
+    try:
+        response=urllib.request.urlopen('http://18.62.0.96',timeout=int(timeoutLimit))
         returnData(0)
         #print("returning 0")
         return True
@@ -341,7 +538,7 @@ def updatePiNet():
     except: pass
     print("")
     print("----------------------")
-    print("Installing update")
+    print(_("Installing update"))
     print("----------------------")
     print("")
     download = True
@@ -351,14 +548,14 @@ def updatePiNet():
         download = False
     if download:
         print("----------------------")
-        print("Update complete")
+        print(_("Update complete"))
         print("----------------------")
         print("")
         returnData(0)
     else:
         print("")
         print("----------------------")
-        print("Update failed...")
+        print(_("Update failed..."))
         print("----------------------")
         print("")
         returnData(1)
@@ -379,21 +576,21 @@ def checkUpdate2():
         version = version[8:len(version)]
         print(version)
     else:
-        print("ERROR")
-        print("No release update found!")
+        print(_("ERROR"))
+        print(_("No release update found!"))
 
 def GetVersionNum(data):
     for i in range(0, len(data)):
-        bob = data[i][0:8]
+        line = data[i][0:8]
         if data[i][0:7] == "Release":
-            bob = data[i]
+            line = data[i]
             version = str(data[i][8:len(data[i])]).rstrip()
             return version
 
 
 def checkUpdate(currentVersion):
     if not internet_on(5, False):
-        print("No Internet Connection")
+        print(_("No Internet Connection"))
         returnData(0)
     import feedparser
     import xml.etree.ElementTree
@@ -408,10 +605,10 @@ def checkUpdate(currentVersion):
     #thisVersion = thisVersion[8:len(thisVersion)]
 
     if compareVersions(currentVersion, thisVersion):
-        whiptailBox("msgbox", "Update detected", "An update has been detected for PiNet. Select OK to view the Release History.", False)
+        whiptailBox("msgbox", _("Update detected"), _("An update has been detected for PiNet. Select OK to view the Release History."), False)
         displayChangeLog(currentVersion)
     else:
-        print("No updates found")
+        print(_("No PiNet software updates found"))
         #print(thisVersion)
         #print(currentVersion)
         returnData(0)
@@ -419,7 +616,8 @@ def checkUpdate(currentVersion):
 
 
 def checkKernelFileUpdateWeb():
-    downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    #downloadFile(RawRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    downloadFile(RawBootRepository +"/" + ReleaseBranch + "/boot/version.txt", "/tmp/kernelVersion.txt")
     import os.path
     user=os.environ['SUDO_USER']
     currentPath="/home/"+user+"/PiBoot/version.txt"
@@ -431,9 +629,11 @@ def checkKernelFileUpdateWeb():
             return False
         else:
             returnData(0)
+            print(_("No kernel updates found"))
             return True
     else:
         returnData(0)
+        print(_("No kernel updates found"))
 
 def checkKernelUpdater():
     downloadFile(RawRepository +"/" + ReleaseBranch + "/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
@@ -494,7 +694,7 @@ def displayChangeLog(version):
     thing = ""
     for i in range(0, len(output)):
         thing = thing + output[i] + "\n"
-    cmd = ["whiptail", "--title", "Release history (Use arrow keys to scroll) - " + version, "--scrolltext", "--"+"yesno", "--yes-button", "Install " + output[0], "--no-button", "Cancel", thing, "24", "78"]
+    cmd = ["whiptail", "--title", _("Release history (Use arrow keys to scroll)") + " - " + version, "--scrolltext", "--"+"yesno", "--yes-button", _("Install") + output[0], "--no-button", _("Cancel"), thing, "24", "78"]
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
     if p.returncode == 0:
@@ -561,11 +761,11 @@ def importFromCSV(theFile, defaultPassword, test = True):
                 try:
                     theRow=str(row[0]).split(",")
                 except:
-                    whiptailBox("msgbox", "Error!", "CSV file invalid!", False)
+                    whiptailBox("msgbox", _("Error!"), _("CSV file invalid!"), False)
                     sys.exit()
                 user=theRow[0]
                 if " " in user:
-                    whiptailBox("msgbox", "Error!", "CSV file names column (1st column) contains spaces in the usernames! This isn't supported.", False)
+                    whiptailBox("msgbox", _("Error!"), _("CSV file names column (1st column) contains spaces in the usernames! This isn't supported."), False)
                     returnData("1")
                     sys.exit()
                 if len(theRow) >= 2:
@@ -579,8 +779,8 @@ def importFromCSV(theFile, defaultPassword, test = True):
             if test:
                 thing = ""
                 for i in range(0, len(userData)):
-                    thing = thing + "Username - " + userData[i][0] + " : Password - " + userData[i][1] + "\n"
-                cmd = ["whiptail", "--title", "About to import (Use arrow keys to scroll)" ,"--scrolltext", "--"+"yesno", "--yes-button", "import" , "--no-button", "Cancel", thing, "24", "78"]
+                    thing = thing + _("Username") + " - " + userData[i][0] + " : " + _("Password - ") + userData[i][1] + "\n"
+                cmd = ["whiptail", "--title", _("About to import (Use arrow keys to scroll)") ,"--scrolltext", "--"+"yesno", "--yes-button", _("Import") , "--no-button", _("Cancel"), thing, "24", "78"]
                 p = Popen(cmd,  stderr=PIPE)
                 out, err = p.communicate()
                 if p.returncode == 0:
@@ -593,11 +793,11 @@ def importFromCSV(theFile, defaultPassword, test = True):
                         out, err = p.communicate()
                         fixGroupSingle(user)
                         print("Import of " + user + " complete.")
-                    whiptailBox("msgbox", "Complete", "Importing of CSV data has been complete.", False)
+                    whiptailBox("msgbox", _("Complete"), _("Importing of CSV data has been complete."), False)
                 else:
                     sys.exit()
     else:
-        print("Error! CSV file not found at " + theFile)
+        print(_("Error! CSV file not found at") + " " + theFile)
 
 def fixGroupSingle(username):
     groups = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
@@ -625,15 +825,274 @@ def checkIfFileContains(file, string):
         returnData(0)
     else:
         returnData(1)
+
+def savePickled(toSave, path = "/tmp/pinetSoftware.dump"):
+    """
+    Saves list of softwarePackage objects.
+    """
+    import pickle
+    with open(path, "wb") as output:
+        pickle.dump(toSave, output, pickle.HIGHEST_PROTOCOL)
+
+def loadPickled(path= "/tmp/pinetSoftware.dump", deleteAfter = True):
+    """
+    Loads list of softwarePackage objects ready to be used.
+    """
+    import pickle
+    try:
+        with open(path, "rb") as input:
+            obj = pickle.load(input)
+        if deleteAfter:
+            removeFile(path)
+        return obj
+    except (OSError, IOError):
+        if deleteAfter:
+            removeFile(path)
+        return []
+
+def installEpoptes():
+    """
+    Install Epoptes classroom management software. Key is making sure groups are correct.
+    :return:
+    """
+    runBash("apt-get install -y epoptes")
+    runBash("gpasswd -a root staff")
+    runBash("ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends")
+    runBash("ltsp-chroot --arch armhf epoptes-client -c")
+    replaceLineOrAdd("/etc/default/epoptes", "SOCKET_GROUP", "SOCKET_GROUP=teacher")
+
+def installScratchGPIO():
+    """
+    ScratchGPIO installation process. Includes creating the desktop icon in all users and /etc/skel
+    """
+    removeFile("/tmp/isgh7.sh")
+    removeFile("/opt/ltsp/armhf/usr/local/bin/isgh5.sh")
+    removeFile("/opt/ltsp/armhf/usr/local/bin/scratchSudo.sh")
+    removeFile("/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
+    downloadFile("http://bit.ly/1wxrqdp", "/tmp/isgh7.sh")
+    copyFile("/tmp/isgh7.sh", "/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
+    replaceLineOrAdd("/opt/ltsp/armhf/usr/local/bin/scratchSudo.sh", "bash /usr/local/bin/isgh7.sh $SUDO_USER", "bash /usr/local/bin/isgh7.sh $SUDO_USER")
+    users = getUsers()
+    for u in users:
+        createTextFile("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", """
+        [Desktop Entry]
+        Version=1.0
+        Name=Install ScratchGPIO
+        Comment=Install ScratchGPIO
+        Exec=sudo bash /usr/local/bin/scratchSudo.sh
+        Icon=scratch
+        Terminal=true
+        Type=Application
+        Categories=Utility;Application;
+        """)
+        os.chown("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", pwd.getpwnam(u).pw_uid, grp.getgrnam(u).gr_gid)
+    makeFolder("/etc/skel/Desktop")
+    createTextFile("/etc/skel/Desktop/Install-scratchGPIO.desktop",
+    """[Desktop Entry]
+    Version=1.0
+    Name=Install ScratchGPIO
+    Comment=Install ScratchGPIO
+    Exec=sudo bash /usr/local/bin/scratchSudo.sh
+    Icon=scratch
+    Terminal=true
+    Type=Application
+    Categories=Utility;Application;""")
+
+
+def installSoftwareList(holdOffInstall = False):
+    """
+    Replacement for ExtraSoftware function in bash.
+    Builds a list of possible software to install (using softwarePackage class) then displays the list using checkbox Whiptail menu.
+    Checks what options the user has collected, then saves the packages list to file (using pickle). If holdOffInstall is False, then runs installSoftwareFromFile().
+    """
+    software = []
+    software.append(softwarePackage("Libreoffice", _("A free office suite, similar to Microsoft office"), "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
+    software.append(softwarePackage("Arduino-IDE", _("Programming environment for Arduino microcontrollers"), "apt", ["arduino",]))
+    software.append(softwarePackage("Scratch-gpio", _("A special version of scratch for GPIO work") , "scratchGPIO", ["",]))
+    software.append(softwarePackage("Python-hardware", _("Python libraries for a number of additional addon boards"), "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode twython"]))
+    software.append(softwarePackage("Epoptes", _("Free and open source classroom management software"), "epoptes", ["",]))
+    software.append(softwarePackage("BlueJ", _("A Java IDE for developing programs quickly and easily"), "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
+    software.append(softwarePackage("Custom-package", _("Allows you to enter the name of a package from Raspbian repository"), "customApt", ["",]))
+    software.append(softwarePackage("Custom-python", _("Allows you to enter the name of a Python library from pip."), "customPip", ["",]))
+    softwareList = []
+    for i in software:
+        softwareList.append([i.name, i.description])
+    done = False
+    if (shutil.get_terminal_size()[0] < 105) or (shutil.get_terminal_size()[0] < 30):
+        print("\x1b[8;30;105t")
+        time.sleep(0.05)
+        #print("Resizing")
+    while done == False:
+        whiptailBox("msgbox", _("Additional Software"), _("In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished."), False)
+        result = (whiptailCheckList(_("Extra Software Submenu"), _("Select any software you want to install. Use space bar to select then enter to continue."), softwareList))
+        try:
+            result = result.decode("utf-8")
+        except AttributeError:
+            return
+        result = result.replace('"', '')
+        if result != "Cancel":
+            if result == "":
+                yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you don't want to install any additional software?"), True)
+                if yesno:
+                    savePickled(software)
+                    done = True
+            else:
+                resultList = result.split(" ")
+                yesno = whiptailBox("yesno", _("Are you sure?"), _("Are you sure you want to install this software?") + " \n" + (result.replace(" ", "\n")), True, height=str(7+len(result.split(" "))))
+                if yesno:
+                    for i in software:
+                        if i.name in resultList:
+                            i.customAptPip()
+                            #i.marked = True
+                    done = True
+                    savePickled(software)
+
+    if holdOffInstall == False:
+        installSoftwareFromFile()
+
+def installSoftwareFromFile(packages = None):
+    """
+    Second part of installSoftwareList().
+    Loads the pickle encoded list of softwarePackage objects then if they are marked to be installed, installs then.
+    """
+    needCompress = False
+    if packages == None:
+        packages = loadPickled()
+    for i in packages:
+        if i.marked == True:
+            print(_("Installing") + " " + str(i.name))
+            if needCompress == False:
+                ltspChroot("apt-get update")
+            i.installPackage()
+            i.marked = False
+            setConfigParameter("NBDBuildNeeded", "true")
+            needCompress = True
+        else:
+            debug("Not installing " + str(i.name))
+    if needCompress:
+        nbdRun()
+
+
+
+
+def nbdRun():
+    """
+    Runs NBD compression tool. Clone of version in main pinet script
+    """
+    if getConfigParameter("/etc/pinet", "NBD=") == "true":
+        if getConfigParameter("/etc/pinet", "NBDuse=") == "true":
+            print("--------------------------------------------------------")
+            print(_("Compressing the image, this will take roughly 5 minutes"))
+            print("--------------------------------------------------------")
+            runBash("ltsp-update-image /opt/ltsp/armhf")
+            setConfigParameter("NBDBuildNeeded", "false")
+        else:
+            whiptailBox("msgbox", _("WARNING"), _("Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu."), False)
+
+def generateServerID():
+    """
+    Generates random server ID for use with stats system.
+    """
+    ID = random.randint(10000000000,99999999999)
+    setConfigParameter("ServerID", str(ID))
+
+def getIPAddress():
+    """
+    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    If there is any issues, defaults to returning 0.0.0.0.
+    """
+    try:
+        import urllib.request
+        import socket
+        with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
+            IP = url.read().decode()
+            socket.inet_aton(IP)
+    except:
+        IP = "0.0.0.0"
+    return IP
+
+
+def sendStats():
+    """
+    Upload anonymous stats to the secure PiNet server (over encrypted SSL).
+    """
+    DisableMetrics = str(getConfigParameter("/etc/pinet", "DisableMetrics="))
+    ServerID = str(getConfigParameter("/etc/pinet", "ServerID="))
+    if ServerID == "None":
+        generateServerID()
+        ServerID = str(getConfigParameter("/etc/pinet", "ServerID="))
+    if DisableMetrics.lower() == "true":
+        PiNetVersion="0.0.0"
+        Users="0"
+        KernelVersion = "000"
+        ReleaseChannel = "0"
+        City = "Blank"
+        OrganisationType = "Blank"
+        OrganisationName = "Blank"
+    else:
+        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version="))
+        Users = str(len(getUsers()))
+        if os.path.exists("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt"):
+            KernelVersion = str(getCleanList("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt")[0])
+        else:
+            KernelVersion = "000"
+        City = str(getConfigParameter("/etc/pinet", "City="))
+        OrganisationType = str(getConfigParameter("/etc/pinet", "OrganisationType="))
+        OrganisationName = str(getConfigParameter("/etc/pinet", "OrganisationName="))
+        ReleaseChannel = str(getConfigParameter("/etc/pinet", "ReleaseChannel="))
+
+    IPAddress = getIPAddress()
+
+    command = 'curl --connect-timeout 2 --data "ServerID='+ ServerID + "&" + "PiNetVersion=" + PiNetVersion +  "&" + "Users=" + Users + "&" +  "KernelVersion=" + KernelVersion +  "&" +  "ReleaseChannel=" + ReleaseChannel + "&" + "IPAddress=" + IPAddress + "&" + "City=" + City + "&" + "OrganisationType=" + OrganisationType + "&" + "OrganisationName=" + OrganisationName + '"  https://secure.pinet.org.uk/pinetstatsv1.php -s -o /dev/null 2>&1'
+    runBash(command)
+
+def checkStatsNotification():
+    """
+    Displays a one time notification to the user only once on the metrics.
+    """
+    ShownStatsNotification = str(getConfigParameter("/etc/pinet", "ShownStatsNotification="))
+    if ShownStatsNotification == "true":
+        pass #Don't display anything
+    else:
+        whiptailBox("msgbox", _("Stats"), _("Please be aware PiNet now collects very basic usage stats. These stats are uploaded to the secure PiNet metrics server over an encrypted 2048 bit SSL/TLS connection. The stats logged are PiNet version, Raspbian kernel version, number of users, development channel (stable or dev), external IP address, a randomly generated unique ID and any additional information you choose to add. These stats are uploaded in the background when PiNet checks for updates. Should you wish to disable the stats, see - http://pinet.org.uk/articles/advanced/metrics.html"), False, height="14")
+        setConfigParameter("ShownStatsNotification", "true", "/etc/pinet")
+        askExtraStatsInfo()
+
+def askExtraStatsInfo():
+    import re
+    """
+    Ask the user for additional stats information.
+    """
+    whiptailBox("msgbox", _("Additional information"), _("It is really awesome to see and hear from users across the world using PiNet. So we can start plotting schools/organisations using PiNet on a map, feel free to add any extra information to your PiNet server. It hugely helps us out also for internationalisation/localisation of PiNet. If you do not want to attach any extra information, please simply leave the following prompts blank."), False, height="13")
+    city = whiptailBox("inputbox", _("Nearest major city"), _("To help with putting a dot on the map for your server, what is your nearest major town or city? Leave blank if you don't want to answer."), False, returnErr = True)
+    organisationType = whiptailSelectMenu(_("Organisation type"), _("What type of organisation are you setting PiNet up for? Leave on blank if you don't want to answer."), ["Blank", "School", "Non Commercial Organisation", "Commercial Organisation", "Raspberry Jam/Club", "N/A"])
+    organisationName = whiptailBox("inputbox", _("School/organisation name"), _("What is the name of your organisation? Leave blank if you don't want to answer."), False, returnErr = True)
+    whiptailBox("msgbox", _("Additional information"), _('Thanks for taking the time to read through (and if possible fill in) additional information. If you ever want to edit your information supplied, you can do so by selecting the "Other" menu and selecting "Edit-Information".'), False, height="11")
+    try:
+        organisationType = organisationType.decode("utf-8")
+    except:
+        organisationType = "Blank"
+    if city == "":
+        city = "Blank"
+    if organisationType == "":
+        organisationType = "Blank"
+    if organisationName == "":
+        organisationName = "Blank"
+    city =  re.sub('[^0-9a-zA-Z]+', '_', city)
+    organisationType = re.sub('[^0-9a-zA-Z]+', '_', organisationType)
+    organisationName = re.sub('[^0-9a-zA-Z]+', '_', organisationName)
+    setConfigParameter("City", city)
+    setConfigParameter("OrganisationType", organisationType)
+    setConfigParameter("OrganisationName", organisationName)
+    sendStats()
+
+
 #------------------------------Main program-------------------------
 
-getReleaseChannel()
 if len(sys.argv) == 1:
-    print("This python script does nothing on its own, it must be passed stuff")
-
-
-
+    print(_("This python script does nothing on its own, it must be passed stuff"))
 else:
+    getReleaseChannel()
     if sys.argv[1] == "replaceLineOrAdd":
         replaceLineOrAdd(sys.argv[2], sys.argv[3], sys.argv[4])
     elif sys.argv[1] == "replaceBitOrAdd":
@@ -660,3 +1119,15 @@ else:
         importFromCSV(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "checkIfFileContainsString":
         checkIfFileContains(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "initialInstallSoftwareList":
+        installSoftwareList(True)
+    elif sys.argv[1] == "installSoftwareList":
+        installSoftwareList(False)
+    elif sys.argv[1] == "installSoftwareFromFile":
+        installSoftwareFromFile()
+    elif sys.argv[1] == "sendStats":
+        sendStats()
+    elif sys.argv[1] == "checkStatsNotification":
+        checkStatsNotification()
+    elif sys.argv[1] == "askExtraStatsInfo":
+        askExtraStatsInfo()
