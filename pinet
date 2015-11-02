@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.0
+version=1.1.1
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -677,10 +677,11 @@ ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
 ltsp-chroot --arch armhf apt-get install -y chromium
+ltsp-chroot --arch armhf ln -sf /usr/bin/pip3 /usr/bin/pip-3.2
 
 ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
-ltsp-chroot --arch armhf apt-get install libjpeg-dev #Required due to a dependancy issue with pillow
-sudo ltsp-chroot --arch armhf sudo pip-3.2 install pillow #Install pillow which is required for Raspberry Pi Sense HAT on Python 3.
+ltsp-chroot --arch armhf apt-get install -y libjpeg-dev #Required due to a dependancy issue with pillow
+ltsp-chroot --arch armhf pip-3.2 install pillow #Install pillow which is required for Raspberry Pi Sense HAT on Python 3.
 ltsp-chroot --arch armhf apt-get install -y sense-hat
 
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
@@ -943,6 +944,8 @@ SudoMenu(){
 #Used to enable Sudo on pupil accounts
 
 whiptail --title $"WARNING" --yesno $"Would you like to enable Sudo use for pupils? Giving pupils access to Sudo can be dangerous, they could do nasty things! But Sudo is required for GPIO use. It should only be enabled if needed. You can change your mind later the in Manage-Users submenu." 10 78 
+whiptail --title $"WARNING" --yesno $"Would you like to give students access to the sudo command? Sudo access is vital for use with GPIO, but in theory introduces the possibility of students bypassing built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 10 78 
+
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
 	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
@@ -2074,7 +2077,7 @@ InstallRaspberryPiUIMods(){
 }
 
 ChooseReleaseChannel(){
-	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Development" $"Would you like to use the stable or development (dev) software update channels? Stable is recommended. Do not use the development (dev) channels in a production environment (for example a school) as stability is not guaranteed. " 8 78 
+	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Development" $"Would you like to use the stable or development (dev) software update channels? Stable is recommended. Do not use the development (dev) channels in a production environment (for example a school) as stability is not guaranteed. " 10 78 
 	if [ $? -eq 0 ]; then 
 		UpdateConfig ReleaseChannel "Stable"
 	else
