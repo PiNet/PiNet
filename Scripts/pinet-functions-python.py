@@ -69,8 +69,8 @@ class softwarePackage():
             programs = self.installCommands
         if self.installType == "pip":
             self.marked = False
-            py2 = runBash("ltsp-chroot pip install " + programs)
-            py3 = runBash("ltsp-chroot pip-3.2 install " + programs)
+            py2 = runBash("ltsp-chroot pip install -U " + programs)
+            py3 = runBash("ltsp-chroot pip-3.2 install -U " + programs)
             return
         elif self.installType == "apt":
             self.marked = False
