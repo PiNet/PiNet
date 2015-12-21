@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.2
+version=1.1.3
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -313,7 +313,7 @@ if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
 	local newVersion=0
 	local currentVersion=$(head -n 1 "/opt/ltsp/armhf/bootfiles/version.txt")
 	local newVersion=$(head -n 1 "/opt/PiNet/PiBootBackup/version.txt")
-	if (( $currentVersion < $newVersion )); then 
+	if (( 10#$currentVersion < 10#$newVersion )); then
 		rm -rf "/opt/ltsp/armhf/bootfiles/"
 		cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
 		rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
