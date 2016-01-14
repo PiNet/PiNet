@@ -70,7 +70,7 @@ class softwarePackage():
         if self.installType == "pip":
             self.marked = False
             py2 = runBash("ltsp-chroot pip install -U " + programs)
-            py3 = runBash("ltsp-chroot pip-3.2 install -U " + programs)
+            py3 = runBash("ltsp-chroot pip3 install -U " + programs)
             return
         elif self.installType == "apt":
             self.marked = False
@@ -475,6 +475,23 @@ def whiptailCheckList(title, message, items):
     else:
         return("Cancel")
 
+def whiptailBoxYesNo(title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False, customYes = "", customNo = ""):
+    cmd = ["whiptail", "--title " + title,  "--yesno", message, height, width, "--yes-button " + customYes, "--no-button " + customNo]
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+
+    if returnTrueFalse:
+        if p.returncode == 0:
+            return True
+        elif p.returncode == 1:
+            return False
+        else:
+            return "ERROR"
+    elif returnErr:
+        return err.decode()
+    else:
+        return p.returncode
+
 
 
 #---------------- Main functions -------------------
@@ -528,6 +545,76 @@ def internet_on(timeoutLimit = 5, returnType = True):
     #print("Reached end, no internet")
     returnData(1)
     return False
+
+def testSiteConnection(siteURL, timeoutLimit = 5):
+    """
+    Tests to see if can access the given website.
+    """
+    import urllib.request
+    try:
+        response=urllib.request.urlopen(siteURL,timeout=int(timeoutLimit))
+        return True
+    except:
+        return False
+
+def internetFullStatusReport(timeoutLimit = 5, whiptail = False, returnStatus = False):
+    """
+    Full check of all sites used by PiNet. Only needed on initial install
+    """
+    sites = []
+    sites.append([_("Main Raspbian repository"), "http://archive.raspbian.org/raspbian.public.key", ("Critical"), False])
+    sites.append([_("Raspberry Pi Foundation repository"), "http://archive.raspberrypi.org/debian/raspberrypi.gpg.key", ("Critical"),False])
+    sites.append([_("Github"), "https://github.com", ("Critical"), False])
+    sites.append([_("Bit.ly"), "http://bit.ly", ("Highly recommended"), False])
+    sites.append([_("Bitbucket (Github mirror, not active yet)"), "https://bitbucket.org", ("Recommended"), False])
+    sites.append([_("BlueJ"), "http://bluej.org", ("Recommended"), False])
+    sites.append([_("PiNet metrics"), "https://secure.pinet.org.uk", ("Recommended"), False])
+    for website in range(0, len(sites)):
+        sites[website][3] = testSiteConnection(sites[website][1])
+    if returnStatus:
+        return sites
+    if whiptail:
+        message = ""
+        for website in sites:
+            if sites[3]:
+                status = "Success"
+            else:
+                status = "Failed"
+            message = message + status + " - " + website[2] + " - " +  website[0] + " (" + website[1] + ")\n"
+            if (shutil.get_terminal_size()[0] < 105) or (shutil.get_terminal_size()[0] < 30):
+                print("\x1b[8;30;105t")
+                time.sleep(0.05)
+        whiptailBox("msgbox", "Web filtering test results", message, True, height="14", width="100")
+    else:
+        for website in range(0, len(sites)):
+            print(str(sites[website][2] + " - " ))
+
+def internetFullStatusCheck(timeoutLimit = 5):
+    results = internetFullStatusReport(timeoutLimit = timeoutLimit, returnStatus = True)
+    for site in results:
+        if site[2] == "Critical":
+            if site[3] == False:
+                whiptailBox("msgbox", _("Unable to proceed"), _("The requested action is unable to proceed as PiNet is not able to access a critical site. Perhaps your internet connection is not active or a proxy or web filtering system may be blocking access. The critical domain that is unable to be accessed is - " + site[1]), False, height="11")
+                returnData(1)
+                return False
+        elif site[2] == "Highly recommended":
+            if site[3] == False:
+                answer = whiptailBox("yesno", _("Proceeding not recommended"), _("A highly recommended site is inaccessible. Perhaps a proxy or web filtering system may be blockeing access. Would you like to proceed anyway? (not recommended). The domain that is unable to be accessed is - " + site[1]), True, height="11")
+                if answer == False:
+                    returnData(1)
+                    return False
+        elif site[2] == "Recommended":
+            if site[3] == False:
+                answer = whiptailBox("yesno", _("Proceeding not recommended"), _("A recommended site is inaccessible. Perhaps a proxy or web filtering system may be blockeing access. Would you like to proceed anyway? (not recommended). The domain that is unable to be accessed is - " + site[1]), True, height="11")
+                if answer == False:
+                    returnData(1)
+                    return False
+        else:
+            print("Unknown site type...")
+    returnData(0)
+    return True
+
+
 
 def updatePiNet():
     """
@@ -694,7 +781,7 @@ def displayChangeLog(version):
     thing = ""
     for i in range(0, len(output)):
         thing = thing + output[i] + "\n"
-    cmd = ["whiptail", "--title", _("Release history (Use arrow keys to scroll)") + " - " + version, "--scrolltext", "--"+"yesno", "--yes-button", _("Install") + output[0], "--no-button", _("Cancel"), thing, "24", "78"]
+    cmd = ["whiptail", "--title", _("Release history (Use arrow keys to scroll)") + " - " + version, "--scrolltext", "--"+"yesno", "--yes-button", _("Install ") + output[0], "--no-button", _("Cancel"), thing, "24", "78"]
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
     if p.returncode == 0:
@@ -909,7 +996,7 @@ def installSoftwareList(holdOffInstall = False):
     software.append(softwarePackage("Libreoffice", _("A free office suite, similar to Microsoft office"), "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
     software.append(softwarePackage("Arduino-IDE", _("Programming environment for Arduino microcontrollers"), "apt", ["arduino",]))
     software.append(softwarePackage("Scratch-gpio", _("A special version of scratch for GPIO work") , "scratchGPIO", ["",]))
-    software.append(softwarePackage("Python-hardware", _("Python libraries for a number of additional addon boards"), "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode twython"]))
+    #software.append(softwarePackage("Python-hardware", _("Python libraries for a number of additional addon boards"), "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode twython"]))
     software.append(softwarePackage("Epoptes", _("Free and open source classroom management software"), "epoptes", ["",]))
     software.append(softwarePackage("BlueJ", _("A Java IDE for developing programs quickly and easily"), "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
     software.append(softwarePackage("Custom-package", _("Allows you to enter the name of a package from Raspbian repository"), "customApt", ["",]))
@@ -1131,3 +1218,5 @@ else:
         checkStatsNotification()
     elif sys.argv[1] == "askExtraStatsInfo":
         askExtraStatsInfo()
+    elif sys.argv[1] == "internetFullStatusCheck":
+        internetFullStatusCheck()
