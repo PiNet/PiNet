@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.3
+version=1.1.4
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -68,6 +68,7 @@ LegacyFixes() {
 		AddPasswordReset
 		UpdateConfig NBDBuildNeeded true
 	fi
+	CheckPipSymbolicLinkBug
 	local passwdVersion=$(cat /home/$SUDO_USER/Desktop/pinet-password.desktop | sed -n '2p')
 	ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
 	exitcode=$?
@@ -275,6 +276,17 @@ fi
 #    echo 0
 #fi
 
+}
+
+checkInternetDetailed(){
+#Does a more detailed internet connection check than checkInternet, uses internetFullStatusCheck()
+if [ ! "$CheckInternetConnection" = "false" ]; then
+	$p internetFullStatusCheck
+	status=$(gp)
+	return $status
+else
+	return 0
+fi
 }
 
 UpdateSD() { 
@@ -677,7 +689,7 @@ ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
 ltsp-chroot --arch armhf apt-get install -y chromium
-ltsp-chroot --arch armhf ln -sf /usr/bin/pip3 /usr/bin/pip-3.2
+ltsp-chroot --arch armhf ln -sf /usr/bin/pip-3.2 /usr/bin/pip3
 
 ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
 ltsp-chroot --arch armhf apt-get install -y libjpeg-dev #Required due to a dependancy issue with pillow
@@ -695,8 +707,15 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
 fi
 
 #Install Pygame Zero and gpiozero
-sudo ltsp-chroot --arch armhf pip install -U gpiozero
-sudo ltsp-chroot --arch armhf pip-3.2 install -U pgzero gpiozero
+InstallPipPackage gpiozero
+InstallPipPackage pgzero
+InstallPipPackage pibrella
+InstallPipPackage skywriter
+InstallPipPackage unicornhat
+InstallPipPackage piglow
+InstallPipPackage pianohat
+InstallPipPackage explorerhat
+InstallPipPackage twython
 
 
 #Server software
@@ -707,6 +726,11 @@ apt-get install -y bindfs python3-feedparser ntp
 
 }
 
+InstallPipPackage(){
+    sudo ltsp-chroot --arch armhf pip install -U $1
+    sudo ltsp-chroot --arch armhf pip3 install -U $1
+
+}
 
 PiConfigFixes(){
 #Configuration changes to Raspberry Pi files, mostly to do with LXDE instead of Raspbian itself
@@ -1978,7 +2002,7 @@ checkKernelFileUpdateWeb(){
 	if [ $KernelV = "1" ]; then
 		current=$(head -n 1 /home/$SUDO_USER/PiBoot/version.txt)
 		newVersion=$(head -n 1 /tmp/kernelVersion.txt)
-		whiptail --title $"Kernel file update" --yesno $"An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, PiNet will attempt to load these new files onto your SD cards on boot up. This update is highly recommended. You currently are using version $current and the most up to date version is $newVersion. Would you like me to update them and your system?" 12 78
+		whiptail --title $"Kernel file update" --yesno $"An important update is available for the Raspberry Pi kernel files (files on the SD cards). If you upgrade, PiNet will attempt to load these new files onto your SD cards on boot up. This update is highly recommended. You currently are using version $current and the most up to date version is $newVersion. Would you like to proceed with an automatic update of the boot files and your server?" 12 78
 		if [ $? -eq 0 ]; then 
 			whiptail --title $"Auto reboot" --msgbox $"Your Raspberry Pis will attempt to auto update their SD cards (by grabbing the version from the server) on next reboot. They will do this in the background and reboot when the update is complete **without warning**." 9 78
 			installKernelUpdater ""
@@ -2160,6 +2184,16 @@ CreateSDCardImageFile(){
 	umount /mnt/sdimage
 	rm -r /mnt/sdimage
 	mv $fileName /home/$SUDO_USER/pinetSDImage.img
+}
+
+CheckPipSymbolicLinkBug(){
+	#Checks and fixes the pip3-2 symbolic link bug added in PiNet 1.1.1 and fixed in PiNet 1.1.4
+	if [ ! -h "/opt/ltsp/armhf/usr/bin/pip3" ]; then
+		ltsp-chroot apt-get purge -y python3-pip
+		ltsp-chroot apt-get install -y python3-pip
+		ltsp-chroot --arch armhf ln -sf /usr/bin/pip-3.2 /usr/bin/pip3
+		UpdateConfig NBDBuildNeeded true
+	fi
 }
 
 
@@ -2614,7 +2648,8 @@ fi
 
 
 FullInstall(){
-	if [ $(checkInternet) -eq 0 ]; then
+  checkInternetDetailed
+  if [ $? -eq 0 ]; then
 		FirstTimeImportUsers
 		ChooseReleaseChannel 1
 		$p initialInstallSoftwareList
@@ -2653,7 +2688,9 @@ FullInstall(){
 	
 		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
-		whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
+		whiptail --title "Error" --msgbox "The installation has been cancelled due to a problem accessing key domains used in the installation." 8 78
+		echo "The installation has been cancelled due to a problem accessing key domains used in the installation."
+		exit 1
 	fi
 }
 
@@ -2808,7 +2845,7 @@ CheckForRaspiLTSP
 
 
 if [ ! -d /opt/ltsp/armhf ]; then
-    	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full install?" 8 78 
+    	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full PiNet installation?" 8 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 			UpdateConfig FirstUser $SUDO_USER
