@@ -1220,3 +1220,5 @@ else:
         askExtraStatsInfo()
     elif sys.argv[1] == "internetFullStatusCheck":
         internetFullStatusCheck()
+    elif sys.argv[1] == "setConfigParameter":
+        setConfigParameter(sys.argv[2], sys.argv[3])

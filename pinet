@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.5
+version=1.1.6
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -2478,11 +2478,12 @@ case "$MENUEPT" in
     Configure-backup) 
     whiptail --title $"Select Location" --msgbox $"Select the location where you wish to save the backups. An external hard drive is highly recommended! Even a large (16gb+) pendrive should be sufficient. In Linux external drives are attached in /media so you will start there. Do not save backups on the same hard drive as the /home folder!" 12 78
     cd /media
-    exit=fileSelect
+    fileSelect
+    exit=$?
     if [ "$exit" = "1" ]; then
     	Menu
     else
-    	UpdateConfig backupLoc "$location/"
+    	$p setConfigParameter backupLoc "$location/"
     	backupFrequency
     	backupDeleteTime
     	createBackupScript
