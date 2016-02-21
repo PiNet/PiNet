@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.6
+version=1.1.7
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -35,15 +35,26 @@ cpuArch="armhf"
 #------------------------
 
 SetupRepositories(){
-	if [ "$ReleaseChannel" = "Stable" ]; then
-		ReleaseBranch="master"
-	else
-		if [ "$ReleaseChannel" = "Dev" ]; then
-			ReleaseBranch="dev"
-		else
-			ReleaseBranch="master"
-		fi
-	fi
+        ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
+        if [ "$ReleaseChannel" = "stable" ]; then
+                ReleaseBranch="master"
+        else
+                if [ "$ReleaseChannel" = "dev" ]; then
+                        ReleaseBranch="dev"
+                else
+                    channelLength=${#ReleaseChannel}
+                    if [ channelLength > 9 ]; then
+                        checkChannelCustom=${ReleaseChannel:0:7}
+                        if [ "$checkChannelCustom" = "custom:" ]; then
+                            ReleaseBranch=${ReleaseChannel:7:channelLength}
+                        else
+                            ReleaseBranch="master"
+                        fi
+                    else
+                        ReleaseBranch="master"
+                fi
+                fi
+        fi
 }
 
 LegacyFixes() {
