@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.6
+version=1.1.11
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -35,15 +35,26 @@ cpuArch="armhf"
 #------------------------
 
 SetupRepositories(){
-	if [ "$ReleaseChannel" = "Stable" ]; then
-		ReleaseBranch="master"
-	else
-		if [ "$ReleaseChannel" = "Dev" ]; then
-			ReleaseBranch="dev"
-		else
-			ReleaseBranch="master"
-		fi
-	fi
+        ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
+        if [ "$ReleaseChannel" = "stable" ]; then
+                ReleaseBranch="master"
+        else
+                if [ "$ReleaseChannel" = "dev" ]; then
+                        ReleaseBranch="dev"
+                else
+                    channelLength=${#ReleaseChannel}
+                    if [ channelLength > 9 ]; then
+                        checkChannelCustom=${ReleaseChannel:0:7}
+                        if [ "$checkChannelCustom" = "custom:" ]; then
+                            ReleaseBranch=${ReleaseChannel:7:channelLength}
+                        else
+                            ReleaseBranch="master"
+                        fi
+                    else
+                        ReleaseBranch="master"
+                fi
+                fi
+        fi
 }
 
 LegacyFixes() {
@@ -77,13 +88,14 @@ LegacyFixes() {
 		UpdateConfig NBDBuildNeeded true
 	fi
 	
-	if [ -f "/opt/ltsp/armhf/usr/bin/scratch.old" ]; then
-		echo "-------------------------------------------------------------------------------------------------"
-		echo $"NuScratch detected. It fails to work correctly with PiNet at this time, so I will remove it."
-		echo "-------------------------------------------------------------------------------------------------"
-		ltsp-chroot apt-get purge -y nuscratch
-		UpdateConfig NBDBuildNeeded true
-	fi
+	#if [ -f "/opt/ltsp/armhf/usr/bin/scratch.old" ]; then
+	#	echo "-------------------------------------------------------------------------------------------------"
+	#	echo $"NuScratch detected. It fails to work correctly with PiNet at this time, so I will remove it."
+	#	echo "-------------------------------------------------------------------------------------------------"
+	#	ltsp-chroot apt-get purge -y nuscratch
+	#	UpdateConfig NBDBuildNeeded true
+	#fi
+	CheckDebianVersion
 	CheckBackupScriptVersion
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
@@ -184,7 +196,7 @@ rm /etc/ltsp/ltsp-raspbian.conf
 
 cat <<EOF > /etc/ltsp/ltsp-raspbian.conf
 DEBOOTSTRAP_KEYRING=/etc/ltsp/raspbian.public.key.gpg
-DIST=wheezy
+DIST=jessie
 # For alternate raspbian mirrors, see: http://www.raspbian.org/RaspbianMirrors
 MIRROR=http://mirrordirector.raspbian.org/raspbian
 SECURITY_MIRROR=none
@@ -222,8 +234,12 @@ sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-sp
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
 #echo 'NFS_HOME=/home' >> /opt/ltsp/armhf/etc/lts.conf
 
-cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
+#cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
+DuplicateLTSConf
 
+ltsp-chroot --arch armhf groupadd -g 2122 pupil
+ltsp-chroot --arch armhf groupadd -g 2123 teacher
+AddUdevRules
 
 printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
 
@@ -407,7 +423,7 @@ FixRepo() {
 #Adds the repositories used by Raspbian. They public keys are included
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
-echo "deb http://archive.raspberrypi.org/debian/ wheezy main" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+echo "deb http://archive.raspberrypi.org/debian/ jessie main ui staging" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.12 (GNU/Linux)
@@ -504,7 +520,7 @@ wolfram-engine shared/accepted-wolfram-eula boolean true
 SELEOF
 #Auto accepts wolfram eula
 
-echo deb http://mirrordirector.raspbian.org/raspbian/ wheezy main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
+echo deb http://mirrordirector.raspbian.org/raspbian/ jessie main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
 #Adds the repos to apt-get
 
 ltsp-chroot --arch armhf apt-get update
@@ -683,19 +699,28 @@ ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifac
 ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
 ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus python3-smbus dosfstools ruby iputils-ping scrot
 ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
-ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser cgroup-bin
+ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser
 ltsp-chroot --arch armhf apt-get install -y -o Dpkg::Options::="--force-confnew" raspberrypi-net-mods
 ltsp-chroot --arch armhf apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
 ltsp-chroot --arch armhf update-rc.d nfs-common disable
 ltsp-chroot --arch armhf update-rc.d rpcbind disable
 ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
 ltsp-chroot --arch armhf apt-get install -y chromium
+ltsp-chroot --arch armhf apt-get install -y --no-install-recommends libreoffice libreoffice-gtk
+ltsp-chroot --arch armhf apt-get install -y smartsim penguinspuzzle
+ltsp-chroot --arch armhf apt-get install -y alacarte rc-gui claws-mail tree
+ltsp-chroot --arch armhf apt-get install -y greenfoot bluej raspi-gpio
+ltsp-chroot --arch armhf apt-get install -y libreoffice
+ltsp-chroot --arch armhf apt-get install -y nuscratch
+ltsp-chroot --arch armhf apt-get install -y iceweasel
+
 ltsp-chroot --arch armhf ln -sf /usr/bin/pip-3.2 /usr/bin/pip3
 
 ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
 ltsp-chroot --arch armhf apt-get install -y libjpeg-dev #Required due to a dependancy issue with pillow
 ltsp-chroot --arch armhf pip-3.2 install -U pillow #Install pillow which is required for Raspberry Pi Sense HAT on Python 3.
 ltsp-chroot --arch armhf apt-get install -y sense-hat
+ltsp-chroot --arch armhf apt-get install -y nodered
 
 ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
 
@@ -707,6 +732,8 @@ if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
     chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
 fi
 
+ltsp-chroot --arch armhf apt-get -y purge clipit #Remove clipit application as serves no purpose on Raspbian
+
 #Install Pygame Zero and gpiozero
 InstallPipPackage gpiozero
 InstallPipPackage pgzero
@@ -717,7 +744,6 @@ InstallPipPackage piglow
 InstallPipPackage pianohat
 InstallPipPackage explorerhat
 InstallPipPackage twython
-
 
 #Server software
 apt-get install -y bindfs python3-feedparser ntp
@@ -733,6 +759,17 @@ InstallPipPackage(){
 
 }
 
+AddUdevRules(){
+
+ltsp-chroot --arch armhf printf 'ATTRS{idVendor}=="0694", ATTRS{idProduct}=="0003", SUBSYSTEMS=="usb", ACTION=="add", MODE="0666", GROUP="plugdev"' >> /etc/udev/rules.d/40-scratch.rules
+ltsp-chroot --arch armhf printf "SUBSYSTEM==\"gpio*\", PROGRAM=\"/bin/sh -c 'chown -R root:pupil /sys/class/gpio && chmod -R 770 /sys/class/gpio; chown -R root:pupil /sys/devices/virtual/gpio && chmod -R 770 /sys/devices/virtual/gpio; chown -R root:pupil /sys/devices/platform/soc/*.gpio/gpio && chmod -R 770 /sys/devices/platform/soc/*.gpio/gpio'\"\n" > /etc/udev/rules.d/99-com.rules
+ltsp-chroot --arch armhf printf 'SUBSYSTEM=="input", GROUP="pupil", MODE="0660"\n' >> /etc/udev/rules.d/99-com.rules
+ltsp-chroot --arch armhf printf 'SUBSYSTEM=="i2c-dev", GROUP="pupil", MODE="0660"\n' >> /etc/udev/rules.d/99-com.rules
+ltsp-chroot --arch armhf printf 'SUBSYSTEM=="spidev", GROUP="pupil", MODE="0660"\n' >> /etc/udev/rules.d/99-com.rules
+ltsp-chroot --arch armhf printf 'SUBSYSTEM=="bcm2835-gpiomem", GROUP="pupil", MODE="0660"\n' >> /etc/udev/rules.d/99-com.rules
+
+
+}
 PiConfigFixes(){
 #Configuration changes to Raspberry Pi files, mostly to do with LXDE instead of Raspbian itself
 
@@ -1369,7 +1406,8 @@ SetupSharedStandalone() {
 	mkdir /home/shared > /dev/null 2>&1
 	sudo chown :teacher /home/shared
 	sudo chmod 775 /home/shared
-	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf LOCAL_APPS_EXTRAMOUNTS 'LOCAL_APPS_EXTRAMOUNTS=/home/shared'	
+	ReplaceTextLine /opt/ltsp/armhf/etc/lts.conf LOCAL_APPS_EXTRAMOUNTS 'LOCAL_APPS_EXTRAMOUNTS=/home/shared'
+	DuplicateLTSConf
 	
 }
 
@@ -1699,9 +1737,11 @@ CheckDesktopShortcut(){
 if [ $(checkInternet) -eq 0 ]; then
 	AddDesktopShortcutToUser $SUDO_USER
 
-	if [ ! -f "/usr/share/pixmaps/pinet-icon.png" ]; then
-		wget $RawRepository/$ReleaseBranch/images/pinet-icon.png
-		mv pinet-icon.png /usr/share/pixmaps/pinet-icon.png
+	if [ ! -f "/usr/share/pixmaps/pinet-icon.png" ] || [ ! -f "/opt/ltsp/armhf/usr/share/pixmaps/pinet-icon.png" ]; then
+		wget $RawRepository/$ReleaseBranch/images/pinet-icon.png -O /tmp/pinet-icon.png
+		cp /tmp/pinet-icon.png /usr/share/pixmaps/pinet-icon.png
+		cp /tmp/pinet-icon.png /opt/ltsp/armhf/usr/share/pixmaps/pinet-icon.png
+		UpdateConfig NBDBuildNeeded true
 	fi
 
 fi
@@ -1713,9 +1753,9 @@ AddDesktopShortcutToUser() {
 if [ ! -f "/home/$1/Desktop/pinet.desktop" ]; then
 	cat <<EOF1 >> /home/$1/Desktop/pinet.desktop
 [Desktop Entry]
-Version=2.0
+Version=3.0
 Name=PiNet
-Comment=Raspberry Pi LTSP       
+Comment=PiNet Control Panel
 Exec=sudo bash pinet
 Icon=/usr/share/pixmaps/pinet-icon.png
 Terminal=true
@@ -1724,6 +1764,11 @@ Categories=Utility;Application;
 EOF1
 	chmod +x "/home/$1/Desktop/pinet.desktop"
 	chown "$1" "/home/$1/Desktop/pinet.desktop"
+fi
+
+if [ ! -f "/opt/ltsp/armhf/usr/local/bin/pinet" ]; then
+    echo "ltsp-remoteapps gnome-terminal -x sh -c 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
+    UpdateConfig NBDBuildNeeded true
 fi
 
 }
@@ -2177,6 +2222,18 @@ ImportUsersFromCSV(){
 	fi
 }
 
+DeleteUsersFromCSV(){
+	whiptail --title $"Delete from CSV" --yesno $"PiNet supports batch deleting users from a CSV file. The required format is 1st column is username. All other colums are ignored. Would you like to continue?" 11 78
+	if [ $? -eq 0 ]; then
+		whiptail --title $"Select CSV" --msgbox $"Please now select your CSV file." 9 78
+		cd /home/$SUDO_USER
+		fileLoc=$(SingleFileSelect)
+		if [ ! fileLoc = "The user canceled :(" ]; then
+			$p usersCSVDelete $fileLoc False
+		fi
+	fi
+}
+
 CheckInstallSuccess(){
 	if [ -d "/opt/ltsp/armhf/debootstrap" ]; then
 		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
@@ -2209,12 +2266,24 @@ CreateSDCardImageFile(){
 
 CheckPipSymbolicLinkBug(){
 	#Checks and fixes the pip3-2 symbolic link bug added in PiNet 1.1.1 and fixed in PiNet 1.1.4
-	if [ ! -h "/opt/ltsp/armhf/usr/bin/pip3" ]; then
-		ltsp-chroot apt-get purge -y python3-pip
-		ltsp-chroot apt-get install -y python3-pip
-		ltsp-chroot --arch armhf ln -sf /usr/bin/pip-3.2 /usr/bin/pip3
-		UpdateConfig NBDBuildNeeded true
+	#if [ ! -h "/opt/ltsp/armhf/usr/bin/pip3" ] || [ ! -f "/opt/ltsp/armhf/usr/bin/pip3" ]; then
+	#	ltsp-chroot apt-get purge -y python3-pip
+	#	ltsp-chroot apt-get install -y python3-pip
+	#	ltsp-chroot --arch armhf ln -sf /usr/bin/pip-3.2 /usr/bin/pip3
+	#	UpdateConfig NBDBuildNeeded true
+	#fi
+	echo ""
+}
+
+CheckDebianVersion(){
+    $p checkDebianVersion
+    exitstatus=$(gp)
+    echo "$exitstatus"
+	if [ "$exitstatus" = "1" ]; then
+	    whiptail --title $"Jessie rebuild" --msgbox $"Raspbian will now be rebuilt to use Jessie. This may take 1-2 hours." 9 78
+	    RebuildOS
 	fi
+
 }
 
 CheckBackupScriptVersion(){
@@ -2228,6 +2297,11 @@ CheckBackupScriptVersion(){
 
 }
 
+DuplicateLTSConf(){
+    #Duplicate the lts.conf from /opt/ltsp/armhf/etc/lts.conf to /var/lib/tftpboot/ltsp/armhf/lts.conf
+    cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
+
+}
 #***************************************************************************************************
 backupDeleteTime(){
   MENUEPT=$(whiptail --menu $"How long would you like to store backups? Note this only runs when a backup runs." --nocancel 20 85 10 \
@@ -2528,16 +2602,17 @@ esac
 #***************************************************************************************************
 UserGroups() {
 
-  MENUEPT=$(whiptail --title $"Manage-users Submenu" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"What would you like to do?" 20 80 10 \
+  MENUEPT=$(whiptail --title $"Manage-users Submenu" --cancel-button $"Main Menu" --ok-button $"Select" --menu $"What would you like to do?" 20 80 11 \
   	"Add-user" $"Add a new Linux user" \
   	"Remove-user" $"Remove a Linux user" \
   	"Change-password" $"Change password of a user" \
   	"Display-users" $"List all the users on the system" \
   	"Add-teacher" $"Add user to the staff permission group" \
-		"Import-Users" $"Import usernames and passwords from a CSV file" \
+	"Import-Users" $"Import usernames and passwords from a CSV file" \
+	"Delete-Batch" $"Batch delete users from a CSV file" \
     "Enable-Sudo" $"Enables the use of sudo for pupils. Used for GPIO access" \
     "Disable-Sudo" $"Disables the use of sudo for pupils" \
-		"Group-check" $"Checks all users are in the correct system groups" \
+	"Group-check" $"Checks all users are in the correct system groups" \
     "Export-users" $"Export all user data for migrating to new PiNet server" \
     3>&1 1>&2 2>&3)
 
@@ -2557,16 +2632,19 @@ case "$MENUEPT" in
     Display-users) 
     DisplayUsers
     ;;
-		Group-check) 
-		GroupCheck
+	Group-check)
+	GroupCheck
 	Menu
-		;;
+	;;
     Add-teacher) 
     AddTeacher
 	Menu
-		;;
-		Import-Users)
-		ImportUsersFromCSV
+	;;
+	Import-Users)
+	ImportUsersFromCSV
+    ;;
+    Delete-Batch)
+    DeleteUsersFromCSV
     ;;
     Graphics-fix)
     fixGroups
@@ -2709,6 +2787,7 @@ FullInstall(){
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
 		fixGroups   #Adds all current users to the pupil and video group
+		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes
 		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
@@ -2724,6 +2803,43 @@ FullInstall(){
 		exit 1
 	fi
 }
+
+RebuildOS(){
+if [ $(checkInternet) -eq 0 ]; then
+    		rm -rf /opt/ltsp/armhf
+    		rm -rf /var/lib/tftpboot/ltsp/armhf
+			$p initialInstallSoftwareList
+    		buildClient
+    		configFixes
+    		FixRepo
+    		AddSoftware
+    		RaspiTheme
+    		FixDesktopIcons   #Adds desktop icons
+			InstallRaspberryPiUIMods
+    		EnableNBDswap
+    		#whiptail --title $"Extra software" --msgbox $"Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
+			$p installSoftwareFromFile
+			DisableSPI
+			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
+    		UpdateSD
+    		addSoundcardDefault
+    		SetupSharedStandalone
+    		installKernelUpdater ""
+			$p checkKernelFileUpdateWeb
+			fixGroups
+			DuplicateLTSConf
+    		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
+    		LegacyFixes
+			EnableNBD
+    		resetAndCleanup
+			CheckInstallSuccess
+			whiptail --title $"Rebuild complete" --msgbox $"PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+		else
+			whiptail --title $"Error" --msgbox $"No internet connection, unable to proceed..." 8 78
+		fi
+
+}
+
 
 Menu() {
 IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
@@ -2770,34 +2886,7 @@ Rebuild-OS)
  
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
-		if [ $(checkInternet) -eq 0 ]; then
-    		rm -rf /opt/ltsp/armhf
-    		rm -rf /var/lib/tftpboot/ltsp/armhf
-				$p initialInstallSoftwareList
-    		buildClient
-    		configFixes
-    		FixRepo
-    		AddSoftware
-    		RaspiTheme
-				InstallRaspberryPiUIMods
-    		EnableNBDswap
-    		whiptail --title $"Extra software" --msgbox $"Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the cancel option. This menu can be later accessed from Install-Program from the main menu." 12 78
-			$p installSoftwareFromFile
-			DisableSPI
-			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-    		UpdateSD
-    		addSoundcardDefault
-    		installKernelUpdater ""
-			$p checkKernelFileUpdateWeb
-    		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-    		LegacyFixes
-				EnableNBD
-    		resetAndCleanup
-				CheckInstallSuccess
-			whiptail --title $"Rebuild complete" --msgbox $"PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
-		else
-			whiptail --title $"Error" --msgbox $"No internet connection, unable to proceed..." 8 78
-		fi
+	    RebuildOS
 	fi
 	Menu
 	;;

@@ -18,6 +18,7 @@ from subprocess import Popen, PIPE, check_output
 import time
 import shutil
 import pwd, grp
+import errno
 from copy import deepcopy
 import random
 #from gettext import gettext as _
@@ -184,10 +185,13 @@ def getReleaseChannel():
             break
 
     global ReleaseBranch
-    if Channel == "Stable":
+    Channel = Channel.lower()
+    if Channel == "stable":
         ReleaseBranch = "master"
-    elif Channel == "Dev":
+    elif Channel == "dev":
         ReleaseBranch = "dev"
+    elif len(Channel) > 7 and Channel[0:7].lower() == "custom:":
+        ReleaseBranch = Channel[7:len(Channel)]
     else:
         ReleaseBranch = "master"
 
@@ -339,6 +343,13 @@ def downloadFile(url, saveloc):
         print (traceback.format_exc())
         return False
 
+#def downloadFile(url, saveloc):
+#    import requests
+#    r = requests.get(url)
+#    with open("code3.zip", "wb") as code:
+#        code.write(r.content)
+
+
 def stripStartWhitespaces(filelist):
     """
     Remove whitespace from start of every line in list.
@@ -423,8 +434,19 @@ def removeFile(file):
     except (OSError, IOError):
         pass
 
-def copyFile(src, dest):
-    shutil.copy(src, dest)
+#def copyFile(src, dest):
+#    shutil.copy(src, dest)
+
+def copyFileFolder(src, dest):
+    try:
+        shutil.copytree(src, dest)
+    except OSError as e:
+        # If the error was caused because the source wasn't a directory
+        if e.errno == errno.ENOTDIR:
+            shutil.copy(src, dest)
+        else:
+            print('Directory not copied. Error: %s' % e)
+
 
 #----------------Whiptail functions-----------------
 def whiptailBox(whiltailType, title, message, returnTrueFalse ,height = "8", width= "78", returnErr = False, other = ""):
@@ -546,6 +568,25 @@ def internet_on(timeoutLimit = 5, returnType = True):
     returnData(1)
     return False
 
+def internet_on_Requests(timeoutLimit = 3, returnType = True):
+    import requests
+    try:
+        response = requests.get("http://archive.raspbian.org/raspbian.public.key", timeout=timeoutLimit)
+        if response.status_code == requests.codes.ok:
+            returnData(0)
+            return True
+    except (requests.ConnectionError, requests.Timeout):
+        pass
+    try:
+        response = requests.get("http://archive.raspberrypi.org/debian/raspberrypi.gpg.key", timeout=timeoutLimit)
+        if response.status_code == requests.codes.ok:
+            returnData(0)
+            return True
+    except (requests.ConnectionError, requests.Timeout):
+        pass
+    returnData(1)
+    return False
+
 def testSiteConnection(siteURL, timeoutLimit = 5):
     """
     Tests to see if can access the given website.
@@ -567,7 +608,7 @@ def internetFullStatusReport(timeoutLimit = 5, whiptail = False, returnStatus = 
     sites.append([_("Github"), "https://github.com", ("Critical"), False])
     sites.append([_("Bit.ly"), "http://bit.ly", ("Highly recommended"), False])
     sites.append([_("Bitbucket (Github mirror, not active yet)"), "https://bitbucket.org", ("Recommended"), False])
-    sites.append([_("BlueJ"), "http://bluej.org", ("Recommended"), False])
+    #sites.append([_("BlueJ"), "http://bluej.org", ("Recommended"), False])
     sites.append([_("PiNet metrics"), "https://secure.pinet.org.uk", ("Recommended"), False])
     for website in range(0, len(sites)):
         sites[website][3] = testSiteConnection(sites[website][1])
@@ -831,60 +872,102 @@ def previousImport():
         debug(etc)
         writeTextFile(etc, etcLoc)
 
-def importFromCSV(theFile, defaultPassword, test = True):
+def openCSV(theFile):
     import csv
     import os
-    from sys import exit
-    import crypt
-    userData=[]
-    if test == "True" or True:
-        test = True
-    else:
-        test = False
+    dataList=[]
     if os.path.isfile(theFile):
         with open(theFile) as csvFile:
             data = csv.reader(csvFile, delimiter=' ', quotechar='|')
             for row in data:
                 try:
                     theRow=str(row[0]).split(",")
+                    dataList.append(theRow)
                 except:
                     whiptailBox("msgbox", _("Error!"), _("CSV file invalid!"), False)
-                    sys.exit()
-                user=theRow[0]
-                if " " in user:
-                    whiptailBox("msgbox", _("Error!"), _("CSV file names column (1st column) contains spaces in the usernames! This isn't supported."), False)
                     returnData("1")
                     sys.exit()
-                if len(theRow) >= 2:
-                    if theRow[1] == "":
-                        password=defaultPassword
-                    else:
-                        password=theRow[1]
-                else:
-                    password=defaultPassword
-                userData.append([user, password])
-            if test:
-                thing = ""
-                for i in range(0, len(userData)):
-                    thing = thing + _("Username") + " - " + userData[i][0] + " : " + _("Password - ") + userData[i][1] + "\n"
-                cmd = ["whiptail", "--title", _("About to import (Use arrow keys to scroll)") ,"--scrolltext", "--"+"yesno", "--yes-button", _("Import") , "--no-button", _("Cancel"), thing, "24", "78"]
-                p = Popen(cmd,  stderr=PIPE)
-                out, err = p.communicate()
-                if p.returncode == 0:
-                    for x in range(0, len(userData)):
-                        user = userData[x][0]
-                        password = userData[x][1]
-                        encPass = crypt.crypt(password,"22")
-                        cmd = ["useradd", "-m", "-s", "/bin/bash", "-p", encPass, user]
-                        p = Popen(cmd,  stderr=PIPE)
-                        out, err = p.communicate()
-                        fixGroupSingle(user)
-                        print("Import of " + user + " complete.")
-                    whiptailBox("msgbox", _("Complete"), _("Importing of CSV data has been complete."), False)
-                else:
-                    sys.exit()
+            return dataList
+
     else:
         print(_("Error! CSV file not found at") + " " + theFile)
+
+def importUsersCSV(theFile, defaultPassword, dryRun = False):
+    import crypt
+    userDataList = []
+    dataList = openCSV(theFile)
+    if dryRun == "True" or dryRun == True:
+        dryRun = True
+    else:
+        dryRun = False
+    for userLine in dataList:
+        user = userLine[0]
+        if " " in user:
+            whiptailBox("msgbox", _("Error!"), _("CSV file names column (1st column) contains spaces in the usernames! This isn't supported."), False)
+            returnData("1")
+            sys.exit()
+        if len(userLine) >= 2:
+            if userLine[1] == "":
+                password=defaultPassword
+            else:
+                password=userLine[1]
+        else:
+            password=defaultPassword
+        userDataList.append([user, password])
+    allUserDataString = ""
+    for i in range(0, len(userDataList)):
+        allUserDataString = allUserDataString + _("Username") + " - " + userDataList[i][0] + " : " + _("Password - ") + userDataList[i][1] + "\n"
+    cmd = ["whiptail", "--title", _("About to import (Use arrow keys to scroll)") ,"--scrolltext", "--"+"yesno", "--yes-button", _("Import") , "--no-button", _("Cancel"), allUserDataString, "24", "78"]
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    if dryRun == False:
+        if p.returncode == 0:
+            for x in range(0, len(userDataList)):
+                user = userDataList[x][0]
+                password = userDataList[x][1]
+                encPass = crypt.crypt(password,"22")
+                cmd = ["useradd", "-m", "-s", "/bin/bash", "-p", encPass, user]
+                p = Popen(cmd,  stderr=PIPE)
+                out, err = p.communicate()
+                fixGroupSingle(user)
+                percentComplete = int(((x+1) / len(userDataList)) * 100)
+                print(str(percentComplete) + "% - Import of " + user + " complete.")
+            whiptailBox("msgbox", _("Complete"), _("Importing of CSV data has been complete."), False)
+        else:
+            sys.exit()
+
+def usersCSVDelete(theFile, dryRun):
+    userDataList = []
+    dataList = openCSV(theFile)
+    if dryRun == "True" or dryRun == True:
+        dryRun = True
+    else:
+        dryRun = False
+    for userLine in dataList:
+        user = userLine[0]
+        if " " in user:
+            whiptailBox("msgbox", _("Error!"), _("CSV file names column (1st column) contains spaces in the usernames! This isn't supported."), False)
+            returnData("1")
+            sys.exit()
+        userDataList.append([user,])
+    allUserDataString = ""
+    for i in range(0, len(userDataList)):
+        allUserDataString = allUserDataString + _("Username") + " - " + userDataList[i][0] + "\n"
+    cmd = ["whiptail", "--title", _("About to attempt to delete (Use arrow keys to scroll)") ,"--scrolltext", "--"+"yesno", "--yes-button", _("Delete") , "--no-button", _("Cancel"), allUserDataString, "24", "78"]
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    if dryRun == False:
+        if p.returncode == 0:
+            for x in range(0, len(userDataList)):
+                user = userDataList[x][0]
+                cmd = ["userdel", "-r", "-f", user]
+                p = Popen(cmd,  stderr=PIPE)
+                out, err = p.communicate()
+                percentComplete = int(((x+1) / len(userDataList)) * 100)
+                print(str(percentComplete) + "% - Delete of " + user + " complete.")
+            whiptailBox("msgbox", _("Complete"), _("Delete of users from CSV file complete"), False)
+        else:
+            sys.exit()
 
 def fixGroupSingle(username):
     groups = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
@@ -957,7 +1040,7 @@ def installScratchGPIO():
     removeFile("/opt/ltsp/armhf/usr/local/bin/scratchSudo.sh")
     removeFile("/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
     downloadFile("http://bit.ly/1wxrqdp", "/tmp/isgh7.sh")
-    copyFile("/tmp/isgh7.sh", "/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
+    copyFileFolder("/tmp/isgh7.sh", "/opt/ltsp/armhf/usr/local/bin/isgh7.sh")
     replaceLineOrAdd("/opt/ltsp/armhf/usr/local/bin/scratchSudo.sh", "bash /usr/local/bin/isgh7.sh $SUDO_USER", "bash /usr/local/bin/isgh7.sh $SUDO_USER")
     users = getUsers()
     for u in users:
@@ -993,12 +1076,12 @@ def installSoftwareList(holdOffInstall = False):
     Checks what options the user has collected, then saves the packages list to file (using pickle). If holdOffInstall is False, then runs installSoftwareFromFile().
     """
     software = []
-    software.append(softwarePackage("Libreoffice", _("A free office suite, similar to Microsoft office"), "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
+    #software.append(softwarePackage("Libreoffice", _("A free office suite, similar to Microsoft office"), "script", ["apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java", "apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt"]))
     software.append(softwarePackage("Arduino-IDE", _("Programming environment for Arduino microcontrollers"), "apt", ["arduino",]))
     software.append(softwarePackage("Scratch-gpio", _("A special version of scratch for GPIO work") , "scratchGPIO", ["",]))
     #software.append(softwarePackage("Python-hardware", _("Python libraries for a number of additional addon boards"), "pip", ["pibrella skywriter unicornhat piglow pianohat explorerhat microstacknode twython"]))
     software.append(softwarePackage("Epoptes", _("Free and open source classroom management software"), "epoptes", ["",]))
-    software.append(softwarePackage("BlueJ", _("A Java IDE for developing programs quickly and easily"), "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
+    #software.append(softwarePackage("BlueJ", _("A Java IDE for developing programs quickly and easily"), "script", ["rm -rf /tmp/bluej-314a.deb", "rm -rf /opt/ltsp/armhf/tmp/bluej-314a.deb", "wget http://bluej.org/download/files/bluej-314a.deb -O /tmp/bluej-314a.deb", "dpkg -i /tmp/bluej-314a.deb"]))
     software.append(softwarePackage("Custom-package", _("Allows you to enter the name of a package from Raspbian repository"), "customApt", ["",]))
     software.append(softwarePackage("Custom-python", _("Allows you to enter the name of a Python library from pip."), "customPip", ["",]))
     softwareList = []
@@ -1173,6 +1256,104 @@ def askExtraStatsInfo():
     setConfigParameter("OrganisationName", organisationName)
     sendStats()
 
+def decodeBashOutput(inputData, decode = False, removen = False):
+    if decode:
+        try:
+            inputData = inputData.decode("utf-8")
+        except:
+            pass
+    if removen:
+        inputData = inputData.rstrip('\n')
+
+    return inputData
+
+
+
+def backupChroot(name = None, override = False):
+    makeFolder("/opt/PiNet/chrootBackups")
+    chrootSize = int(decodeBashOutput(runBashOutput("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """), decode=True, removen=True))
+    remainingSpace = int(decodeBashOutput(runBashOutput("""sudo df | grep /dev/ | sed -n 1p | awk '{print $4}' """), decode=True, removen=True))
+    if ((remainingSpace - chrootSize) > 1000000) or override:
+        waitingForName = True
+        if name == None:
+            waitingForName = True
+            while waitingForName:
+                name = whiptailBox("inputbox", _("Backup Chroot name"), _("Please enter a name to store the backup chroot under. Do not include spaces."), False, returnErr = True)
+                if (' ' in name) or (name == ""):
+                    whiptailBox("msgbox", _("Invalid name"), _("Please do not include spaces in the filename or leave the filename blank."), False)
+                else:
+                    waitingForName = False
+            #print("Starting copy. This may take up to 10 minutes.")
+        try:
+                #for i in os.listdir("/opt/ltsp/armhf"):
+                #    if (not i == "proc") and (not i == "dev"):
+                #        print("Copying " + "/opt/ltsp/armhf/" + i)
+                #        #makeFolder("/opt/PiNet/chrootBackups/" + backupName + "/" + i)
+                #        copyFileFolder("/opt/ltsp/armhf/" + i, "/opt/PiNet/chrootBackups/" + backupName + "/" + i)
+            print("-------------------------------------------------------------")
+            print("Backing up Raspbian Chroot... This may take up to 20 minutes.")
+            print("-------------------------------------------------------------")
+            runBash("sudo cp -rp /opt/ltsp/armhf/ /opt/PiNet/chrootBackups/" + name)
+            print("Copy complete.")
+            whiptailBox("msgbox", _("Backup complete"), _("Backup has been complete"), False)
+            return True
+        except:
+            print("Backup failed!")
+            whiptailBox("msgbox", _("Error!"), _("Backup failed!"), False)
+            return False
+    else:
+        print("Space issue...")
+        chrootSizeReadable = int(decodeBashOutput(runBashOutput("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """), decode=True, removen=True))
+        remainingSpacechrootSizeReadable = int(decodeBashOutput(runBashOutput("""sudo df | grep /dev/ | sed -n 1p | awk '{print $4}' """), decode=True, removen=True))
+        print(remainingSpacechrootSizeReadable, chrootSizeReadable)
+        override = whiptailBoxYesNo("Not enough space", "PiNet has detected not enough space is left to store the backup. " + str(chrootSizeReadable) + " is required, but only " + str(remainingSpacechrootSizeReadable) + " is available. You can choose to override this check.", customYes="Override", customNo="Cancel", returnTrueFalse=True, height="11")
+        if override:
+            backupChroot(name, True)
+            return True
+        return False
+
+
+def restoreChroot():
+    options = []
+    for i in os.listdir("/opt/PiNet/chrootBackups/"):
+        options.append(i)
+    if len(options) == 0:
+        whiptailBox("msgbox", _("No backups"), _("No Raspbian chroots found "), False)
+    else:
+        name = decodeBashOutput(whiptailSelectMenu(_("Select backup"), _("Select your Raspbian chroot backup to restore"), options), True, False)
+        if os.path.isdir("/opt/PiNet/chrootBackups/" + name) and name != "" and name != None and os.path.isdir("/opt/PiNet/chrootBackups/" + name+ "/boot"):
+            answer = whiptailBox("yesno", _("Are you sure?"), _("The old Raspbian chroot will now be deleted and your chosen one copied into its place. There is no way to undo this process. Are you sure you wish to proceed?"), True, height="9")
+            if answer:
+                runBash("rm -rf /opt/ltsp/armhf")
+                print("Starting restore...")
+                runBash("cp -rp /opt/PiNet/chrootBackups/" + name + " /opt/ltsp/armhf")
+                print("Restore complete")
+                nbdRun()
+        else:
+            whiptailBox("msgbox", _("Unable to restore"), _("Unable to restore backup chroot. The Raspbian chroot being restored is corrupt or damaged. Your previous Rabpain chroot has been left untouched."), False)
+
+
+
+
+def checkDebianVersion():
+    wheezy = checkStringExists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ wheezy")
+    if wheezy == True:
+        debianWheezyToJessieUpdate()
+    else:
+        returnData(0)
+
+def debianWheezyToJessieUpdate(tryBackup = True):
+    whiptailBox("msgbox", _("Raspbian Jessie update"), _("A major update for your version of Raspbian is availabe. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."), False, height="14")
+    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with the update? It will take 1-2 hours as Raspbian will be fully rebuilt."), True )
+    if yesno and internetFullStatusCheck():
+        backupName = "RaspbianWheezyBackup"+ str(time.strftime("-%d-%m-%Y"))
+        whiptailBox("msgbox", _("Backup chroot"), _("Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called " + backupName), False, height="10")
+        if backupChroot(backupName):
+            returnData(1)
+            return
+
+    returnData(0)
+
 
 #------------------------------Main program-------------------------
 
@@ -1203,7 +1384,9 @@ else:
     elif sys.argv[1] == "previousImport":
         previousImport()
     elif sys.argv[1] == "importFromCSV":
-        importFromCSV(sys.argv[2], sys.argv[3])
+        importUsersCSV(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "usersCSVDelete":
+        usersCSVDelete(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "checkIfFileContainsString":
         checkIfFileContains(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "initialInstallSoftwareList":
@@ -1220,5 +1403,7 @@ else:
         askExtraStatsInfo()
     elif sys.argv[1] == "internetFullStatusCheck":
         internetFullStatusCheck()
+    elif sys.argv[1] == "checkDebianVersion":
+        checkDebianVersion()
     elif sys.argv[1] == "setConfigParameter":
         setConfigParameter(sys.argv[2], sys.argv[3])
