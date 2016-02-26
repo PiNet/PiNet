@@ -2158,7 +2158,7 @@ ImportUsersFromCSV(){
 
 CheckInstallSuccess(){
 	if [ -d "/opt/ltsp/armhf/debootstrap" ]; then
-		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is highly recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
 		exit
 	fi
 }
