@@ -176,6 +176,9 @@ def makeFolder(directory):
 
 
 def getReleaseChannel():
+    """
+    Gets the PiNet release chanel (branch) from /etc/pinet and also allows overwriting RepositoryBase and RawRepositoryBase.
+    """
     Channel = "Stable"
     configFile = getList("/etc/pinet")
     for i in range(0, len(configFile)):
@@ -183,13 +186,43 @@ def getReleaseChannel():
             Channel = configFile[i][15:len(configFile[i])]
             break
 
-    global ReleaseBranch
-    if Channel == "Stable":
+    global ReleaseBranch, RepositoryBase, Repository, RawRepository, RawBootRepository, RawRepositoryBase
+    Channel = Channel.lower()
+    if Channel == "stable":
         ReleaseBranch = "master"
-    elif Channel == "Dev":
+    elif Channel == "dev":
         ReleaseBranch = "dev"
+    elif len(Channel) > 7 and Channel[0:7].lower() == "custom:":
+        ReleaseBranch = Channel[7:len(Channel)]
     else:
         ReleaseBranch = "master"
+
+    RepositoryBaseCustom=""
+    RawRepositoryBaseCustom=""
+
+    needUpdateRepoVariables = False
+
+    for i in range(0, len(configFile)):  # Check if overwriting RepositoryBase
+        if configFile[i][0:14] == "RepositoryBase":
+            RepositoryBaseCustom = configFile[i][15:len(configFile[i])]
+            if RepositoryBaseCustom != "":
+                RepositoryBase = RepositoryBaseCustom
+                needUpdateRepoVariables = True
+            break
+
+    for i in range(0, len(configFile)):  # Check if overwriting RawRepositoryBase
+        if configFile[i][0:17] == "RawRepositoryBase":
+            RawRepositoryBaseCustom = configFile[i][18:len(configFile[i])]
+            if RawRepositoryBaseCustom != "":
+                RawRepositoryBase = RawRepositoryBaseCustom
+                needUpdateRepoVariables = True
+            break
+
+    if needUpdateRepoVariables:
+        Repository=RepositoryBase + RepositoryName
+        RawRepository=RawRepositoryBase + RepositoryName
+        RawBootRepository=RawRepositoryBase + BootRepository
+
 
 
 def getTextFile(filep):
@@ -1220,3 +1253,5 @@ else:
         askExtraStatsInfo()
     elif sys.argv[1] == "internetFullStatusCheck":
         internetFullStatusCheck()
+    elif sys.argv[1] == "setConfigParameter":
+        setConfigParameter(sys.argv[2], sys.argv[3])

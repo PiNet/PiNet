@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.4
+version=1.1.8
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -35,15 +35,26 @@ cpuArch="armhf"
 #------------------------
 
 SetupRepositories(){
-	if [ "$ReleaseChannel" = "Stable" ]; then
-		ReleaseBranch="master"
-	else
-		if [ "$ReleaseChannel" = "Dev" ]; then
-			ReleaseBranch="dev"
-		else
-			ReleaseBranch="master"
-		fi
-	fi
+        ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
+        if [ "$ReleaseChannel" = "stable" ]; then
+                ReleaseBranch="master"
+        else
+                if [ "$ReleaseChannel" = "dev" ]; then
+                        ReleaseBranch="dev"
+                else
+                    channelLength=${#ReleaseChannel}
+                    if [ channelLength > 9 ]; then
+                        checkChannelCustom=${ReleaseChannel:0:7}
+                        if [ "$checkChannelCustom" = "custom:" ]; then
+                            ReleaseBranch=${ReleaseChannel:7:channelLength}
+                        else
+                            ReleaseBranch="master"
+                        fi
+                    else
+                        ReleaseBranch="master"
+                fi
+                fi
+        fi
 }
 
 LegacyFixes() {
@@ -84,6 +95,7 @@ LegacyFixes() {
 		ltsp-chroot apt-get purge -y nuscratch
 		UpdateConfig NBDBuildNeeded true
 	fi
+	CheckBackupScriptVersion
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
 		echo $"A required system update has been found. I will now compress the operating system again to apply this update"
@@ -1044,24 +1056,44 @@ createBackupScript(){
 #Adds the backup script to the system to auto backup user data
 rm -rf /usr/local/bin/pinet-backup.sh
 
-echo 'currentDate=`date +"%d-%m-%y"`
+echo '#!/bin/sh
+version=2
+
+#PiNet backup utility script
+
+ConfigFileLoc=/etc/pinet
+ConfigFileRead(){
+	if egrep -q -v "^#|^[^ ]*=[^;]*" "$ConfigFileLoc"; then
+  		# filter the original to a new file
+  		egrep "^#|^[^ ]*=[^;&]*"  "$ConfigFileLoc" > "$configfile_secured"
+  		ConfigFileLoc="$configfile_secured"
+  		source "$ConfigFileLoc"
+  	else
+  		source "$ConfigFileLoc"
+	fi
+	#echo config read
+}
+
+ConfigFileRead
+
+currentDate=`date +"%d-%m-%y"`
 currentTime=`date +"%H_%M"`
 if [ ! $backupLoc = "" ]; then
         LOCATION=$backupLoc
         if [ -d "$LOCATION" ]; then
-        		find "$LOCATION" -name "*Raspi-Users-Backup.tar.gz" -ctime +"$DELETETIME" | xargs rm -rf
-                tar -zcvf "$LOCATION$currentDate--$currentTime--Raspi-Users-Backup.tar.gz" /home
+        		find "$LOCATION" -name "*PiNet-Users-Backup.tar.gz" -ctime +"$DELETETIME" | xargs rm -rf
+                tar -zcvf "$LOCATION$currentDate--$currentTime--PiNet-Users-Backup.tar.gz" /home
                 exitstatus=$?
                 if [ $exitstatus = 0 ]; then
-                        logger -s "$currentDate $currentTime - Backup of users files was successful" 2>> /var/log/Raspi-backup.log
+                        logger -s "$currentDate $currentTime - Backup of users files was successful" 2>> /var/log/PiNet-backup.log
                 else
-                        logger -s "$currentDate $currentTime - Backup failed with tar errorcode $exitstatus" 2>> /var/log/Raspi-backup.log
+                        logger -s "$currentDate $currentTime - Backup failed with tar errorcode $exitstatus" 2>> /var/log/PiNet-backup.log
                 fi
         else
-                logger -s "$currentDate $currentTime - Backup folder unavailable!" 2>> /var/log/Raspi-backup.log
+                logger -s "$currentDate $currentTime - Backup folder unavailable!" 2>> /var/log/PiNet-backup.log
         fi
 else
-        logger -s "$currentDate $currentTime - No backup location specified!" 2>> /var/log/Raspi-backup.log
+        logger -s "$currentDate $currentTime - No backup location specified!" 2>> /var/log/PiNet-backup.log
 fi' >> /usr/local/bin/pinet-backup.sh
 chmod +x /usr/local/bin/pinet-backup.sh
 }
@@ -2196,10 +2228,20 @@ CheckPipSymbolicLinkBug(){
 	fi
 }
 
+CheckBackupScriptVersion(){
+    if [ -f "/usr/local/bin/pinet-backup.sh" ]; then
+        thirdLineCheck="if [ ! \$backupLoc = \"\" ]; then"
+        currentThirdLine=$(sed '3q;d' /usr/local/bin/pinet-backup.sh)
+        if [ "$thirdLineCheck" == "$currentThirdLine" ]; then
+            createBackupScript
+        fi
+    fi
+
+}
 
 #***************************************************************************************************
 backupDeleteTime(){
-  MENUEPT=$(whiptail --menu $"How long would you like to store backups? Note this only runs when a backup runs." 20 85 10 \
+  MENUEPT=$(whiptail --menu $"How long would you like to store backups? Note this only runs when a backup runs." --nocancel 20 85 10 \
     "Ten-Days" $"Backups will be kept for 10 days then deleted" \
     "Thirty-Days" $"Backups will be kept for 30 days then deleted" \
     "Ninety-Days" $"Backups will be kept for 90 days then deleted" \
@@ -2231,7 +2273,7 @@ esac
 	
 #***************************************************************************************************
 backupFrequency(){
-  MENUEPT=$(whiptail --menu $"How often should I create a backup?" 20 85 10 \
+  MENUEPT=$(whiptail --menu $"How often should I create a backup?" --nocancel 20 85 10 \
     "Every-day" $"Will create a new backup every day" \
     "Twice-weekly" $"Will create a backup on Tuesday and Thursday" \
     "Once-a-week" $"Will create a backup every Friday" \
@@ -2448,18 +2490,18 @@ case "$MENUEPT" in
     whiptail --title $"Select Location" --msgbox $"Select the location where you wish to save the backups. An external hard drive is highly recommended! Even a large (16gb+) pendrive should be sufficient. In Linux external drives are attached in /media so you will start there. Do not save backups on the same hard drive as the /home folder!" 12 78
     cd /media
     fileSelect
-    if [ "$location" = "1" ]; then
+    exit=$?
+    if [ "$exit" = "1" ]; then
     	Menu
     else
-    	UpdateConfig backupLoc "$location/"
+    	$p setConfigParameter backupLoc "$location/"
     	backupFrequency
     	backupDeleteTime
     	createBackupScript
     	currentDate=`date +"%d-%m-%y"`
 		currentTime=`date +"%H:%M"`
-    	#echo "Hello $location $currentDate-$currentTime" >> /var/log/Raspi-backup.log
-    	logger -s "$currentDate $currentTime - Backup configured. Folder chosen is $location" 2>> /var/log/Raspi-backup.log
-    	whiptail --title $"Backup setup" --msgbox $"The backup is now configured, the logs can be viewed at any time by checking /var/log/Raspi-backup.log" 12 78
+    	logger -s "$currentDate $currentTime - Backup configured. Folder chosen is $location" 2>> /var/log/PiNet-backup.log
+    	whiptail --title $"Backup setup" --msgbox $"The backup is now configured, the logs can be viewed at any time by checking /var/log/PiNet-backup.log" 12 78
     fi
 	Menu
     ;;
@@ -2468,7 +2510,7 @@ case "$MENUEPT" in
     removeAnacronLines
     currentDate=`date +"%d-%m-%y"`
 	currentTime=`date +"%H:%M"`
-    logger -s "$currentDate $currentTime - Backup disabled from PiNet" 2>> /var/log/Raspi-backup.log
+    logger -s "$currentDate $currentTime - Backup disabled from PiNet" 2>> /var/log/PiNet-backup.log
     whiptail --title $"Backup disabled" --msgbox $"The backup daemon has now been disabled, no more backups will be performed till it is enabled again with Configure-backup. All old backups have been kept." 12 78
     Menu
     ;;
@@ -2478,7 +2520,7 @@ case "$MENUEPT" in
     echo $"PiNet log file"
     echo "-------------------"
     echo " "
-    echo "$(cat /var/log/Raspi-backup.log)"
+    echo "$(cat /var/log/PiNet-backup.log)"
     echo " "
     echo $"Hit enter to continue"
     read 
