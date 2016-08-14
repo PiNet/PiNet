@@ -3,6 +3,23 @@
 #
 # See LICENSE file for copyright and license details
 
+########################################################################
+########################################################################
+########################################################################
+#_____  ______ _____  _____  ______ _____       _______ ______ _____   #
+#|  __ \|  ____|  __ \|  __ \|  ____/ ____|   /\|__   __|  ____|  __ \ #
+#| |  | | |__  | |__) | |__) | |__ | |       /  \  | |  | |__  | |  | |#
+#| |  | |  __| |  ___/|  _  /|  __|| |      / /\ \ | |  |  __| | |  | |#
+#| |__| | |____| |    | | \ \| |___| |____ / ____ \| |  | |____| |__| |#
+#|_____/|______|_|    |_|  \_\______\_____/_/    \_\_|  |______|_____/ #
+########################################################################
+########################################################################
+########################################################################
+
+# This file is only maintained here for legacy reasons and is no longer updated.
+# It has been replaced by pinet_functions_python.py
+
+
 #PiNet
 #pinet-functions-python.py
 #Written by Andrew Mulholland
@@ -398,7 +415,7 @@ def compareVersions(local, web):
                 returnData(0)
                 return False
 
-def getConfigParameter(filep, searchfor):
+def getConfigParameter(filep, searchfor, break_on_first_find = False):
     textFile = getTextFile(filep)
     textFile = stripEndWhitespaces(textFile)
     value = ""
@@ -406,6 +423,8 @@ def getConfigParameter(filep, searchfor):
         found = textFile[i].find(searchfor)
         if (found != -1):
             value = textFile[i][found+len(searchfor):len(textFile[i])]
+            if break_on_first_find:
+                break
 
     if value == "":
         value = "None"
@@ -769,8 +788,8 @@ def checkKernelUpdater():
     import os.path
     if os.path.isfile("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"):
 
-        currentVersion = int(getConfigParameter("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh", "version="))
-        newVersion = int(getConfigParameter("/tmp/kernelCheckUpdate.sh", "version="))
+        currentVersion = int(getConfigParameter("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh", "version=", True))
+        newVersion = int(getConfigParameter("/tmp/kernelCheckUpdate.sh", "version=", True))
         if currentVersion < newVersion:
             installCheckKernelUpdater()
             returnData(1)
@@ -1200,7 +1219,7 @@ def sendStats():
         OrganisationType = "Blank"
         OrganisationName = "Blank"
     else:
-        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version="))
+        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version=", True))
         Users = str(len(getUsers()))
         if os.path.exists("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt"):
             KernelVersion = str(getCleanList("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt")[0])
@@ -1343,8 +1362,8 @@ def checkDebianVersion():
         returnData(0)
 
 def debianWheezyToJessieUpdate(tryBackup = True):
-    whiptailBox("msgbox", _("Raspbian Jessie update"), _("A major update for your version of Raspbian is availabe. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."), False, height="14")
-    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with the update? It will take 1-2 hours as Raspbian will be fully rebuilt."), True )
+    whiptailBox("msgbox", _("Raspbian Jessie update"), _("A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."), False, height="14")
+    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st July 2016."), True )
     if yesno and internetFullStatusCheck():
         backupName = "RaspbianWheezyBackup"+ str(time.strftime("-%d-%m-%Y"))
         whiptailBox("msgbox", _("Backup chroot"), _("Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called " + backupName), False, height="10")
