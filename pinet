@@ -2065,7 +2065,7 @@ checkPythonFunctionsInstalled(){
 	if [ ! -f $PythonFunctions ]; then
 		wget $RawRepository/$ReleaseBranch/Scripts/pinet_functions_python.py -O $PythonFunctions
 		if [ ! $? -eq 0 ]; then 
-			whiptail --title $"Error!" --msgbox $"I am sorry, there has been a critical error with pinet. A required library file could not be acquired. PiNet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem. Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions. If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
+			whiptail --title $"Error!" --msgbox $"I am sorry, there has been a critical error with pinet. A required library file could not be acquired. PiNet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem. Please manually download the file from http://bit.ly/pinet-fn and copy it to $PythonFunctions. If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
 			rm -rf $PythonFunctions
 			exit
 		fi

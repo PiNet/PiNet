@@ -1455,6 +1455,11 @@ def installChrootSoftware():
     packages.append(softwarePackage("python-pifacedigitalio", "apt"))
     packages.append(softwarePackage("i2c-tools", "apt"))
     packages.append(softwarePackage("man-db", "apt"))
+    packages.append(softwarePackage("cifs-utils", "apt", parameters=("--no-install-recommends",)))
+    packages.append(softwarePackage("midori", "apt", parameters=("--no-install-recommends",)))
+    packages.append(softwarePackage("lxtask", "apt", parameters=("--no-install-recommends",)))
+    packages.append(softwarePackage("epiphany-browser", "apt", parameters=("--no-install-recommends",)))
+    packages.append(softwarePackage("", "apt"))
     packages.append(softwarePackage("minecraft-pi", "apt"))
     packages.append(softwarePackage("python-smbus", "apt"))
     packages.append(softwarePackage("python3-smbus", "apt"))
@@ -1469,6 +1474,12 @@ def installChrootSoftware():
     packages.append(softwarePackage("gstreamer1.0-plugins-bad", "apt"))
     packages.append(softwarePackage("gstreamer1.0-alsa", "apt"))
     packages.append(softwarePackage("gstreamer1.0-libav", "apt"))
+    packages.append(
+        softwarePackage("raspberrypi-sys-mods", "apt", parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
+    packages.append(
+        softwarePackage("raspberrypi-net-mods", "apt", parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
+    packages.append(
+        softwarePackage("raspberrypi-ui-mods", "apt", parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
     packages.append(softwarePackage("java-common", "apt"))
     packages.append(softwarePackage("oracle-java8-jdk", "apt"))
     packages.append(softwarePackage("apt-utils", "apt"))
@@ -1487,6 +1498,10 @@ def installChrootSoftware():
     packages.append(softwarePackage("linux-image-3.2.0-4-rpi", "apt"))
     packages.append(softwarePackage("linux-image-rpi-rpfv", "apt"))
     packages.append(softwarePackage("linux-image-rpi2-rpfv", "apt"))
+    packages.append(softwarePackage("libreoffice", "apt", parameters=("--no-install-recommends",)))
+    packages.append(softwarePackage("libreoffice-gtk", "apt", parameters=("--no-install-recommends",)))
+    packages.append(softwarePackage("myspell-en-gb", "apt"))
+    packages.append(softwarePackage("mythes-en-us", "apt"))
     packages.append(softwarePackage("chromium", "apt"))
     packages.append(softwarePackage("smartsim", "apt"))
     packages.append(softwarePackage("penguinspuzzle", "apt"))
@@ -1501,6 +1516,19 @@ def installChrootSoftware():
     packages.append(softwarePackage("nuscratch", "apt"))
     packages.append(softwarePackage("iceweasel", "apt"))
     packages.append(softwarePackage("mu", "apt"))
+
+    ltspChroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
+
+    ltspChroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
+    packages.append(softwarePackage("libjpeg-dev", "apt"))
+    packages.append(softwarePackage("pillow", "pip"))
+    packages.append(softwarePackage("sense-hat", "apt"))
+    packages.append(softwarePackage("nodered", "apt"))
+    packages.append(softwarePackage("libqt4-network", "apt"))  # Remove when Sonic-Pi update fixes dependency issue.
+    packages.append(softwarePackage("", "apt"))
+    packages.append(softwarePackage("", "apt"))
+    runBash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
+    
 
 
 def nbdRun():
