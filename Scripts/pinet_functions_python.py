@@ -1338,39 +1338,8 @@ def installSoftwareFromFile(packages=None):
 
 
 def installChrootSoftware():
-    packages = ['idle', 'idle3', 'python-dev', 'nano', 'python3-dev', 'scratch', 'python3-tk', 'git',
-                'debian-reference-en',
-                'dillo', 'python', 'python-pygame', 'python3-pygame', 'python-tk', 'sudo', 'sshpass', 'pcmanfm',
-                'python3-numpy',
-                'wget', 'xpdf', 'gtk2-engines', 'alsa-utils', 'wpagui', 'omxplayer', 'lxde', 'net-tools', 'mpg123',
-                'ssh',
-                'locales', 'less', 'fbset', 'sudo', 'psmisc', 'strace', 'module-init-tools', 'ifplugd', 'ed', 'ncdu',
-                'console-setup', 'keyboard-configuration', 'debconf-utils', 'parted', 'unzip', 'build-essential',
-                'manpages-dev',
-                'python', 'bash-completion', 'gdb', 'pkg-config', 'python-rpi.gpio', 'v4l-utils', 'lua5.1', 'luajit',
-                'hardlink',
-                'ca-certificates', 'curl', 'fake-hwclock', 'ntp', 'nfs-common', 'usbutils', 'libraspberrypi-dev',
-                'libraspberrypi-doc', 'libfreetype6-dev', 'python3-rpi.gpio', 'python-rpi.gpio', 'python-pip',
-                'python3-pip',
-                'python-picamera', 'python3-picamera', 'x2x', 'wolfram-engine', 'xserver-xorg-video-fbturbo',
-                'netsurf-common',
-                'netsurf-gtk', 'rpi-update', 'ftp', 'libraspberrypi-bin', 'python3-pifacecommon',
-                'python3-pifacedigitalio',
-                'python3-pifacedigital-scratch-handler', 'python-pifacecommon', 'python-pifacedigitalio', 'i2c-tools',
-                'man-db',
-                'minecraft-pi', 'python-smbus', 'python3-smbus', 'dosfstools', 'ruby', 'iputils-ping', 'scrot',
-                'gstreamer1.0-x',
-                'gstreamer1.0-omx', 'gstreamer1.0-plugins-base', 'gstreamer1.0-plugins-good',
-                'gstreamer1.0-plugins-bad',
-                'gstreamer1.0-alsa', 'gstreamer1.0-libav', 'java-common', 'oracle-java8-jdk', 'apt-utils',
-                'wpasupplicant',
-                'wireless-tools', 'firmware-atheros', 'firmware-brcm80211', 'firmware-libertas', 'firmware-ralink',
-                'firmware-realtek', 'libpng12-dev', 'linux-image-3.18.0-trunk-rpi', 'linux-image-3.18.0-trunk-rpi2',
-                'linux-image-3.12-1-rpi', 'linux-image-3.10-3-rpi', 'linux-image-3.2.0-4-rpi', 'linux-image-rpi-rpfv',
-                'linux-image-rpi2-rpfv', 'chromium', 'smartsim', 'penguinspuzzle', 'alacarte', 'rc-gui', 'claws-mail',
-                'tree',
-                'greenfoot', 'bluej', 'raspi-gpio', 'libreoffice', 'nuscratch', 'iceweasel', 'mu']
 
+    packages = []
     packages.append(softwarePackage("idle", "apt"))
     packages.append(softwarePackage("idle3", "apt"))
     packages.append(softwarePackage("python-dev", "apt"))
@@ -1459,7 +1428,6 @@ def installChrootSoftware():
     packages.append(softwarePackage("midori", "apt", parameters=("--no-install-recommends",)))
     packages.append(softwarePackage("lxtask", "apt", parameters=("--no-install-recommends",)))
     packages.append(softwarePackage("epiphany-browser", "apt", parameters=("--no-install-recommends",)))
-    packages.append(softwarePackage("", "apt"))
     packages.append(softwarePackage("minecraft-pi", "apt"))
     packages.append(softwarePackage("python-smbus", "apt"))
     packages.append(softwarePackage("python3-smbus", "apt"))
@@ -1525,10 +1493,32 @@ def installChrootSoftware():
     packages.append(softwarePackage("sense-hat", "apt"))
     packages.append(softwarePackage("nodered", "apt"))
     packages.append(softwarePackage("libqt4-network", "apt"))  # Remove when Sonic-Pi update fixes dependency issue.
-    packages.append(softwarePackage("", "apt"))
-    packages.append(softwarePackage("", "apt"))
+
+    packages.append(softwarePackage("gpiozero", "pip"))
+    packages.append(softwarePackage("pgzero", "pip"))
+    packages.append(softwarePackage("pibrella", "pip"))
+    packages.append(softwarePackage("skywriter", "pip"))
+    packages.append(softwarePackage("unicornhat", "pip"))
+    packages.append(softwarePackage("piglow", "pip"))
+    packages.append(softwarePackage("pianohat", "pip"))
+    packages.append(softwarePackage("explorerhat", "pip"))
+    packages.append(softwarePackage("twython", "pip"))
+
+    packages.append(softwarePackage("bindfs", "apt", installOnServer=True))
+    packages.append(softwarePackage("python3-feedparser", "apt", installOnServer=True))
+    packages.append(softwarePackage("ntp", "apt", installOnServer=True))
+
+    for package in packages:
+        package.installPackage()
+
+    if not os.path.exists("/opt/ltsp/armhf/usr/local/bin/raspi2png"):
+        downloadFile("https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true",
+                     "/tmp/raspi2png")
+        copyFileFolder("/tmp/raspi2png", "/opt/ltsp/armhf/usr/local/bin/raspi2png")
+        os.chmod("/opt/ltsp/armhf/usr/local/bin/raspi2png", 0o755)
+
+    ltspChroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     runBash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
-    
 
 
 def nbdRun():
