@@ -1833,3 +1833,5 @@ if __name__ == "__main__":
             checkDebianVersion()
         elif sys.argv[1] == "setConfigParameter":
             setConfigParameter(sys.argv[2], sys.argv[3])
+        elif sys.argv[1] == "installChrootSoftware":
+            installChrootSoftware()

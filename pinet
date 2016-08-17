@@ -694,6 +694,8 @@ AddSoftware(){
 #------------------------------------------------------------------------------------------
 #******************************************************************************************
 
+$p installChrootSoftware
+return 0
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
