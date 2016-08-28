@@ -694,25 +694,24 @@ def internet_on(timeout_limit=5, return_type=True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
-    # TODO: Fix try/except below to make less generic.
     """
     try:
         response = urllib.request.urlopen('http://www.google.com', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except:
+    except urllib.error:
         pass
     try:
         response = urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except:
+    except urllib.error:
         pass
     try:
         response = urllib.request.urlopen('http://18.62.0.96', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except:
+    except urllib.error:
         pass
     return_data(1)
     return False
@@ -744,7 +743,7 @@ def test_site_connection(site_url, timeout_limit=5):
     try:
         response = urllib.request.urlopen(site_url, timeout=int(timeout_limit))
         return True
-    except:
+    except urllib.error:
         return False
 
 
@@ -819,10 +818,7 @@ def update_PiNet():
     """
     Fetches most recent PiNet and PiNet_functions_python.py
     """
-    try:
-        os.remove("/home/" + os.environ['SUDO_USER'] + "/pinet")
-    except:
-        pass
+    remove_file("/home/" + os.environ['SUDO_USER'] + "/pinet")
     print("")
     print("----------------------")
     print(_("Installing update"))
@@ -1029,7 +1025,6 @@ def previous_import():
 
 
 def open_csv_file(theFile):
-    # TODO: Fix except statement
     data_list = []
     if os.path.isfile(theFile):
         with open(theFile) as csvFile:
@@ -1038,8 +1033,8 @@ def open_csv_file(theFile):
                 try:
                     the_row = str(row[0]).split(",")
                     data_list.append(the_row)
-                except:
-                    whiptail_box("msgbox", _("Error!"), _("CSV file invalid!"), False)
+                except csv.Error as e:
+                    whiptail_box("msgbox", _("Error!"), _("CSV file invalid! Error was - " + str(e)), False)
                     return_data("1")
                     sys.exit()
             return data_list
@@ -1536,12 +1531,11 @@ def get_ip_address():
     Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
     If there is any issues, defaults to returning 0.0.0.0.
     """
-    # TODO: Fix broad except.
     try:
         with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
             ip_address = url.read().decode()
             socket.inet_aton(ip_address)
-    except:
+    except urllib.error:
         ip_address = "0.0.0.0"
     return ip_address
 
