@@ -62,6 +62,7 @@ REPOSITORY = REPOSITORY_BASE + REPOSITORY_NAME
 RAW_REPOSITORY = RAW_REPOSITORY_BASE + REPOSITORY_NAME
 RAW_BOOT_REPOSITORY = RAW_REPOSITORY_BASE + BOOT_REPOSITORY
 RELEASE_BRANCH = "master"
+CONFIG_FILE_LOCATION = "/etc/pinet"
 configFileData = {}
 fileLogger = None
 
@@ -296,10 +297,9 @@ def install_apt_package(to_install, update=False, upgrade=False, install_on_serv
 
 
 def create_text_file(location, text):
+    # TODO: Remove as now deprecated
     new_text = text.split("\n")
-    new_text = strip_start_whitespaces(new_text)
-    new_text = strip_end_whitespaces(new_text)
-    write_test_file(new_text, location)
+    write_file(location, new_text)
 
 
 def make_folder(directory):
@@ -310,7 +310,7 @@ def make_folder(directory):
 
 def get_release_channel():
     channel = "Stable"
-    config_file = get_list("/etc/pinet")
+    config_file = read_file("/etc/pinet")
     for i in range(0, len(config_file)):
         if config_file[i][0:14] == "ReleaseChannel":
             channel = config_file[i][15:len(config_file[i])]
@@ -328,7 +328,36 @@ def get_release_channel():
         RELEASE_BRANCH = "master"
 
 
+def read_file(file_path):
+    """
+    :param file_path: Full path to the file to be read.
+    :return: A list containing an item for each line with newlines and whitespace (before and after) removed.
+    """
+    if not os.path.exists(file_path):
+        return []
+    with open(file_path) as f:
+        file_contents = f.read().splitlines()
+    cleaned_file_contents = [line.strip() for line in file_contents]
+    return cleaned_file_contents
+
+
+def write_file(file_path, file_contents):
+    """
+
+    :param file_path: Full path to the file to be read.
+    :param file_contents: Contents of the file as a list of strings (with no newline characters).
+    :return: Status of the file write
+    """
+    try:
+        with open(file_path, 'w') as f:
+            f.write([line + "\n" for line in file_contents])
+        return True
+    except IOError:
+        return False
+
+
 def get_text_file(file_p):
+    # TODO: Remove as now deprecated
     """
     Opens the text file and goes through line by line, appending it to the file_list list.
     Each new line is a new object in the list, for example, if the text file was
@@ -355,6 +384,7 @@ def get_text_file(file_p):
 
 
 def remove_n(file_list):
+    # TODO: Remove as now deprecated
     """
     Removes the final character from every line, this is always /n, aka newline character.
     """
@@ -364,6 +394,7 @@ def remove_n(file_list):
 
 
 def blank_line_remover(file_list):
+    # TODO: Remove as now deprecated
     """
     Removes blank lines in the file.
     """
@@ -387,6 +418,7 @@ def blank_line_remover(file_list):
 
 
 def write_test_file(file_list, name):
+    # TODO: Remove as now deprecated
     """
     Writes the final list to a text file.
     Adds a newline character (\n) to the end of every sublist in the file.
@@ -407,6 +439,7 @@ def write_test_file(file_list, name):
 
 
 def get_list(file):
+    # TODO: Remove as now deprecated
     """
     Creates list from the passed text file with each line a new object in the list
     """
@@ -414,7 +447,7 @@ def get_list(file):
 
 
 def check_string_exists(filename, to_search_for):
-    text_file = get_list(filename)
+    text_file = read_file(filename)
     unfound = True
     for i in range(0, len(text_file)):
         found = text_file[i].find(to_search_for)
@@ -490,6 +523,7 @@ def download_file(url, save_location):
 
 
 def strip_start_whitespaces(file_list):
+    # TODO: Remove as now deprecated
     """
     Remove whitespace from start of every line in list.
     """
@@ -499,6 +533,7 @@ def strip_start_whitespaces(file_list):
 
 
 def strip_end_whitespaces(file_list):
+    # TODO: Remove as now deprecated
     """
     Remove whitespace from end of every line in list.
     """
@@ -508,6 +543,7 @@ def strip_end_whitespaces(file_list):
 
 
 def clean_strings(file_list):
+    # TODO: Remove as now deprecated
     """
     Removes \n and strips whitespace from before and after each item in the list
     """
@@ -517,6 +553,7 @@ def clean_strings(file_list):
 
 
 def get_clean_list(filep):
+    # TODO: Remove as now deprecated
     return clean_strings(get_text_file(filep))
 
 
@@ -542,9 +579,27 @@ def compare_versions(local, web):
                 return False
 
 
+def get_config_file_parameter(parameter_key, read_first_use_only=False, config_file_path=CONFIG_FILE_LOCATION):
+    """
+
+    :param parameter_key: Parameter key to search for in the config file.
+    :param read_first_use_only: Only read the first copy of the value in the file. Default False.
+    :param config_file_path: The full path of the config file. Default CONFIG_FILE_LOCATION variable.
+    :return: Key or None.
+    """
+    config_file = read_file(config_file_path)
+    value = None
+    for line in config_file:
+        if line.strip().startswith(parameter_key):
+            if "=" in line:
+                value = line.split("=")[1].strip()
+                if read_first_use_only:
+                    return value
+    return value
+
+
 def get_config_parameter(filep, search_for, break_on_first_find=False):
-    text_file = get_text_file(filep)
-    text_file = strip_end_whitespaces(text_file)
+    text_file = read_file(filep)
     value = ""
     for i in range(0, len(text_file)):
         found = text_file[i].find(search_for)
@@ -565,12 +620,14 @@ def set_config_parameter(option, value, filep="/etc/pinet"):
 
 
 def return_data(data):
+    # TODO: Switch to use write_file
     with open("/tmp/ltsptmp", "w+") as text_file:
         text_file.write(str(data))
     return
 
 
 def read_return():
+    # TODO: Switch to use read_file
     with open("/tmp/ltsptmp", "r") as text_file:
         print(text_file.read())
 
@@ -674,9 +731,9 @@ def replace_line_or_add(file, string, new_string):
     Pass it a text file in list form and it will search for strings.
     If it finds a string, it will replace that entire line with new_string
     """
-    text_file = get_list(file)
+    text_file = read_file(file)
     text_file = find_replace_any_line(text_file, string, new_string)
-    write_test_file(text_file, file)
+    write_file(file, text_file)
 
 
 def replace_bit_or_add(file, string, new_string):
@@ -685,9 +742,9 @@ def replace_bit_or_add(file, string, new_string):
     Pass it a text file in list form and it will search for strings.
     If it finds a string, it will replace that exact string with new_string
     """
-    text_file = get_list(file)
+    text_file = read_file(file)
     text_file = find_replace_section(text_file, string, new_string)
-    write_test_file(text_file, file)
+    write_file(file, text_file)
 
 
 def internet_on(timeout_limit=5, return_type=True):
@@ -918,8 +975,9 @@ def check_kernel_updater():
 
     if os.path.isfile("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"):
 
-        current_version = int(get_config_parameter("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh", "version=", True))
-        new_version = int(get_config_parameter("/tmp/kernelCheckUpdate.sh", "version=", True))
+        current_version = int(get_config_file_parameter("version", True,
+                                                        config_file_path="/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"))
+        new_version = int(get_config_file_parameter("version", True, config_file_path="/tmp/kernelCheckUpdate.sh"))
         if current_version < new_version:
             install_check_kernel_updater()
             return_data(1)
@@ -997,8 +1055,8 @@ def previous_import():
         etc_loc = "/etc/" + items[x]
         debug("mig loc " + mig_loc)
         debug("etc loc " + etc_loc)
-        mig = get_list(mig_loc)
-        etc = get_list(etc_loc)
+        mig = read_file(mig_loc)
+        etc = read_file(etc_loc)
         for i in range(0, len(mig)):
             mig[i] = str(mig[i]).split(":")
         for i in range(0, len(etc)):
@@ -1021,7 +1079,7 @@ def previous_import():
             line = line[0:len(line) - 1]
             etc[i] = line
         debug(etc)
-        write_test_file(etc, etc_loc)
+        write_file(etc_loc, etc)
 
 
 def open_csv_file(theFile):
@@ -1142,7 +1200,7 @@ def check_if_file_contains(file, string):
     Simple function to check if a string exists in a file.
     """
 
-    text_file = get_list(file)
+    text_file = read_file(file)
     unfound = True
     for i in range(0, len(text_file)):
         found = text_file[i].find(string)
@@ -1211,7 +1269,7 @@ def install_scratch_gpio():
                         "bash /usr/local/bin/isgh7.sh $SUDO_USER")
     users = get_users()
     for u in users:
-        create_text_file("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", """
+        write_file("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", """
         [Desktop Entry]
         Version=1.0
         Name=Install ScratchGPIO
@@ -1221,19 +1279,19 @@ def install_scratch_gpio():
         Terminal=true
         Type=Application
         Categories=Utility;Application;
-        """)
+        """.split("\n"))
         os.chown("/home/" + u + "/Desktop/Install-scratchGPIO.desktop", pwd.getpwnam(u).pw_uid, grp.getgrnam(u).gr_gid)
     make_folder("/etc/skel/Desktop")
-    create_text_file("/etc/skel/Desktop/Install-scratchGPIO.desktop",
-                     """[Desktop Entry]
-    Version=1.0
-    Name=Install ScratchGPIO
-    Comment=Install ScratchGPIO
-    Exec=sudo bash /usr/local/bin/scratchSudo.sh
-    Icon=scratch
-    Terminal=true
-    Type=Application
-    Categories=Utility;Application;""")
+    write_file("/etc/skel/Desktop/Install-scratchGPIO.desktop",
+               """[Desktop Entry]
+Version=1.0
+Name=Install ScratchGPIO
+Comment=Install ScratchGPIO
+Exec=sudo bash /usr/local/bin/scratchSudo.sh
+Icon=scratch
+Terminal=true
+Type=Application
+Categories=Utility;Application;""".split("\n"))
 
 
 def install_software_list(hold_off_install=False):
@@ -1249,7 +1307,7 @@ def install_software_list(hold_off_install=False):
         SoftwarePackage("Epoptes", "epoptes", description=_("Free and open source classroom management software")),
         SoftwarePackage("Custom-package", "customApt",
                         description=_(
-                             "Allows you to enter the name of a package from Raspbian repository")),
+                            "Allows you to enter the name of a package from Raspbian repository")),
         SoftwarePackage("Custom-python", "customPip",
                         description=_("Allows you to enter the name of a Python library from pip."))]
 
@@ -1490,13 +1548,30 @@ def install_chroot_software():
     for package in packages:
         package.install_package()
 
+    ltsp_chroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
+    ltsp_chroot("easy_install3 --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
+
+    python_packages = []
+
+    python_packages.append(SoftwarePackage("gpiozero", "pip"))
+    python_packages.append(SoftwarePackage("pgzero", "pip"))
+    python_packages.append(SoftwarePackage("pibrella", "pip"))
+    python_packages.append(SoftwarePackage("skywriter", "pip"))
+    python_packages.append(SoftwarePackage("unicornhat", "pip"))
+    python_packages.append(SoftwarePackage("piglow", "pip"))
+    python_packages.append(SoftwarePackage("pianohat", "pip"))
+    python_packages.append(SoftwarePackage("explorerhat", "pip"))
+    python_packages.append(SoftwarePackage("twython", "pip"))
+
+    for python_package in python_packages:
+        python_package.install_package()
+
     if not os.path.exists("/opt/ltsp/armhf/usr/local/bin/raspi2png"):
         download_file("https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true",
                       "/tmp/raspi2png")
         copy_file_folder("/tmp/raspi2png", "/opt/ltsp/armhf/usr/local/bin/raspi2png")
         os.chmod("/opt/ltsp/armhf/usr/local/bin/raspi2png", 0o755)
 
-    ltsp_chroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
     ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
 
@@ -1505,8 +1580,8 @@ def nbd_run():
     """
     Runs NBD compression tool. Clone of version in main pinet script
     """
-    if get_config_parameter("/etc/pinet", "NBD=") == "true":
-        if get_config_parameter("/etc/pinet", "NBDuse=") == "true":
+    if get_config_file_parameter("NBD") == "true":
+        if get_config_file_parameter("NBDuse=") == "true":
             print("--------------------------------------------------------")
             print(_("Compressing the image, this will take roughly 5 minutes"))
             print("--------------------------------------------------------")
@@ -1544,11 +1619,11 @@ def send_status():
     """
     Upload anonymous stats to the secure PiNet server (over encrypted SSL).
     """
-    disable_metrics = str(get_config_parameter("/etc/pinet", "DisableMetrics="))
-    server_id = str(get_config_parameter("/etc/pinet", "ServerID="))
+    disable_metrics = str(get_config_file_parameter("DisableMetrics"))
+    server_id = str(get_config_file_parameter("ServerID"))
     if server_id == "None":
         generate_server_id()
-        server_id = str(get_config_parameter("/etc/pinet", "ServerID="))
+        server_id = str(get_config_file_parameter("ServerID"))
     if disable_metrics.lower() == "true":
         pinet_version = "0.0.0"
         users = "0"
@@ -1558,16 +1633,16 @@ def send_status():
         organisation_type = "Blank"
         organisation_name = "Blank"
     else:
-        pinet_version = str(get_config_parameter("/usr/local/bin/pinet", "version=", True))
+        pinet_version = str(get_config_file_parameter("version", True, config_file_path="/usr/local/bin/pinet"))
         users = str(len(get_users()))
         if os.path.exists("/home/" + os.environ['SUDO_USER'] + "/PiBoot/version.txt"):
             kernel_version = str(get_clean_list("/home/" + os.environ['SUDO_USER'] + "/PiBoot/version.txt")[0])
         else:
             kernel_version = "000"
-        city = str(get_config_parameter("/etc/pinet", "City="))
-        organisation_type = str(get_config_parameter("/etc/pinet", "OrganisationType="))
-        organisation_name = str(get_config_parameter("/etc/pinet", "OrganisationName="))
-        release_channel = str(get_config_parameter("/etc/pinet", "ReleaseChannel="))
+        city = str(get_config_file_parameter("City"))
+        organisation_type = str(get_config_file_parameter("OrganisationType"))
+        organisation_name = str(get_config_file_parameter("OrganisationName"))
+        release_channel = str(get_config_file_parameter("ReleaseChannel"))
 
     ip_address = get_ip_address()
 
@@ -1579,7 +1654,7 @@ def check_stats_notification():
     """
     Displays a one time notification to the user only once on the metrics.
     """
-    shown_stats_notification = str(get_config_parameter("/etc/pinet", "ShownStatsNotification="))
+    shown_stats_notification = str(get_config_file_parameter("ShownStatsNotification"))
     if shown_stats_notification == "true":
         pass  # Don't display anything
     else:
