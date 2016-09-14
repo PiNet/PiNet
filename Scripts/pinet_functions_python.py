@@ -25,6 +25,7 @@ import re
 import shutil
 import socket
 import sys
+import tempfile
 import time
 import traceback
 import urllib.error
@@ -242,7 +243,7 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
             return None
         if return_string:
             command_output = check_output(command, shell=shell)
-            fileLogger.debug("Command \"" + command + "\" executed successfully.")
+            fileLogger.debug("Command \"" + str(command) + "\" executed successfully.")
             return command_output.decode()
         else:
             p = Popen(command, shell=shell)
@@ -250,19 +251,19 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
             return_code = p.returncode
             if return_code != 0:
                 raise CalledProcessError(return_code, str(command))
-            fileLogger.debug("Command \"" + command + "\" executed successfully.")
+            fileLogger.debug("Command \"" + str(command) + "\" executed successfully.")
             return True
     except CalledProcessError as c:
-        fileLogger.warning("Command \"" + command + "\" failed to execute correctly with a return code of " + str(
+        fileLogger.warning("Command \"" + str(command) + "\" failed to execute correctly with a return code of " + str(
             c.returncode) + ".")
         if ignore_errors == False:
             continue_on = whiptail_box_yes_no(_("Command failed to execute"), _(
-                "Command \"" + command + "\" failed to execute correctly with a return code of " + str(
+                "Command \"" + str(command) + "\" failed to execute correctly with a return code of " + str(
                     c.returncode) + ". Would you like to continue and ignore the error or retry the command?"),
                                               return_true_false=True, custom_yes=_("Continue"), custom_no=_("Retry"),
                                               height="11")
             if continue_on:
-                fileLogger.info("Failed command \"" + command + "\" was ignored and program continued.")
+                fileLogger.info("Failed command \"" + str(command) + "\" was ignored and program continued.")
                 return c.returncode
             else:
                 return run_bash(command, return_status=return_status, run_as_sudo=run_as_sudo,
@@ -350,9 +351,10 @@ def write_file(file_path, file_contents):
     """
     try:
         with open(file_path, 'w') as f:
-            f.write([line + "\n" for line in file_contents])
+            f.write('\n'.join(file_contents) + '\n')
         return True
-    except IOError:
+    except IOError as e:
+        print(e)
         return False
 
 
@@ -723,6 +725,31 @@ def whiptail_box_yes_no(title, message, return_true_false, height="8", width="78
 
 
 # ---------------- Main functions -------------------
+
+def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False):
+    """
+    Simple string replacer for text files. Allows replacing a line in a text file if that line contains the
+    provided string. If the line does not exist, add it.
+    :param file_path: File path to file being edited..
+    :param string_to_search_for: String to search for in the file.
+    :param new_string: String to replace the line with if found.
+    :param replace_all_uses: Replace all uses in the file or just first found use.
+    :return: If string was found in file and replaced, return True. If appended on end of file, return False.
+    """
+    text_file = read_file(file_path)
+    found = False
+    for index, line in enumerate(text_file):
+        if string_to_search_for in line:
+            text_file[index] = new_string
+            found = True
+            if not replace_all_uses:
+                break
+    if found:
+        write_file(file_path, text_file)
+        return True
+    text_file.append(new_string)
+    write_file(file_path, text_file)
+    return False
 
 
 def replace_line_or_add(file, string, new_string):
@@ -1832,10 +1859,34 @@ def debian_wheezy_to_jessie_update(try_backup=True):
     return_data(0)
 
 
+def custom_config_txt():
+    """
+    Allow users to build a custom config.txt file which will be appended onto the main config.txt file.
+    Very useful if need to use custom values in the config.txt file, such as display settings.
+    """
+    additional_config_path = "/opt/PiNet/additional_config.txt"
+    additional_config = read_file(additional_config_path)
+    whiptail_box("msgbox", _("Custom config.txt values"), _(
+        "Custom config.txt values can be added in the following text file. Any changes made in this file will be added onto the end of the default config.txt file"),
+                 False)
+    information_lines = []
+    information_lines.append("You are now editing a temp file. This program is called Nano and is a very")
+    information_lines.append("simple text editor in a terminal. Use arrow keys to move around and when you")
+    information_lines.append("are finished, hit ctrl+x, followed by y, finally followed by hitting enter.")
+    information_lines.append("Note - Any changes you make above the line below will not be saves!")
+    information_lines.append("----------------------------------------------------------------------------")
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_config_file:
+        additional_config = information_lines + additional_config
+        temp_config_file.write('\n'.join(additional_config) + '\n')
+    run_bash(["nano", temp_config_file.name])
+    write_file(additional_config_path, read_file(temp_config_file.name)[5:])
+
+
 # ------------------------------Main program-------------------------
 
 get_release_channel()
 setup_logger()
+custom_config_txt()
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
