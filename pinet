@@ -462,8 +462,8 @@ m++/7s3K3L0zWopdhMVcgg6Nt9gcjzqN1c0gy55L/g==
 -----END PGP PUBLIC KEY BLOCK-----
 EOF1
 
-rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/collabora.list
-echo "deb http://raspberrypi.collabora.com wheezy rpi" > /opt/ltsp/armhf/etc/apt/sources.list.d/collabora.list
+#rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/collabora.list
+#echo "deb http://raspberrypi.collabora.com wheezy rpi" > /opt/ltsp/armhf/etc/apt/sources.list.d/collabora.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.13 (GNU/Linux)
