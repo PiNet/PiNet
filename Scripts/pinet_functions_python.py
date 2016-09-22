@@ -64,6 +64,7 @@ RAW_REPOSITORY = RAW_REPOSITORY_BASE + REPOSITORY_NAME
 RAW_BOOT_REPOSITORY = RAW_REPOSITORY_BASE + BOOT_REPOSITORY
 RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
+PINET_LOG_DIRPATH = "/var/log" 
 configFileData = {}
 fileLogger = None
 
@@ -176,7 +177,7 @@ class SoftwarePackage():
 def setup_logger():
     global fileLogger
     fileLogger = logging.getLogger()
-    handler = logging.FileHandler('/var/log/pinet.log')
+    handler = logging.FileHandler(PINET_LOG_DIRPATH + '/pinet.log')
     formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
     handler.setFormatter(formatter)
@@ -1884,11 +1885,11 @@ def custom_config_txt():
 
 # ------------------------------Main program-------------------------
 
-get_release_channel()
-setup_logger()
-custom_config_txt()
-
 if __name__ == "__main__":
+    get_release_channel()
+    setup_logger()
+    custom_config_txt()
+
     if len(sys.argv) == 1:
         print(_("This python script does nothing on its own, it must be passed stuff"))
     else:
