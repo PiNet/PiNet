@@ -161,24 +161,22 @@ class Test_replace_line_or_add(TestPiNet):
         with open(self.filepath) as f:
             self.assertEqual(list(f), results)
 
-if False:
+class Test_replace_bit_or_add(TestPiNet):
+    """If oldstring is found in any line, it is replaced in that line 
+    by newstring. If oldstring is not found in any line nothing changes.
+    """
 
-    class Test_replaceBitOrAdd(TestPiNet):
-        """If oldstring is found in any line, it is replaced in that line 
-        by newstring. If oldstring is not found in any line nothing changes.
-        """
+    def test_replace_bit_or_add_present(self):
+        pinet_functions.replace_bit_or_add(self.filepath, "row", "***")
+        results = self.text[:2] + ["b***n\n"] + self.text[3:]
+        with open(self.filepath) as f:
+            self.assertEqual(list(f), results)
 
-        def test_replaceBitOrAdd_present(self):
-            pinet_functions.replaceBitOrAdd(self.filepath, "row", "***")
-            results = self.text[:2] + ["b***n\n"] + self.text[3:]
-            with open(self.filepath) as f:
-                self.assertEqual(list(f), results)
-
-        def test_replaceBitOrAdd_not_present(self):
-            pinet_functions.replaceBitOrAdd(self.filepath, "***", "@@@")
-            results = list(self.text)
-            with open(self.filepath) as f:
-                self.assertEqual(list(f), results)
+    def test_replace_bit_or_add_not_present(self):
+        pinet_functions.replace_bit_or_add(self.filepath, "***", "@@@")
+        results = list(self.text)
+        with open(self.filepath) as f:
+            self.assertEqual(list(f), results)
 
 if False:
     
