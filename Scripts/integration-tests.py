@@ -285,34 +285,32 @@ class Test_check_if_file_contains(TestPiNet):
         pinet_functions.check_if_file_contains(self.filepath, "***")
         self.assertEqual(self.read_data(), "0")
 
-if False:
+@unittest.skipUnless(internet_is_available, "No internet available")
+class Test_download_file(TestPiNet):
+    """Download a file and write to a position on the file system and
+    return True if successful, False otherwise.
     
-    @unittest.skipUnless(internet_is_available, "No internet available")
-    class Test_download_file(TestPiNet):
-        """Download a file and write to a position on the file system and
-        return True if successful, False otherwise.
-        
-        Although this isn't strictly an entry-point it's used so frequently
-        elsewhere (and mocked out for testing) that we'll test it works, as
-        long as the internet is available
-        """
-        
-        def setUp(self):
-            super().setUp()
-            self.download_filepath = tempfile.mktemp()
-            self.addCleanup(remove, self.download_filepath)
-            self.track_original(pinet_functions.urllib.request, "urlopen")
-        
-        def test_successful_download(self):
-            result = pinet_functions.download_file("http://example.com", self.download_filepath)
-            self.assertTrue(result)
-            with open(self.download_filepath) as f:
-                self.assertIn("Example Domain", f.read())
+    Although this isn't strictly an entry-point it's used so frequently
+    elsewhere (and mocked out for testing) that we'll test it works, as
+    long as the internet is available
+    """
+    
+    def setUp(self):
+        super().setUp()
+        self.download_filepath = tempfile.mktemp()
+        self.addCleanup(remove, self.download_filepath)
+        self.track_original(pinet_functions.urllib.request, "urlopen")
+    
+    def test_successful_download(self):
+        result = pinet_functions.download_file("http://example.com", self.download_filepath)
+        self.assertTrue(result)
+        with open(self.download_filepath) as f:
+            self.assertIn("Example Domain", f.read())
 
-        def test_unsuccessful_download(self):
-            pinet_functions.urllib.request.urlopen = mock_urlopen(False)
-            result = pinet_functions.download_file("http://example.com", self.download_filepath)
-            self.assertFalse(result)
+    def test_unsuccessful_download(self):
+        pinet_functions.urllib.request.urlopen = mock_urlopen(False)
+        result = pinet_functions.download_file("http://example.com", self.download_filepath)
+        self.assertFalse(result)
 
 class MockFilesystemMixin:
 
