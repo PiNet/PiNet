@@ -42,6 +42,7 @@ def mock_urlopen(act_enabled, *args, **kwargs):
     """
     def _mock_urlopen(*args, **kwargs):
         print("_mock_urlopen called with", args, kwargs)
+        print("act_enabled?", act_enabled)
         if not act_enabled:
             raise _urllib_error.URLError("Internet is disabled")
     return _mock_urlopen

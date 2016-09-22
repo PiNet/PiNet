@@ -65,6 +65,7 @@ RAW_BOOT_REPOSITORY = RAW_REPOSITORY_BASE + BOOT_REPOSITORY
 RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
 PINET_LOG_DIRPATH = "/var/log" 
+DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 configFileData = {}
 fileLogger = None
 
@@ -624,7 +625,7 @@ def set_config_parameter(option, value, filep="/etc/pinet"):
 
 def return_data(data):
     # TODO: Switch to use write_file
-    with open("/tmp/ltsptmp", "w+") as text_file:
+    with open(DATA_TRANSFER_FILEPATH, "w+") as text_file:
         text_file.write(str(data))
     return
 
