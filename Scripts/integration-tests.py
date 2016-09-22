@@ -134,34 +134,32 @@ class TestPiNet(unittest.TestCase):
         with open(pinet_functions.DATA_TRANSFER_FILEPATH) as f:
             return f.read()
     
-if False:
+class Test_replace_line_or_add(TestPiNet):
+    """If oldstring is found in any part of a line in the input
+    file, that entire line is replaced by newstring. If oldstring
+    is not found at all, it is added to the end of the file
+    """
     
-    class Test_replaceLineOrAdd(TestPiNet):
-        """If oldstring is found in any part of a line in the input
-        file, that entire line is replaced by newstring. If oldstring
-        is not found at all, it is added to the end of the file
-        """
-        
-        def test_replace_existing_line_entire_match(self):
-            "oldstring matches entire line"
-            pinet_functions.replaceLineOrAdd(self.filepath, "brown", "***")
-            results = self.text[:2] + ["***\n"] + self.text[3:]
-            with open(self.filepath) as f:
-                self.assertEqual(list(f), results)
-        
-        def test_replace_existing_line_partial_match(self):
-            "oldstring matches part of line"
-            pinet_functions.replaceLineOrAdd(self.filepath, "bro", "***")
-            results = self.text[:2] + ["***\n"] + self.text[3:]
-            with open(self.filepath) as f:
-                self.assertEqual(list(f), results)
-        
-        def test_add_new_line(self):
-            "oldstring doesn't match any line"
-            pinet_functions.replaceLineOrAdd(self.filepath, "@@@", "***")
-            results = self.text + ["***\n"]
-            with open(self.filepath) as f:
-                self.assertEqual(list(f), results)
+    def test_replace_existing_line_entire_match(self):
+        "oldstring matches entire line"
+        pinet_functions.replace_line_or_add(self.filepath, "brown", "***")
+        results = self.text[:2] + ["***\n"] + self.text[3:]
+        with open(self.filepath) as f:
+            self.assertEqual(list(f), results)
+    
+    def test_replace_existing_line_partial_match(self):
+        "oldstring matches part of line"
+        pinet_functions.replace_line_or_add(self.filepath, "bro", "***")
+        results = self.text[:2] + ["***\n"] + self.text[3:]
+        with open(self.filepath) as f:
+            self.assertEqual(list(f), results)
+    
+    def test_add_new_line(self):
+        "oldstring doesn't match any line"
+        pinet_functions.replace_line_or_add(self.filepath, "@@@", "***")
+        results = self.text + ["***\n"]
+        with open(self.filepath) as f:
+            self.assertEqual(list(f), results)
 
 if False:
 
