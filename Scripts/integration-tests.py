@@ -272,20 +272,18 @@ class Test_compare_versions(TestPiNet):
         self.assertFalse(result)
         self.assertEqual(self.read_data(), "0")
 
-if False:
+class Test_check_if_file_contains(TestPiNet):
+    """If string exists in filepath, write 1 to the output file, otherwise
+    write 0
+    """
     
-    class Test_checkIfFileContains(TestPiNet):
-        """If string exists in filepath, write 1 to the output file, otherwise
-        write 0
-        """
+    def test_file_contains_string(self):
+        pinet_functions.check_if_file_contains(self.filepath, "brown")
+        self.assertEqual(self.read_data(), "1")
         
-        def test_file_contains_string(self):
-            pinet_functions.checkIfFileContains(self.filepath, "brown")
-            self.assertEqual(self.read_data(), "1")
-            
-        def test_file_does_not_contain_string(self):
-            pinet_functions.checkIfFileContains(self.filepath, "***")
-            self.assertEqual(self.read_data(), "0")
+    def test_file_does_not_contain_string(self):
+        pinet_functions.check_if_file_contains(self.filepath, "***")
+        self.assertEqual(self.read_data(), "0")
 
 if False:
     
