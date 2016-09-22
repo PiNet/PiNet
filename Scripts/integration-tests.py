@@ -105,36 +105,34 @@ def remove(filepath):
     except FileNotFoundError:
         pass
 
-if False:
+class TestPiNet(unittest.TestCase):
+
+    text = [i + "\n" for i in "the quick brown fox".split()]
     
-    class TestPiNet(unittest.TestCase):
-
-        text = [i + "\n" for i in "the quick brown fox".split()]
+    def setUp(self):
+        super().setUp()
+        pinet_functions.DATA_TRANSFER_FILEPATH = tempfile.mktemp()
+        open(pinet_functions.DATA_TRANSFER_FILEPATH, "w").close()
+        self.addCleanup(os.remove, pinet_functions.DATA_TRANSFER_FILEPATH)
         
-        def setUp(self):
-            super().setUp()
-            pinet_functions.DATA_TRANSFER_FILEPATH = tempfile.mktemp()
-            open(pinet_functions.DATA_TRANSFER_FILEPATH, "w").close()
-            self.addCleanup(os.remove, pinet_functions.DATA_TRANSFER_FILEPATH)
-            
-            self.originals = []
-            self.addCleanup(self.replace_originals)
-            
-            self.filepath = tempfile.mktemp()
-            with open(self.filepath, "w") as f:
-                f.writelines(self.text)
-
-        def track_original(self, object, attribute):
-            value = getattr(object, attribute)
-            self.originals.append((object, attribute, value))
+        self.originals = []
+        self.addCleanup(self.replace_originals)
         
-        def replace_originals(self):
-            for object, attribute, value in reversed(self.originals):
-                setattr(object, attribute, value)
-            
-        def read_data(self):
-            with open(pinet_functions.DATA_TRANSFER_FILEPATH) as f:
-                return f.read()
+        self.filepath = tempfile.mktemp()
+        with open(self.filepath, "w") as f:
+            f.writelines(self.text)
+
+    def track_original(self, object, attribute):
+        value = getattr(object, attribute)
+        self.originals.append((object, attribute, value))
+    
+    def replace_originals(self):
+        for object, attribute, value in reversed(self.originals):
+            setattr(object, attribute, value)
+        
+    def read_data(self):
+        with open(pinet_functions.DATA_TRANSFER_FILEPATH) as f:
+            return f.read()
     
 if False:
     
