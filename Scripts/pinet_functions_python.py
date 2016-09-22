@@ -784,19 +784,19 @@ def internet_on(timeout_limit=5, return_type=True):
         response = urllib.request.urlopen('http://www.google.com', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except urllib.error:
+    except urllib.error.URLError:
         pass
     try:
         response = urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except urllib.error:
+    except urllib.error.URLError:
         pass
     try:
         response = urllib.request.urlopen('http://18.62.0.96', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except urllib.error:
+    except urllib.error.URLError:
         pass
     return_data(1)
     return False

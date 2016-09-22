@@ -41,6 +41,7 @@ def mock_urlopen(act_enabled, *args, **kwargs):
     """Allow the internet to appear to be available or not on demand
     """
     def _mock_urlopen(*args, **kwargs):
+        print("_mock_urlopen called with", args, kwargs)
         if not act_enabled:
             raise _urllib_error.URLError("Internet is disabled")
     return _mock_urlopen
@@ -178,31 +179,29 @@ class Test_replace_bit_or_add(TestPiNet):
         with open(self.filepath) as f:
             self.assertEqual(list(f), results)
 
-if False:
+class Test_CheckInternet(TestPiNet):
+    """Detect whether a useful internet connection is available by
+    attempting to download from a set of known-good URLs.
     
-    class Test_CheckInternet(TestPiNet):
-        """Detect whether a useful internet connection is available by
-        attempting to download from a set of known-good URLs.
-        """
+    NB This test doesn't actually need a connection to the internet
+    because we're mocking urlopen to fake the results
+    """
 
-        def setUp(self):
-            super().setUp()
-            self.track_original(pinet_functions.urllib.request, "urlopen")
-        
-        def tearDown(self):
-            super().tearDown()
-        
-        def test_internet_on(self):
-            pinet_functions.urllib.request.urlopen = mock_urlopen(True)
-            result = pinet_functions.internet_on(0)
-            self.assertTrue(result)
-            self.assertEqual(self.read_data(), "0")
+    def setUp(self):
+        super().setUp()
+        self.track_original(pinet_functions.urllib.request, "urlopen")
+    
+    def test_internet_on(self):
+        pinet_functions.urllib.request.urlopen = mock_urlopen(True)
+        result = pinet_functions.internet_on()
+        self.assertTrue(result)
+        self.assertEqual(self.read_data(), "0")
 
-        def test_internet_off(self):
-            pinet_functions.urllib.request.urlopen = mock_urlopen(False)
-            result = pinet_functions.internet_on(0)
-            self.assertFalse(result)
-            self.assertEqual(self.read_data(), "1")
+    def test_internet_off(self):
+        pinet_functions.urllib.request.urlopen = mock_urlopen(False)
+        result = pinet_functions.internet_on()
+        self.assertFalse(result)
+        self.assertEqual(self.read_data(), "1")
 
 if False:
     
