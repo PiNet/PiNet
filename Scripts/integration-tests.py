@@ -252,27 +252,25 @@ class Test_check_update(TestPiNet):
         pinet_functions.check_update("0.9.1")
         self.assertEqual(self.read_data(), "1")
 
-if False:
+class Test_compare_versions(TestPiNet):
+    """Compare the local version number to that on the web, returning
+    True (and writing 1 to the output file) if an update is required.
     
-    class Test_compareVersions(TestPiNet):
-        """Compare the local version number to that on the web, returning
-        True (and writing 1 to the output file) if an update is required.
-        
-        NB At present this function is known to be limited by its implementation:
-        it assumes that each version has exactly three segments and that the
-        web version is at least as up to date as the local version, ie you can't
-        have a local version at 1.0.0 and a web version at 0.9.0
-        """
-        
-        def test_web_is_newer(self):
-            result = pinet_functions.compareVersions("1.0.0", "1.1.1")
-            self.assertTrue(result)
-            self.assertEqual(self.read_data(), "1")
+    NB At present this function is known to be limited by its implementation:
+    it assumes that each version has exactly three segments and that the
+    web version is at least as up to date as the local version, ie you can't
+    have a local version at 1.0.0 and a web version at 0.9.0
+    """
+    
+    def test_web_is_newer(self):
+        result = pinet_functions.compare_versions("1.0.0", "1.1.1")
+        self.assertTrue(result)
+        self.assertEqual(self.read_data(), "1")
 
-        def test_web_is_not_newer(self):
-            result = pinet_functions.compareVersions("1.0.0", "1.0.0")
-            self.assertFalse(result)
-            self.assertEqual(self.read_data(), "0")
+    def test_web_is_not_newer(self):
+        result = pinet_functions.compare_versions("1.0.0", "1.0.0")
+        self.assertFalse(result)
+        self.assertEqual(self.read_data(), "0")
 
 if False:
     
