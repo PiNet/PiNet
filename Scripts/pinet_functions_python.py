@@ -658,6 +658,32 @@ def copy_file_folder(src, dest):
 
 
 # ----------------Whiptail functions-----------------
+
+#
+# A general-purpose whiptail function. This can be used in the implementation
+# of the other whiptail_... functions, allowing it to be overridden
+# or nulled out in tests.
+#
+def whiptail(*args):
+    """General purpose simple whiptail interface routine
+    
+    Take a list of argument and throw them at the whiptail command. Depending
+    on the result from the whiptail call, set up a true or a false result
+    in the result datafile and return True or False accordingly.
+    """
+    cmd = ["whiptail"] + list(args)
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    if p.returncode == 0:
+        updatePiNet()
+        returnData(1)
+        return True
+    elif p.returncode == 1:
+        returnData(0)
+        return False
+    else:
+        return "ERROR"
+
 def whiptail_box(whiltailType, title, message, return_true_false, height="8", width="78", return_err=False, other=""):
     cmd = ["whiptail", "--title", title, "--" + whiltailType, message, height, width, other]
     p = Popen(cmd, stderr=PIPE)
@@ -960,7 +986,7 @@ def get_version_number(data):
 def check_update(current_version):
     if not internet_on(5, False):
         print(_("No Internet Connection"))
-        return_data(0)
+        return return_data(0)
     download_file("http://bit.ly/pinetCheckCommits", "/dev/null")
     d = feedparser.parse(REPOSITORY + '/commits/' + RELEASE_BRANCH + '.atom')
     data = (d.entries[0].content[0].get('value'))

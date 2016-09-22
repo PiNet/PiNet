@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
+  <id>tag:github.com,2008:/PiNet/PiNet/commits/master</id>
+  <title>Recent Commits to PiNet:master</title>
+  <updated>{timestamp}</updated>
+  <entry>
+    <id>{guid}</id>
+    <title>{guid}</title>
+    <updated>{timestamp}</updated>
+    <content type="html">&lt;pre>Release {release}&lt;/pre></content>
+  </entry>
+</feed>

@@ -20,6 +20,7 @@ from feedparser import parse as _feedparser_parse
 # or to limit long-running ones, or to set up monkeypatches.
 #
 HERE = os.path.dirname(__file__)
+TEST_DATA_DIRPATH = os.path.join(HERE, "test-data")
 NAME, _ = os.path.splitext(os.path.basename(__file__))
 config = configparser.ConfigParser()
 config.read(os.path.join(HERE, NAME + ".ini"))
@@ -41,8 +42,6 @@ def mock_urlopen(act_enabled, *args, **kwargs):
     """Allow the internet to appear to be available or not on demand
     """
     def _mock_urlopen(*args, **kwargs):
-        print("_mock_urlopen called with", args, kwargs)
-        print("act_enabled?", act_enabled)
         if not act_enabled:
             raise _urllib_error.URLError("Internet is disabled")
     return _mock_urlopen
@@ -51,7 +50,7 @@ def mock_feedparser_parse(version):
     """Have feedparser.parse always read from a file of our choosing
     """
     def _mock_feedparser_parse(*args, **kwargs):
-        with open(os.path.join(HERE, "commits.xml")) as f:
+        with open(os.path.join(TEST_DATA_DIRPATH, "commits.xml")) as f:
             xml = f.read().format(
                 guid=uuid.uuid1(), 
                 timestamp=datetime.datetime.now().isoformat(),
@@ -69,16 +68,16 @@ def make_local_filepath(local_dirpath, filepath):
     "Turn filepath into a local filepath rooted at local_dirpath"
     return os.path.join(local_dirpath, filepath.lstrip(os.path.sep))
 
-def mock_downloadFile(web_dirpath, local_dirpath):
-    """Mock out the downloadFile routine by having it source from a local
+def mock_download_file(web_dirpath, local_dirpath):
+    """Mock out the download_file routine by having it source from a local
     setup and write to a temp area
     """
-    def _mock_downloadFile(url, filepath):
+    def _mock_download_file(url, filepath):
         web_filepath = make_web_filepath(web_dirpath, url)
         local_filepath = make_local_filepath(local_dirpath, filepath)
         os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
         shutil.copyfile(web_filepath, local_filepath)
-    return _mock_downloadFile
+    return _mock_download_file
 
 def mock_do_nothing(*args, **kwargs):
     return None
@@ -90,15 +89,15 @@ def mock_return_zero(*args, **kwargs):
     
 def suppress_whiptail(func):
     def _suppress_whiptail(*args, **kwargs):
-        original_whiptailBox = pinet_functions.whiptailBox
+        original_whiptail_box = pinet_functions.whiptail_box
         original_whiptail = pinet_functions.whiptail
-        pinet_functions.whiptailBox = mock_return_zero
+        pinet_functions.whiptail_box = mock_return_zero
         pinet_functions.whiptail = mock_return_zero
         try:
             return func(*args, **kwargs)
         finally:
             pinet_functions.whiptail = original_whiptail
-            pinet_functions.whiptailBox = original_whiptailBox
+            pinet_functions.whiptail_box = original_whiptail_box
     return _suppress_whiptail
 
 def remove(filepath):
@@ -204,54 +203,54 @@ class Test_CheckInternet(TestPiNet):
         self.assertFalse(result)
         self.assertEqual(self.read_data(), "1")
 
-if False:
+class Test_check_update(TestPiNet):
+    """Determine whether a new version is available for download. If it
+    is, offer a change log before downloading.
+    """
     
-    class Test_checkUpdate(TestPiNet):
-        """Determine whether a new version is available for download. If it
-        is, offer a change log before downloading.
-        """
+    def setUp(self):
+        super().setUp()
+        self.track_original(pinet_functions.urllib.request, "urlopen")
+        self.track_original(pinet_functions.feedparser, "parse")
+        self.track_original(pinet_functions, "download_file")
+        self.track_original(pinet_functions, "whiptail_box")
+        self.track_original(pinet_functions, "whiptail")
+        self.track_original(pinet_functions, "update_PiNet")
+        self.track_original(pinet_functions, "display_change_log")
         
-        def setUp(self):
-            super().setUp()
-            self.track_original(pinet_functions.urllib.request, "urlopen")
-            self.track_original(pinet_functions.feedparser, "parse")
-            self.track_original(pinet_functions, "downloadFile")
-            self.track_original(pinet_functions, "whiptailBox")
-            self.track_original(pinet_functions, "whiptail")
-            self.track_original(pinet_functions, "updatePiNet")
-            
-            #
-            # Make sure downloadFile doesn't actually do anything, no matter
-            # how many times it's called
-            #
-            pinet_functions.downloadFile = mock_do_nothing
-        
-        def tearDown(self):
-            super().tearDown()
+        #
+        # Make sure download_file doesn't actually do anything, no matter
+        # how many times it's called
+        #
+        pinet_functions.download_file = mock_do_nothing
+        pinet_functions.whiptail_box = mock_do_nothing
+        pinet_functions.whiptail = mock_do_nothing
+        pinet_functions.display_change_log = mock_do_nothing
+    
+    def tearDown(self):
+        super().tearDown()
 
-        def test_no_internet_available(self):
-            pinet_functions.urllib.request.urlopen = mock_urlopen(False)
-            pinet_functions.checkUpdate("1.1.1")
-            self.assertEqual(self.read_data(), "0")
-        
-        def test_no_update_available(self):
-            pinet_functions.urllib.request.urlopen = mock_urlopen(True)
-            pinet_functions.feedparser.parse = mock_feedparser_parse("1.0.1")
-            pinet_functions.checkUpdate("1.1.1")
-            self.assertEqual(self.read_data(), "0")
+    def test_no_internet_available(self):
+        pinet_functions.urllib.request.urlopen = mock_urlopen(False)
+        pinet_functions.check_update("1.1.1")
+        self.assertEqual(self.read_data(), "0")
+    
+    def test_no_update_available(self):
+        pinet_functions.urllib.request.urlopen = mock_urlopen(True)
+        pinet_functions.feedparser.parse = mock_feedparser_parse("1.0.1")
+        pinet_functions.check_update("1.1.1")
+        self.assertEqual(self.read_data(), "0")
 
-        def test_update_available(self):
-            pinet_functions.whiptailBox = mock_do_nothing
-            pinet_functions.whiptail = mock_do_nothing
-            #
-            # We're not testing the actual update here, just the mechanism
-            # for checking that there is an update to be had
-            #
-            pinet_functions.updatePiNet = mock_do_nothing
-            pinet_functions.urllib.request.urlopen = mock_urlopen(True)
-            pinet_functions.feedparser.parse = mock_feedparser_parse("1.0.1")
-            pinet_functions.checkUpdate("0.9.1")
-            self.assertEqual(self.read_data(), "1")
+    def test_update_available(self):
+        #
+        # We're not testing the actual update here, just the mechanism
+        # for checking that there is an update to be had
+        #
+        pinet_functions.update_PiNet = mock_do_nothing
+        pinet_functions.urllib.request.urlopen = mock_urlopen(True)
+        pinet_functions.feedparser.parse = mock_feedparser_parse("1.0.1")
+        pinet_functions.check_update("0.9.1")
+        self.assertEqual(self.read_data(), "1")
 
 if False:
     
@@ -293,7 +292,7 @@ if False:
 if False:
     
     @unittest.skipUnless(internet_is_available, "No internet available")
-    class Test_downloadFile(TestPiNet):
+    class Test_download_file(TestPiNet):
         """Download a file and write to a position on the file system and
         return True if successful, False otherwise.
         
@@ -309,14 +308,14 @@ if False:
             self.track_original(pinet_functions.urllib.request, "urlopen")
         
         def test_successful_download(self):
-            result = pinet_functions.downloadFile("http://example.com", self.download_filepath)
+            result = pinet_functions.download_file("http://example.com", self.download_filepath)
             self.assertTrue(result)
             with open(self.download_filepath) as f:
                 self.assertIn("Example Domain", f.read())
 
         def test_unsuccessful_download(self):
             pinet_functions.urllib.request.urlopen = mock_urlopen(False)
-            result = pinet_functions.downloadFile("http://example.com", self.download_filepath)
+            result = pinet_functions.download_file("http://example.com", self.download_filepath)
             self.assertFalse(result)
 
 class MockFilesystemMixin:
@@ -346,24 +345,24 @@ if False:
             self.web_dirpath = os.path.join(dirpath, "web")
             os.mkdir(self.web_dirpath)
             self.addCleanup(shutil.rmtree, dirpath)
-            self.track_original(pinet_functions, "downloadFile")
-            pinet_functions.downloadFile = self.mock_downloadFile()
+            self.track_original(pinet_functions, "download_file")
+            pinet_functions.download_file = self.mock_download_file()
 
         def make_web_filepath(self, url):
             "Turn url into a filepath rooted at web_dirpath"
             parsed = urllib.parse.urlparse(url)
             return os.path.join(self.web_dirpath, parsed.netloc, parsed.path.lstrip(os.path.sep))
 
-        def mock_downloadFile(self):
-            """Mock out the downloadFile routine by having it source from a local
+        def mock_download_file(self):
+            """Mock out the download_file routine by having it source from a local
             setup and write to a temp area
             """
-            def _mock_downloadFile(url, filepath):
+            def _mock_download_file(url, filepath):
                 web_filepath = self.make_web_filepath(url)
                 local_filepath = self.make_local_filepath(filepath)
                 os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
                 shutil.copyfile(web_filepath, local_filepath)
-            return _mock_downloadFile
+            return _mock_download_file
             
         def touch_web_file(self, url):
             web_filepath = self.make_web_filepath(url)
@@ -373,7 +372,7 @@ if False:
 
 if False:
     
-    class Test_updatePiNet(TestDownloads):
+    class Test_update_PiNet(TestDownloads):
          
         def setUp(self):
             super().setUp()
@@ -381,8 +380,8 @@ if False:
             self.touch_web_file(pinet_functions.PINET_DOWNLOAD_URL)
             self.touch_web_file(pinet_functions.PINET_PYTHON_DOWNLOAD_URL)
         
-        def test_updatePiNet(self):
-            pinet_functions.updatePiNet()
+        def test_update_PiNet(self):
+            pinet_functions.update_PiNet()
             
             pinet_binary_filepath = os.path.join(pinet_functions.PINET_BINPATH, pinet_functions.PINET_BINARY)
             with open(self.make_local_filepath(pinet_binary_filepath)) as f:
