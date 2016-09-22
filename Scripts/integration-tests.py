@@ -521,4 +521,4 @@ if __name__ == '__main__':
             with tempfile.TemporaryDirectory() as d:
                 import pinet_functions_python as pinet_functions
                 pinet_functions.PINET_LOG_DIRPATH = d
-                unittest.main(warnings="ignore" if suppress_warnings else None)
+                unittest.main(warnings="ignore" if suppress_warnings else None, verbosity=2)
