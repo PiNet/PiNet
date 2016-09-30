@@ -64,6 +64,8 @@ RAW_REPOSITORY = RAW_REPOSITORY_BASE + REPOSITORY_NAME
 RAW_BOOT_REPOSITORY = RAW_REPOSITORY_BASE + BOOT_REPOSITORY
 RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
+PINET_LOG_DIRPATH = "/var/log" 
+DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 configFileData = {}
 fileLogger = None
 
@@ -176,7 +178,7 @@ class SoftwarePackage():
 def setup_logger():
     global fileLogger
     fileLogger = logging.getLogger()
-    handler = logging.FileHandler('/var/log/pinet.log')
+    handler = logging.FileHandler(PINET_LOG_DIRPATH + '/pinet.log')
     formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
     handler.setFormatter(formatter)
@@ -623,7 +625,7 @@ def set_config_parameter(option, value, filep="/etc/pinet"):
 
 def return_data(data):
     # TODO: Switch to use write_file
-    with open("/tmp/ltsptmp", "w+") as text_file:
+    with open(DATA_TRANSFER_FILEPATH, "w+") as text_file:
         text_file.write(str(data))
     return
 
@@ -656,6 +658,32 @@ def copy_file_folder(src, dest):
 
 
 # ----------------Whiptail functions-----------------
+
+#
+# A general-purpose whiptail function. This can be used in the implementation
+# of the other whiptail_... functions, allowing it to be overridden
+# or nulled out in tests.
+#
+def whiptail(*args):
+    """General purpose simple whiptail interface routine
+    
+    Take a list of argument and throw them at the whiptail command. Depending
+    on the result from the whiptail call, set up a true or a false result
+    in the result datafile and return True or False accordingly.
+    """
+    cmd = ["whiptail"] + list(args)
+    p = Popen(cmd,  stderr=PIPE)
+    out, err = p.communicate()
+    if p.returncode == 0:
+        updatePiNet()
+        returnData(1)
+        return True
+    elif p.returncode == 1:
+        returnData(0)
+        return False
+    else:
+        return "ERROR"
+
 def whiptail_box(whiltailType, title, message, return_true_false, height="8", width="78", return_err=False, other=""):
     cmd = ["whiptail", "--title", title, "--" + whiltailType, message, height, width, other]
     p = Popen(cmd, stderr=PIPE)
@@ -783,19 +811,19 @@ def internet_on(timeout_limit=5, return_type=True):
         response = urllib.request.urlopen('http://www.google.com', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except urllib.error:
+    except urllib.error.URLError:
         pass
     try:
         response = urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except urllib.error:
+    except urllib.error.URLError:
         pass
     try:
         response = urllib.request.urlopen('http://18.62.0.96', timeout=int(timeout_limit))
         return_data(0)
         return True
-    except urllib.error:
+    except urllib.error.URLError:
         pass
     return_data(1)
     return False
@@ -958,7 +986,7 @@ def get_version_number(data):
 def check_update(current_version):
     if not internet_on(5, False):
         print(_("No Internet Connection"))
-        return_data(0)
+        return return_data(0)
     download_file("http://bit.ly/pinetCheckCommits", "/dev/null")
     d = feedparser.parse(REPOSITORY + '/commits/' + RELEASE_BRANCH + '.atom')
     data = (d.entries[0].content[0].get('value'))
@@ -1884,11 +1912,11 @@ def custom_config_txt():
 
 # ------------------------------Main program-------------------------
 
-get_release_channel()
-setup_logger()
-custom_config_txt()
-
 if __name__ == "__main__":
+    get_release_channel()
+    setup_logger()
+    custom_config_txt()
+
     if len(sys.argv) == 1:
         print(_("This python script does nothing on its own, it must be passed stuff"))
     else:
