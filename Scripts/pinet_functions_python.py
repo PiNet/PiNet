@@ -1564,7 +1564,8 @@ def install_chroot_software():
     packages.append(SoftwarePackage("libreoffice-gtk", "apt", parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("myspell-en-gb", "apt"))
     packages.append(SoftwarePackage("mythes-en-us", "apt"))
-    # packages.append(SoftwarePackage("chromium", "apt"))
+    packages.append(SoftwarePackage("chromium", "apt"))
+    packages.append(SoftwarePackage("rpi-chromium-mods", "apt"))
     packages.append(SoftwarePackage("smartsim", "apt"))
     packages.append(SoftwarePackage("penguinspuzzle", "apt"))
     packages.append(SoftwarePackage("alacarte", "apt"))
@@ -1578,6 +1579,14 @@ def install_chroot_software():
     packages.append(SoftwarePackage("nuscratch", "apt"))
     packages.append(SoftwarePackage("iceweasel", "apt"))
     packages.append(SoftwarePackage("mu", "apt"))
+    packages.append(SoftwarePackage("python-twython", "apt"))
+    packages.append(SoftwarePackage("python3-twython", "apt"))
+    packages.append(SoftwarePackage("python-flask", "apt"))
+    packages.append(SoftwarePackage("python3-flask", "apt"))
+    packages.append(SoftwarePackage("python-picraft", "apt"))
+    packages.append(SoftwarePackage("python3-picraft", "apt"))
+    packages.append(SoftwarePackage("python3-codebug-tether", "apt"))
+    packages.append(SoftwarePackage("python3-codebug-i2c-tether", "apt"))
 
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
     packages.append(SoftwarePackage("libjpeg-dev", "apt"))
@@ -1585,16 +1594,10 @@ def install_chroot_software():
     packages.append(SoftwarePackage("sense-hat", "apt"))
     packages.append(SoftwarePackage("nodered", "apt"))
     packages.append(SoftwarePackage("libqt4-network", "apt"))  # Remove when Sonic-Pi update fixes dependency issue.
-
-    packages.append(SoftwarePackage("gpiozero", "pip"))
-    packages.append(SoftwarePackage("pgzero", "pip"))
-    packages.append(SoftwarePackage("pibrella", "pip"))
-    packages.append(SoftwarePackage("skywriter", "pip"))
-    packages.append(SoftwarePackage("unicornhat", "pip"))
-    packages.append(SoftwarePackage("piglow", "pip"))
-    packages.append(SoftwarePackage("pianohat", "pip"))
-    packages.append(SoftwarePackage("explorerhat", "pip"))
-    packages.append(SoftwarePackage("twython", "pip"))
+    packages.append((SoftwarePackage("python-sense-emu", "apt")))
+    packages.append((SoftwarePackage("python3-sense-emu", "apt")))
+    packages.append((SoftwarePackage("sense-emu-tools", "apt")))
+    packages.append((SoftwarePackage("python-sense-emu-doc", "apt")))
 
     packages.append(SoftwarePackage("bindfs", "apt", install_on_server=True))
     packages.append(SoftwarePackage("python3-feedparser", "apt", install_on_server=True))
@@ -1915,7 +1918,6 @@ def custom_config_txt():
 if __name__ == "__main__":
     get_release_channel()
     setup_logger()
-    custom_config_txt()
 
     if len(sys.argv) == 1:
         print(_("This python script does nothing on its own, it must be passed stuff"))
