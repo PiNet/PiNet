@@ -828,25 +828,6 @@ def update_PiNet():
         return_data(1)
 
 
-def checkUpdate2():
-    """
-    Deprecated
-    Grabs the xml commit log to check for releases. Picks out most recent release and returns it.
-    """
-
-    loc = "/tmp/raspiupdate.txt"
-    download_file("http://bit.ly/pinetcheckmaster", loc)
-    xmldoc = minidom.parse(loc)
-    version = xmldoc.getElementsByTagName('title')[1].firstChild.nodeValue
-    version = clean_strings([version, ])[0]
-    if version.find("Release") != -1:
-        version = version[8:len(version)]
-        print(version)
-    else:
-        print(_("ERROR"))
-        print(_("No release update found!"))
-
-
 def get_version_number(data):
     for i in range(0, len(data)):
         if data[i][0:7] == "Release":
@@ -882,8 +863,8 @@ def check_kernel_file_update_web():
     user = os.environ['SUDO_USER']
     current_path = "/home/" + user + "/PiBoot/version.txt"
     if (os.path.isfile(current_path)) == True:
-        current = int(get_clean_list(current_path)[0])
-        new = int(get_clean_list("/tmp/kernelVersion.txt")[0])
+        current = int(read_file(current_path)[0])
+        new = int(read_file("/tmp/kernelVersion.txt")[0])
         if new > current:
             return_data(1)
             return False
@@ -1560,7 +1541,7 @@ def send_status():
         pinet_version = str(get_config_file_parameter("version", True, config_file_path="/usr/local/bin/pinet"))
         users = str(len(get_users()))
         if os.path.exists("/home/" + os.environ['SUDO_USER'] + "/PiBoot/version.txt"):
-            kernel_version = str(get_clean_list("/home/" + os.environ['SUDO_USER'] + "/PiBoot/version.txt")[0])
+            kernel_version = str(read_file("/home/" + os.environ['SUDO_USER'] + "/PiBoot/version.txt")[0])
         else:
             kernel_version = "000"
         city = str(get_config_file_parameter("City"))
