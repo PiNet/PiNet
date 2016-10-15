@@ -134,6 +134,40 @@ class TestPiNet(unittest.TestCase):
     def read_data(self):
         with open(pinet_functions.DATA_TRANSFER_FILEPATH) as f:
             return f.read()
+
+class Test_get_config_file_parameter(TestPiNet):
+    """
+    Test the PiNet config file parser.
+    Config values are key value pairs, one on each line.
+    For example, thing = x
+    """
+    config_file_path = None
+    def setUp(self):
+        # Setup a config file including all the different possible ways text could be formatted.
+        super().setUp()
+        config_file_text = []
+        config_file_text.append("test = helloworld")
+        config_file_text.append("testing =another_test")
+        config_file_text.append("    more_testing=another_test    ")
+        config_file_text.append("    ")
+        config_file_text.append(" # A really useful = comment")
+        config_file_text.append("test = different_result")
+        self.config_file_path = tempfile.NamedTemporaryFile(delete=False).name
+        pinet_functions.write_file(self.config_file_path, config_file_text)
+
+    def test_get_config_file_parameter(self):
+        # Test different config file styles
+        self.assertEqual(pinet_functions.get_config_file_parameter("test", read_first_use_only=True, config_file_path=self.config_file_path), "helloworld")
+        self.assertEqual(pinet_functions.get_config_file_parameter("test", config_file_path=self.config_file_path), "different_result")
+        self.assertEqual(pinet_functions.get_config_file_parameter("testing", config_file_path=self.config_file_path), "another_test")
+        self.assertEqual(pinet_functions.get_config_file_parameter("more_testing", config_file_path=self.config_file_path),"another_test")
+        self.assertNotEqual(pinet_functions.get_config_file_parameter("# A really useful", config_file_path=self.config_file_path), "comment")
+        self.assertEqual(pinet_functions.get_config_file_parameter("not_there", config_file_path=self.config_file_path), None)
+
+    def tearDown(self):
+        # Delete the text file after we are finished
+        super().tearDown()
+        os.remove(self.config_file_path)
     
 class Test_replace_line_or_add(TestPiNet):
     """If oldstring is found in any part of a line in the input

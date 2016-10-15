@@ -585,20 +585,23 @@ def compare_versions(local, web):
 
 def get_config_file_parameter(parameter_key, read_first_use_only=False, config_file_path=CONFIG_FILE_LOCATION):
     """
-
     :param parameter_key: Parameter key to search for in the config file.
     :param read_first_use_only: Only read the first copy of the value in the file. Default False.
     :param config_file_path: The full path of the config file. Default CONFIG_FILE_LOCATION variable.
-    :return: Key or None.
+    :return: Key or if not found, None.
     """
     config_file = read_file(config_file_path)
     value = None
+
     for line in config_file:
-        if line.strip().startswith(parameter_key):
-            if "=" in line:
-                value = line.split("=")[1].strip()
-                if read_first_use_only:
-                    return value
+        if line.strip().startswith("#") or "=" not in line:
+            # If a comment or missing an equals sign in the line, skip the line.
+            continue
+        parameter = line.split("=")[0].strip()
+        if parameter == parameter_key:
+            value = line.split("=")[1].strip()
+            if read_first_use_only:
+                return value
     return value
 
 
