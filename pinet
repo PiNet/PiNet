@@ -2788,11 +2788,11 @@ FullInstall(){
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
 		#whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
 		#ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		UpdateConfig NBD true
+		UpdateConfig NBDuse true
 		$p installSoftwareFromFile
 		DisableSPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-		UpdateConfig NBD true
-		UpdateConfig NBDuse true
 		UpdateSD   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
 		SetupSharedStandalone

@@ -1436,6 +1436,7 @@ def install_software_from_file(packages=None):
 
 
 def install_chroot_software():
+    ltsp_chroot("apt-get autoremove -y")
     packages = []
     packages.append(SoftwarePackage("idle", "apt"))
     packages.append(SoftwarePackage("idle3", "apt"))
@@ -1567,8 +1568,6 @@ def install_chroot_software():
     packages.append(SoftwarePackage("libreoffice-gtk", "apt", parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("myspell-en-gb", "apt"))
     packages.append(SoftwarePackage("mythes-en-us", "apt"))
-    packages.append(SoftwarePackage("chromium", "apt"))
-    packages.append(SoftwarePackage("rpi-chromium-mods", "apt"))
     packages.append(SoftwarePackage("smartsim", "apt"))
     packages.append(SoftwarePackage("penguinspuzzle", "apt"))
     packages.append(SoftwarePackage("alacarte", "apt"))
@@ -1635,6 +1634,8 @@ def install_chroot_software():
 
     ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
+    run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
+    ltsp_chroot("apt-get autoremove -y")
 
 
 def nbd_run():
