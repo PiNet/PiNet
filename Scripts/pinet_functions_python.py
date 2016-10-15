@@ -299,12 +299,6 @@ def install_apt_package(to_install, update=False, upgrade=False, install_on_serv
         ltsp_chroot("apt-get install -y " + parameters + " " + str(to_install))
 
 
-def create_text_file(location, text):
-    # TODO: Remove as now deprecated
-    new_text = text.split("\n")
-    write_file(location, new_text)
-
-
 def make_folder(directory):
     if not os.path.exists(directory):
         fileLogger.debug("Creating directory - " + str(directory))
@@ -358,96 +352,6 @@ def write_file(file_path, file_contents):
     except IOError as e:
         print(e)
         return False
-
-
-def get_text_file(file_p):
-    # TODO: Remove as now deprecated
-    """
-    Opens the text file and goes through line by line, appending it to the file_list list.
-    Each new line is a new object in the list, for example, if the text file was
-    ----
-    hello
-    world
-    this is an awesome text file
-    ----
-    Then the list would be
-    ["hello", "world", "this is an awesome text file"]
-    Each line is a new object in the list
-
-    """
-    if not os.path.exists(file_p):
-        return []
-    file = open(file_p)
-    file_list = []
-    while 1:
-        line = file.readline()
-        if not line:
-            break
-        file_list.append(line)
-    return file_list
-
-
-def remove_n(file_list):
-    # TODO: Remove as now deprecated
-    """
-    Removes the final character from every line, this is always /n, aka newline character.
-    """
-    for count in range(0, len(file_list)):
-        file_list[count] = file_list[count][0: (len(file_list[count])) - 1]
-    return file_list
-
-
-def blank_line_remover(file_list):
-    # TODO: Remove as now deprecated
-    """
-    Removes blank lines in the file.
-    """
-    to_remove = []
-    for count in range(0, len(file_list)):  # Go through each line in the text file
-        found = False
-        for i in range(0, len(file_list[count])):  # Go through each char in the line
-            if not (file_list[count][i] == " "):
-                found = True
-        if not found:
-            to_remove.append(count)
-
-    toremove1 = []
-    for i in reversed(to_remove):
-        toremove1.append(i)
-
-    for r in range(0, len(to_remove)):
-        file_list.pop(toremove1[r])
-        debug("just removed " + str(toremove1[r]))
-    return file_list
-
-
-def write_test_file(file_list, name):
-    # TODO: Remove as now deprecated
-    """
-    Writes the final list to a text file.
-    Adds a newline character (\n) to the end of every sublist in the file.
-    Then writes the string to the text file.
-    """
-    file = open(name, 'w')
-    main_str = ""
-    for i in range(0, len(file_list)):
-        main_str = main_str + file_list[i] + "\n"
-    file.write(main_str)
-    file.close()
-    info("")
-    info("------------------------")
-    info("File generated")
-    info("The file can be found at " + name)
-    info("------------------------")
-    info("")
-
-
-def get_list(file):
-    # TODO: Remove as now deprecated
-    """
-    Creates list from the passed text file with each line a new object in the list
-    """
-    return remove_n(get_text_file(file))
 
 
 def check_string_exists(filename, to_search_for):
@@ -524,42 +428,6 @@ def download_file(url, save_location):
 #    r = requests.get(url)
 #    with open("code3.zip", "wb") as code:
 #        code.write(r.content)
-
-
-def strip_start_whitespaces(file_list):
-    # TODO: Remove as now deprecated
-    """
-    Remove whitespace from start of every line in list.
-    """
-    for i in range(0, len(file_list)):
-        file_list[i] = str(file_list[i]).lstrip()
-    return file_list
-
-
-def strip_end_whitespaces(file_list):
-    # TODO: Remove as now deprecated
-    """
-    Remove whitespace from end of every line in list.
-    """
-    for i in range(0, len(file_list)):
-        file_list[i] = str(file_list[i]).rstrip()
-    return file_list
-
-
-def clean_strings(file_list):
-    # TODO: Remove as now deprecated
-    """
-    Removes \n and strips whitespace from before and after each item in the list
-    """
-    file_list = remove_n(file_list)
-    file_list = strip_start_whitespaces(file_list)
-    return strip_end_whitespaces(file_list)
-
-
-def get_clean_list(filep):
-    # TODO: Remove as now deprecated
-    return clean_strings(get_text_file(filep))
-
 
 def compare_versions(local, web):
     """
@@ -678,11 +546,11 @@ def whiptail(*args):
     p = Popen(cmd,  stderr=PIPE)
     out, err = p.communicate()
     if p.returncode == 0:
-        updatePiNet()
-        returnData(1)
+        update_PiNet()
+        return_data(1)
         return True
     elif p.returncode == 1:
-        returnData(0)
+        return_data(0)
         return False
     else:
         return "ERROR"
@@ -1305,12 +1173,6 @@ def install_epoptes():
     SoftwarePackage("epoptes-client", "apt", parameters=("--no-install-recommends",)).install_package()
     ltsp_chroot("epoptes-client -c")
     replace_line_or_add("/etc/default/epoptes", "SOCKET_GROUP", "SOCKET_GROUP=teacher")
-
-    # Todo - Remove later if happy has been replaced by above.
-    # runBash("apt-get install -y epoptes")
-    # runBash("gpasswd -a root staff")
-    # runBash("ltsp-chroot --arch armhf apt-get install -y epoptes-client --no-install-recommends")
-    # runBash("ltsp-chroot --arch armhf epoptes-client -c")
 
 
 def install_scratch_gpio():
