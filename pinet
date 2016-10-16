@@ -1023,13 +1023,17 @@ SudoMenu(){
 whiptail --title $"WARNING" --yesno $"Would you like to give students access to the sudo command? The sudo command is required for some GPIO work, but in theory introduces the possibility of students bypassing built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 10 78
 
 exitstatus=$?
+rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
+touch /opt/ltsp/armhf/etc/sudoers.d/01pupil
+chmod 440 /opt/ltsp/armhf/etc/sudoers.d/01pupil
 if [ $exitstatus = 0 ]; then
-	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
-	touch /opt/ltsp/armhf/etc/sudoers.d/01pupil
-	chmod 440 /opt/ltsp/armhf/etc/sudoers.d/01pupil
 	echo '%pupil ALL=NOPASSWD: ALL' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
-	UpdateConfig NBDBuildNeeded true
 fi
+echo '%pupil ALL = NOPASSWD: /sbin/shutdown' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+echo '%pupil ALL = NOPASSWD: /sbin/reboot' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+echo '%pupil ALL = NOPASSWD: /sbin/poweroff' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+echo '%pupil ALL = NOPASSWD: /sbin/halt' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+UpdateConfig NBDBuildNeeded true
 }
 
 FinishedInstallingSoftware(){
@@ -2622,8 +2626,7 @@ UserGroups() {
   	"Add-teacher" $"Add user to the staff permission group" \
 	"Import-Users" $"Import usernames and passwords from a CSV file" \
 	"Delete-Batch" $"Batch delete users from a CSV file" \
-    "Enable-Sudo" $"Enables the use of sudo for pupils. Used for GPIO access" \
-    "Disable-Sudo" $"Disables the use of sudo for pupils" \
+	"Change-Sudo" $"Change student sudo permissions. Used for GPIO access" \
 	"Group-check" $"Checks all users are in the correct system groups" \
     "Export-users" $"Export all user data for migrating to new PiNet server" \
     3>&1 1>&2 2>&3)
@@ -2662,20 +2665,11 @@ case "$MENUEPT" in
     fixGroups
     Menu
 	;;
-	Enable-Sudo)
+	Change-Sudo)
     SudoMenu
     if [ "$NBDBuildNeeded" = "true" ]; then
 		NBDRun
 	fi
-    Menu
-	;;
-	Disable-Sudo)
-    rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
-    NBDRun
-    Menu
-	;;
-	Add-Samab-user)
-    AddSambaUser
     Menu
 	;;
 	
