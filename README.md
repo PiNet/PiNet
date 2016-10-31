@@ -55,3 +55,9 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.    
    
 For details on the License of this project, see the LICENSE file.
+
+
+##Author
+
+Pinet was made by the amazing Andrew Mulholland who is currently studying at Queens university in Northern Ireland.
+Much awesome. Many code
