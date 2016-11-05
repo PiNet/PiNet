@@ -234,40 +234,52 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
     """
     try:
         if isinstance(command, str):
+            # If is a string, set shell parameter to True to tell Popen to interpret as a single string.
             shell = True
             if run_as_sudo:
                 command = "sudo " + command
-            else:
-                command = (["sudo"] + command)
+
         elif isinstance(command, list):
+            # If is a list, make sure Popen is expecting a list by setting shell to False.
             shell = False
+            if run_as_sudo:
+                command = (["sudo"] + command)
+
         else:
             return None
+
         if return_string:
+            # If returning the text output.
             command_output = check_output(command, shell=shell)
             fileLogger.debug("Command \"" + str(command) + "\" executed successfully.")
             return command_output.decode()
         else:
+            # Otherwise, can run with Popen to get the return code.
             p = Popen(command, shell=shell)
             p.wait()
             return_code = p.returncode
             if return_code != 0:
+                # If process exited with an error (non 0 return code).
                 raise CalledProcessError(return_code, str(command))
             fileLogger.debug("Command \"" + str(command) + "\" executed successfully.")
             return True
     except CalledProcessError as c:
+        # If reaching this section, the process failed to execute correctly.
         fileLogger.warning("Command \"" + str(command) + "\" failed to execute correctly with a return code of " + str(
             c.returncode) + ".")
-        if ignore_errors == False:
+        if not ignore_errors:
+            # If should be alerting the user to errors.
             continue_on = whiptail_box_yes_no(_("Command failed to execute"), _(
                 "Command \"" + str(command) + "\" failed to execute correctly with a return code of " + str(
                     c.returncode) + ". Would you like to continue and ignore the error or retry the command?"),
                                               return_true_false=True, custom_yes=_("Continue"), custom_no=_("Retry"),
                                               height="11")
             if continue_on:
+                # If the user selects Continue
                 fileLogger.info("Failed command \"" + str(command) + "\" was ignored and program continued.")
                 return c.returncode
             else:
+                # If user Retry
                 return run_bash(command, return_status=return_status, run_as_sudo=run_as_sudo,
                                 return_string=return_string)
         else:
