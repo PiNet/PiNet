@@ -31,9 +31,8 @@ import traceback
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree
-from logging import debug, info
+from logging import debug
 from subprocess import Popen, PIPE, check_output, CalledProcessError
-from xml.dom import minidom
 
 import feedparser
 import requests
@@ -64,7 +63,7 @@ RAW_REPOSITORY = RAW_REPOSITORY_BASE + REPOSITORY_NAME
 RAW_BOOT_REPOSITORY = RAW_REPOSITORY_BASE + BOOT_REPOSITORY
 RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
-PINET_LOG_DIRPATH = "/var/log" 
+PINET_LOG_DIRPATH = "/var/log"
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 configFileData = {}
 fileLogger = None
@@ -108,8 +107,8 @@ class SoftwarePackage():
                 run_bash("pip install -U " + programs, ignore_errors=True)
                 run_bash("pip3 install -U " + programs, ignore_errors=True)
             else:
-                ltsp_chroot("pip install -U " + programs, ignoreErrors=True)
-                ltsp_chroot("pip3 install -U " + programs, ignoreErrors=True)
+                ltsp_chroot("pip install -U " + programs, ignore_errors=True)
+                ltsp_chroot("pip3 install -U " + programs, ignore_errors=True)
             return
         elif self.install_type == "apt":
             self.marked = False
@@ -555,7 +554,7 @@ def whiptail(*args):
     in the result datafile and return True or False accordingly.
     """
     cmd = ["whiptail"] + list(args)
-    p = Popen(cmd,  stderr=PIPE)
+    p = Popen(cmd, stderr=PIPE)
     out, err = p.communicate()
     if p.returncode == 0:
         update_PiNet()
@@ -566,6 +565,7 @@ def whiptail(*args):
         return False
     else:
         return "ERROR"
+
 
 def whiptail_box(whiltailType, title, message, return_true_false, height="8", width="78", return_err=False, other=""):
     cmd = ["whiptail", "--title", title, "--" + whiltailType, message, height, width, other]
@@ -1489,7 +1489,8 @@ def install_chroot_software():
 
     ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
-    run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
+    run_bash(
+        "sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
     ltsp_chroot("apt-get autoremove -y")
 
 
@@ -1751,7 +1752,7 @@ def debian_wheezy_to_jessie_update(try_backup=True):
 
 def custom_config_txt():
     """
-    Allow users to build a custom config.txt file which will be appended onto the main config.txt file.
+    Allow users to build a custom config.txt file which will be appended ontfo the main config.txt file.
     Very useful if need to use custom values in the config.txt file, such as display settings.
     """
     additional_config_path = "/opt/PiNet/additional_config.txt"
