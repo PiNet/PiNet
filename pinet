@@ -103,7 +103,7 @@ LegacyFixes() {
 	fi
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
-		echo $"A required system update has been found. I will now compress the operating system again to apply this update"
+		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update"
 		NBDRun
 	fi
 	$p "checkStatsNotification"
@@ -2230,7 +2230,7 @@ ImportUsersFromCSV(){
 		cd /home/$SUDO_USER
 		local fileLoc=$(SingleFileSelect)
 		if [ ! fileLoc = "The user canceled :(" ]; then
-			password=$(whiptail --inputbox $"Enter a default password to use if I am unable to find one." 8 78 --title $"Password" 3>&1 1>&2 2>&3)
+			password=$(whiptail --inputbox $"Enter a default password to use if am unable to find one." 8 78 --title $"Password" 3>&1 1>&2 2>&3)
 			if [ password = "" ]; then
 				whiptail --title $"Error" --msgbox $"Default password box can't be left blank!" 9 78
 			else
@@ -2352,7 +2352,7 @@ esac
 	
 #***************************************************************************************************
 backupFrequency(){
-  MENUEPT=$(whiptail --menu $"How often should I create a backup?" --nocancel 20 85 10 \
+  MENUEPT=$(whiptail --menu $"How often should PiNet create a backup?" --nocancel 20 85 10 \
     "Every-day" $"Will create a new backup every day" \
     "Twice-weekly" $"Will create a backup on Tuesday and Thursday" \
     "Once-a-week" $"Will create a backup every Friday" \
@@ -2450,7 +2450,7 @@ case "$MENUEPT" in
 	;;
 	Full-Install)
 	if [ -d /opt/ltsp/armhf ]; then
-		whiptail --title $"Error" --yesno $"An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
+		whiptail --title $"Error" --yesno $"An LTSP install has been detected.. Not recommended to continue. Should PiNet continue?" 8 78
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
 			echo ""
@@ -2957,7 +2957,7 @@ if [ "$SUDO_USER" = "" ]; then
 	SUDO_USER=$(whiptail --inputbox $"No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 --title $"Unsupported operating system" 3>&1 1>&2 2>&3)  #Sometimes can't detect username to run program as.
 fi	
 
-case "$1" in  #Checks if I need to run an update all, usually run after an update when the software is launched by itself
+case "$1" in  #Checks if PiNet needs to run an update all, usually run after an update when the software is launched by itself
 Update-All)
 	UpdateAll
 	;;
