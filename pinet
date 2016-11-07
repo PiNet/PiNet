@@ -816,60 +816,60 @@ EpoptesRun() {
 }
 
 fixGroups(){
-#Adds users to correct needed groups. Can take a while if there is a lot of users!
-
-
-#Adds all the groups if they don't exist
-for ugroup in adm dialout cdrom audio users sudo video games plugdev input; do
-	egrep -i "^$ugroup" /etc/group >> /dev/null
-	if [ $? = 1 ]; then
-		groupadd $ugroup
+    # Verify correct groups exist, then make sure all users are in correct groups.
+    $p verifyCorrectGroupUsers
+    if [ "$NBDBuildNeeded" = "true" ]; then
+		NBDRun
 	fi
-done
+}
+
+fixGroupsLegacy(){
+    # Old code for adding groups and users to the groups
 
 
-#Adds all users to all the required groups if they aren't already in them
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
-do
-	for ugroup in adm dialout cdrom audio users video games plugdev input pupil; do
-		if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
-			usermod -a -G $ugroup $user
-		fi
-	done
-done
+    #Adds all the groups if they don't exist
+    for ugroup in adm dialout cdrom audio users sudo video games plugdev input gpio spi i2c netdev; do
+        egrep -i "^$ugroup" /etc/group >> /dev/null
+        if [ $? = 1 ]; then
+            groupadd $ugroup
+        fi
+    done
 
-egrep -i "^teachers" /etc/group >/dev/null
-if [ $? -eq 0 ]; then
-	groupdel teachers
-fi	
 
-local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
-if [ ! "$teacherID" = "2123" ]; then
-	groupdel teacher
-	groupadd teacher -g 2123
-	whiptail --title $"Reboot required" --msgbox $"Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
-	fixGroups
-fi	
+    #Adds all users to all the required groups if they aren't already in them
+    cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
+    do
+        for ugroup in adm dialout cdrom audio users sudo video games plugdev input gpio spi i2c netdev pupil; do
+            if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
+                usermod -a -G $ugroup $user
+            fi
+        done
+    done
 
-egrep -i "^teacher" /etc/group >/dev/null
-if [ ! $? -eq 0 ]; then
-	groupadd teacher -g 2123
-fi	
+    egrep -i "^teachers" /etc/group >/dev/null
+    if [ $? -eq 0 ]; then
+        groupdel teachers
+    fi
 
-local pupilID=$(egrep -i "^pupil" /etc/group | cut -d: -f3)
-if [ ! "$pupilID" = "2122" ]; then
-	groupdel pupil
-	groupadd pupil -g 2122
-	fixGroups
-fi	
+    local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
+    if [ ! "$teacherID" = "2123" ]; then
+        groupdel teacher
+        groupadd teacher -g 2123
+        whiptail --title $"Reboot required" --msgbox $"Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
+        fixGroups
+    fi
 
-#cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
-#do
-#        if groups "$user" | grep -q -E 'staff(\s|$)'; then
-#                gpasswd -a $user teacher
-#                gpasswd -d $user staff
-#        fi
-#done
+    egrep -i "^teacher" /etc/group >/dev/null
+    if [ ! $? -eq 0 ]; then
+        groupadd teacher -g 2123
+    fi
+
+    local pupilID=$(egrep -i "^pupil" /etc/group | cut -d: -f3)
+    if [ ! "$pupilID" = "2122" ]; then
+        groupdel pupil
+        groupadd pupil -g 2122
+        fixGroups
+    fi
 
 }
 
@@ -2997,6 +2997,7 @@ if [ $intStat -eq 0 ]; then
 			checkKernelUpdater "NBD"
 	fi	
 fi
+fixGroups #Verify all groups are set up correctly with correct users
 LegacyFixes #Makes sure all configuration data is correctly configured
 CheckInstallSuccess
 Menu #Runs main menu

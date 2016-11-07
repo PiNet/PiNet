@@ -68,6 +68,30 @@ DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 configFileData = {}
 fileLogger = None
 
+# Groups every user should be added to.
+PINET_UNRESTRICTED_GROUPS = {"adm": None,
+                             "dialout": None,
+                             "cdrom": None,
+                             "audio": None,
+                             "users": None,
+                             "sudo": None,
+                             "video": None,
+                             "games": None,
+                             "plugdev": None,
+                             "input": None,
+                             "netdev": None,
+                             "gpio": 2124,
+                             "spi": 2125,
+                             "i2c": 2126,
+                             "pupil": 2122}
+
+# Groups that not all users should be added to.
+PINET_RESTRICTED_GROUPS = {"teacher": 2123, }
+
+PINET_GROUPS = {}
+PINET_GROUPS.update(PINET_UNRESTRICTED_GROUPS)
+PINET_GROUPS.update(PINET_RESTRICTED_GROUPS)
+
 
 class SoftwarePackage():
     """
@@ -293,9 +317,15 @@ def get_users(includeRoot=False):
     return users
 
 
-def ltsp_chroot(command, return_status=True, returnString=False, ignoreErrors=False):
-    run_bash("ltsp-chroot --arch armhf " + command, run_as_sudo=True, return_status=return_status,
-             return_string=returnString, ignore_errors=ignoreErrors)
+def ltsp_chroot(command, return_status=True, return_string=False, ignore_errors=False):
+    if isinstance(command, str):
+        ltsp_prefix = "ltsp-chroot --arch armhf "
+    elif isinstance(command, list):
+        ltsp_prefix = ["ltsp-chroot", "--arch", "armhf"]
+    else:
+        return None
+    return run_bash(ltsp_prefix + command, run_as_sudo=True, return_status=return_status,
+                    return_string=return_string, ignore_errors=ignore_errors)
 
 
 def install_apt_package(to_install, update=False, upgrade=False, install_on_server=False, parameters=()):
@@ -1773,6 +1803,128 @@ def custom_config_txt():
     write_file(additional_config_path, read_file(temp_config_file.name)[5:])
 
 
+def add_linux_group(group_name, group_id=None, in_chroot=False):
+    """
+    Add new Linux group.
+    :param group_name: Name of group to add
+    :param group_id: Unique ID. If None, will default to system picking next available ID
+    :param in_chroot: Create the group in the Raspbian chroot or just on Ubuntu system.
+    """
+    if group_id:
+        cmd = ["groupadd", group_name, "-g", str(group_id)]
+    else:
+        cmd = ["groupadd", group_name]
+
+    if in_chroot:
+        fileLogger.info("Adding new group to the Raspbian chroot - " + group_name)
+        ltsp_chroot(cmd)
+    else:
+        fileLogger.info("Adding new group to the Server - " + group_name)
+        run_bash(cmd)
+
+
+def modify_linux_group(group_name, group_id, in_chroot=False):
+    """
+    Modify a Linux group.
+    :param group_name: Name of group to add.
+    :param group_id: Unique group ID to modify.
+    :param in_chroot: Modify the group in the Raspbian chroot or just on Ubuntu system.
+    """
+    cmd = ["groupmod", group_name, "-g", str(group_id)]
+
+    if in_chroot:
+        fileLogger.info("Modifying group to the Raspbian chroot - " + group_name)
+        ltsp_chroot(cmd)
+    else:
+        fileLogger.info("Modifying group to the Server - " + group_name)
+        run_bash(cmd)
+
+
+def add_linux_user_to_group(username, group_name):
+    """
+    Add a Linux user to a group.
+    :param username: The username of the user to add to the group.
+    :param group_name: The group the user is to be added to.
+    :return:
+    """
+    fileLogger.info("Adding " + username + " to group " + group_name)
+    cmd = ["usermod", "-a", "-G", group_name, username]
+    run_bash(cmd)
+
+
+def parse_group_file(lines):
+    """
+    Parse a /etc/group file returning a dictionary with name:ID
+    :param lines: Group file with in list with with new item for each line
+    """
+    groups = {}
+    for line in lines:
+        group_line = line.split(":")
+        groups[group_line[0]] = int(group_line[2])
+    return groups
+
+
+def verify_groups():
+    """
+    Verify that all groups are correctly set up in the chroot and also on the server OS
+    """
+
+    server_groups = parse_group_file(read_file("/etc/group"))
+    pi_groups = parse_group_file(read_file("/opt/ltsp/armhf/etc/group"))
+
+    for group in PINET_GROUPS:
+        if group in server_groups:
+            if PINET_GROUPS[group] and PINET_GROUPS[group] != server_groups[group]:
+                fileLogger.warning(
+                    "The group with name " + group + " on server has an ID mismatch! It is currently using " + str(
+                        server_groups[group] + " and should be using " + str(PINET_GROUPS[group])))
+                modify_linux_group(group, PINET_GROUPS[group])
+        else:
+            # If required group doesn't exist on the server, add it.
+            add_linux_group(group, PINET_GROUPS[group])
+
+        if PINET_GROUPS[group]:
+            if group in pi_groups:
+                if PINET_GROUPS[group] != pi_groups[group]:
+                    fileLogger.warning(
+                        "The group with name " + group + " on Raspbian chroot has an ID mismatch! It is currently using " + str(
+                            str(pi_groups[group]) + " and should be using " + str(PINET_GROUPS[group])))
+                    modify_linux_group(group, PINET_GROUPS[group], in_chroot=True)
+
+            else:
+                # If required group doesn't exist on the Raspbian chroot, add it.
+                add_linux_group(group, PINET_GROUPS[group], in_chroot=True)
+                set_config_parameter("NBDBuildNeeded", "true")
+
+
+def get_users_linux_groups(username):
+    """
+    Get the groups a user is part of.
+    (from http://stackoverflow.com/questions/9323834/python-how-to-get-group-ids-of-one-username-like-id-gn)
+    """
+    groups = [g.gr_name for g in grp.getgrall() if username in g.gr_mem]
+    gid = pwd.getpwnam(username).pw_gid
+    groups.append(grp.getgrgid(gid).gr_name)
+    return groups
+
+
+def verify_correct_group_users():
+    """
+    Verify all users are in the correct groups. If not, fix the group allocations.
+    """
+    # TODO - Double check this actually works...
+    # TODO - Run a speed comparison with this vs bash, perhaps can run it every startup of PiNet.
+    verify_groups()
+    non_system_users = []
+    for user in pwd.getpwall():
+        if 1000 <= user.pw_uid < 65534:
+            non_system_users.append(user)
+    for user in non_system_users:
+        missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user.pw_name))
+        for missing_group in missing_groups:
+            add_linux_user_to_group(user.pw_name, missing_group)
+
+
 # ------------------------------Main program-------------------------
 
 if __name__ == "__main__":
@@ -1830,3 +1982,5 @@ if __name__ == "__main__":
             set_config_parameter(sys.argv[2], sys.argv[3])
         elif sys.argv[1] == "installChrootSoftware":
             install_chroot_software()
+        elif sys.argv[1] == "verifyCorrectGroupUsers":
+            verify_correct_group_users()
