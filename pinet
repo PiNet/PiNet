@@ -1082,7 +1082,7 @@ else
                 echo "$location"
         else
                 cd "$results"
-                fileSelect
+                SingleFileSelect
         fi
 fi
 
