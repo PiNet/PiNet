@@ -34,6 +34,7 @@ import xml.etree.ElementTree
 from logging import debug
 from subprocess import Popen, PIPE, check_output, CalledProcessError
 
+import datetime
 import feedparser
 import requests
 
@@ -492,6 +493,25 @@ def compare_versions(local, web):
                 return False
 
 
+def parse_config_file(config_file, read_first_use_only=False):
+    """
+    :param config_file: List of lines from config file.
+    :param read_first_use_only: Only read the first copy of the value in the file. Default False.
+    :return: Dictionary of keys and their values.
+    """
+    parsed = {}
+    for line in config_file:
+        if line.strip().startswith("#") or "=" not in line:
+            # If a comment or missing an equals sign in the line, skip the line.
+            continue
+        key = line.split("=")[0].strip()
+        if read_first_use_only and key in parsed:
+            continue
+        value = line.split("=")[1].strip()
+        parsed[key] = value
+    return parsed
+
+
 def get_config_file_parameter(parameter_key, read_first_use_only=False, config_file_path=CONFIG_FILE_LOCATION):
     """
     :param parameter_key: Parameter key to search for in the config file.
@@ -500,18 +520,11 @@ def get_config_file_parameter(parameter_key, read_first_use_only=False, config_f
     :return: Key or if not found, None.
     """
     config_file = read_file(config_file_path)
-    value = None
 
-    for line in config_file:
-        if line.strip().startswith("#") or "=" not in line:
-            # If a comment or missing an equals sign in the line, skip the line.
-            continue
-        parameter = line.split("=")[0].strip()
-        if parameter == parameter_key:
-            value = line.split("=")[1].strip()
-            if read_first_use_only:
-                return value
-    return value
+    parsed_config_file = parse_config_file(config_file, read_first_use_only=read_first_use_only)
+    if parameter_key in parsed_config_file:
+        return parsed_config_file[parameter_key]
+    return None
 
 
 def get_config_parameter(filep, search_for, break_on_first_find=False):

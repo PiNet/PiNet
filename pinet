@@ -282,8 +282,8 @@ checkInternet(){
 #Checks if the internet is connected. Mainly passes off to CheckInternet Python programme in Python functions
 if [ ! "$CheckInternetConnection" = "false" ]; then
 	$p CheckInternet $Timeout
-	thing=$(gp)
-	echo $thing
+	result=$(gp)
+	echo $result
 else
 	echo 0
 fi
