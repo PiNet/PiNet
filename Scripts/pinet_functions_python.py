@@ -443,8 +443,10 @@ def find_replace_section(text_file, string, new_string):
     return text_file
 
 
-def download_file(url, save_location):
+def download_file_urllib(url, save_location):
     """
+    Deprecated in favor of Requests library.
+
     Downloads a file from the internet using a standard browser header.
     Custom header is required to allow access to all pages.
     """
@@ -465,11 +467,17 @@ def download_file(url, save_location):
         return False
 
 
-# def downloadFile(url, saveloc):
-#    import requests
-#    r = requests.get(url)
-#    with open("code3.zip", "wb") as code:
-#        code.write(r.content)
+def download_file(url, save_location):
+    try:
+        response = requests.get(url, headers={'User-agent': 'Mozilla 5.10'})
+        with open(save_location, 'wb') as f:
+            f.write(response.content)
+        fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
+        return True
+    except requests.RequestException as e:
+        fileLogger.debug("Failed to download file from " + url + " to " + save_location + ". Error was " + e.response)
+        return False
+
 
 def compare_versions(local, web):
     """
@@ -680,7 +688,7 @@ def whiptail_box_yes_no(title, message, return_true_false, height="8", width="78
 
 # ---------------- Main functions -------------------
 
-def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False):
+def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False, add_if_not_exists=True):
     """
     Simple string replacer for text files. Allows replacing a line in a text file if that line contains the
     provided string. If the line does not exist, add it.
@@ -688,6 +696,7 @@ def replace_in_text_file(file_path, string_to_search_for, new_string, replace_al
     :param string_to_search_for: String to search for in the file.
     :param new_string: String to replace the line with if found.
     :param replace_all_uses: Replace all uses in the file or just first found use.
+    :param add_if_not_exists: Add line if it doesn't exist in the file
     :return: If string was found in file and replaced, return True. If appended on end of file, return False.
     """
     text_file = read_file(file_path)
@@ -701,8 +710,9 @@ def replace_in_text_file(file_path, string_to_search_for, new_string, replace_al
     if found:
         write_file(file_path, text_file)
         return True
-    text_file.append(new_string)
-    write_file(file_path, text_file)
+    if add_if_not_exists:
+        text_file.append(new_string)
+        write_file(file_path, text_file)
     return False
 
 
@@ -728,7 +738,7 @@ def replace_bit_or_add(file, string, new_string):
     write_file(file, text_file)
 
 
-def internet_on(timeout_limit=5, return_type=True):
+def internet_on_urllib(timeout_limit=5, return_type=True):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
@@ -755,17 +765,27 @@ def internet_on(timeout_limit=5, return_type=True):
     return False
 
 
-def internet_on_Requests(timeout_limit=3, return_type=True):
+def internet_on(timeout_limit=3, return_type=True):
+    last_checked_str = get_config_file_parameter("InternetConnectionLastCheckSuccess")
+    if last_checked_str:
+        last_checked = datetime.datetime.strptime(last_checked_str, "%Y-%m-%d-%H:%M:%S")
+        current_date_time = datetime.datetime.now()
+        if (current_date_time - last_checked).seconds / 60 < 20:
+            return_data(0)
+            return True
+
     try:
-        response = requests.get("http://archive.raspbian.org/raspbian.public.key", timeout=timeout_limit)
+        response = requests.get("http://archive.raspbian.org/raspbian.public.key", timeout=int(timeout_limit))
         if response.status_code == requests.codes.ok:
+            set_config_parameter("InternetConnectionLastCheckSuccess", datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
             return_data(0)
             return True
     except (requests.ConnectionError, requests.Timeout):
         pass
     try:
-        response = requests.get("http://archive.raspberrypi.org/debian/raspberrypi.gpg.key", timeout=timeout_limit)
+        response = requests.get("http://archive.raspberrypi.org/debian/raspberrypi.gpg.key", timeout=int(timeout_limit))
         if response.status_code == requests.codes.ok:
+            set_config_parameter("InternetConnectionLastCheckSuccess", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             return_data(0)
             return True
     except (requests.ConnectionError, requests.Timeout):
@@ -1103,9 +1123,9 @@ def import_users_csv(theFile, default_password, dry_run=False):
                 cmd = ["useradd", "-m", "-s", "/bin/bash", "-p", encrypted_password, user]
                 p = Popen(cmd, stderr=PIPE)
                 out, err = p.communicate()
-                fix_group_single_user(user)
                 percent_complete = int(((x + 1) / len(user_data_list)) * 100)
                 print(str(percent_complete) + "% - Import of " + user + " complete.")
+            verify_correct_group_users()
             whiptail_box("msgbox", _("Complete"), _("Importing of CSV data has been complete."), False)
         else:
             sys.exit()
@@ -1147,14 +1167,6 @@ def users_csv_delete(theFile, dry_run):
             whiptail_box("msgbox", _("Complete"), _("Delete of users from CSV file complete"), False)
         else:
             sys.exit()
-
-
-def fix_group_single_user(username):
-    groups = ["adm", "dialout", "cdrom", "audio", "users", "video", "games", "plugdev", "input", "pupil"]
-    for x in range(0, len(groups)):
-        cmd = ["usermod", "-a", "-G", groups[x], username]
-        p = Popen(cmd, stderr=PIPE)
-        out, err = p.communicate()
 
 
 def check_if_file_contains(file, string):
