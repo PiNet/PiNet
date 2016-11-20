@@ -70,6 +70,8 @@ configFileData = {}
 fileLogger = None
 
 APT, PIP, SCRIPT, EPOPTES, SCRATCH_GPIO, CUSTOM_APT, CUSTOM_PIP = 1, 2, 3, 4, 5, 6, 7
+RASPBIAN_RELEASE = "jessie"
+STABLE, BETA, ALPHA = RASPBIAN_RELEASE + "-stable", RASPBIAN_RELEASE + "-beta", RASPBIAN_RELEASE + "-alpha"
 
 # Groups every user should be added to.
 PINET_UNRESTRICTED_GROUPS = {"adm": None,
@@ -119,11 +121,14 @@ class SoftwarePackage():
         self.install_commands = install_commands
         self.install_on_server = install_on_server
         self.parameters = parameters
-        self.version = version
+        if version:
+            self.version = version
+        else:
+            self.version = get_package_version_to_install(self.name)
 
     def install_package(self):
         debug("Installing " + self.name)
-        debug(self.install_commands)
+        debug("Install commands - " + str(self.install_commands))
         if isinstance(self.install_commands, list) and len(self.install_commands) > 0:
             programs = " ".join(self.install_commands)
         elif self.install_commands is None:
@@ -335,16 +340,51 @@ def ltsp_chroot(command, return_status=True, return_string=False, ignore_errors=
 
 def install_apt_package(to_install, update=False, upgrade=False, install_on_server=False, parameters=(), version=""):
     parameters = " ".join(parameters)
-    if version:
-        version = "=" + version
     if update:
         run_bash("apt-get update")
     if upgrade:
         run_bash("apt-get upgrade -y")
     if install_on_server:
-        run_bash("apt-get install -y {} {}{}".format(parameters, to_install, version))
+        if version:
+            run_bash("apt-get install -y --force-yes {} {}={}".format(parameters, to_install, version))
+            run_bash("apt-mark hold {}".format(to_install))
+        else:
+            run_bash("apt-get install -y {} {}".format(parameters, to_install))
     else:
-        ltsp_chroot("apt-get install -y {} {}{}".format(parameters, to_install, version))
+        if version:
+            ltsp_chroot("apt-get install -y --force-yes {} {}={}".format(parameters, to_install, version))
+            ltsp_chroot("apt-mark hold {}".format(to_install))
+        else:
+            ltsp_chroot("apt-get install -y {} {}".format(parameters, to_install))
+
+
+def group_apt_installer(packages):
+    packages_to_install = []
+    for package in packages:
+        if not package.version and not package.parameters and not package.install_on_server:
+            packages_to_install.append(package.name)
+            print("Added {} to list".format(package.name))
+        else:
+            if packages_to_install:
+                print("Going to install {}".format(" ".join(packages_to_install)))
+                returned = ltsp_chroot("apt-get install -y {}".format(" ".join(packages_to_install)), ignore_errors=True)
+                print("RETURNED = {}".format(returned))
+                if returned != True:
+                    for single_package in packages_to_install:
+                        install_apt_package(single_package)
+                packages_to_install = []
+            install_apt_package(package.name, install_on_server=package.install_on_server, parameters=package.parameters, version=package.version)
+
+
+
+def get_package_version_to_install(package_name):
+    current_time = time.time()
+    pinet_package_versions_path = "/opt/PiNet/pinet-package-versions.txt"
+    # If the file doesn't exist or is over 12 hours old, get the newest copy off the web.
+    if not os.path.isfile(pinet_package_versions_path) or ((current_time - os.path.getctime(pinet_package_versions_path)) / 3600 > 12):
+        remove_file(pinet_package_versions_path)
+        download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path)
+    return get_config_file_parameter(package_name, config_file_path=pinet_package_versions_path)
 
 
 def make_folder(directory):
@@ -353,7 +393,7 @@ def make_folder(directory):
         os.makedirs(directory)
 
 
-def get_release_channel():
+def get_release_channel_old():
     channel = "Stable"
     config_file = read_file("/etc/pinet")
     for i in range(0, len(config_file)):
@@ -371,6 +411,34 @@ def get_release_channel():
         RELEASE_BRANCH = channel[7:len(channel)]
     else:
         RELEASE_BRANCH = "master"
+
+
+def get_release_channel():
+    global RELEASE_BRANCH
+    release_channel = get_config_file_parameter("ReleaseChannel").lower()
+    if release_channel == "stable":
+        RELEASE_BRANCH = STABLE
+    elif release_channel == "beta":
+        RELEASE_BRANCH = BETA
+    elif release_channel == "alpha":
+        RELEASE_BRANCH = ALPHA
+    elif release_channel == "dev":
+        # Legacy from older version of PiNet, replaced by beta now
+        set_config_parameter("ReleaseChannel", "beta")
+    elif len(release_channel) > 7 and release_channel[0:7] == "custom:":
+        RELEASE_BRANCH = release_channel[7:len(release_channel)]
+    else:
+        RELEASE_BRANCH = STABLE
+
+
+def build_download_url(repo, path):
+    if RELEASE_BRANCH in [STABLE, BETA, ALPHA]:
+        # Convert for example https://raw.githubusercontent.com/PiNet/PiNet/scripts/test.txt to https://links.pinet.org.uk/PiNet--PiNet---jessie-stable---scripts--test
+        url = "https://links.pinet.org.uk/{}---{}---{}".format(repo.replace("/", "--"), RELEASE_BRANCH, os.path.splitext(path)[0].replace("/", "--"))
+    else:
+        url = "https://raw.githubusercontent.com/{}/{}/{}".format(repo, RELEASE_BRANCH, path)
+    return url
+
 
 
 def read_file(file_path):
@@ -1220,7 +1288,6 @@ def load_pickled(path="/tmp/pinetSoftware.dump", delete_after=True):
 def install_epoptes():
     """
     Install Epoptes classroom management software. Key is making sure groups are correct.
-    :return:
     """
     SoftwarePackage(EPOPTES, APT, install_on_server=True).install_package()
     run_bash("gpasswd -a root staff")
@@ -1508,7 +1575,7 @@ def install_chroot_software():
 
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
     packages.append(SoftwarePackage("libjpeg-dev", APT))
-    packages.append(SoftwarePackage("pillow", PIP))
+    #packages.append(SoftwarePackage("pillow", PIP))
     packages.append(SoftwarePackage("sense-hat", APT))
     packages.append(SoftwarePackage("nodered", APT))
     packages.append(SoftwarePackage("libqt4-network", APT))  # Remove when Sonic-Pi update fixes dependency issue.
@@ -1522,8 +1589,9 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python3-feedparser", APT, install_on_server=True))
     packages.append(SoftwarePackage("ntp", APT, install_on_server=True))
 
-    for package in packages:
-        package.install_package()
+    #for package in packages:
+    #    package.install_package()
+    group_apt_installer(packages)
 
     ltsp_chroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
     ltsp_chroot("easy_install3 --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
