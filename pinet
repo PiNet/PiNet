@@ -1295,13 +1295,18 @@ Updater(){
 #Main updater, most of it is handed by updatePiNet on the Python side or by AfterUpdate on BASH side
 	$p updatePiNet
 	exitstatus=$(gp)
-	if [ $exitstatus = 0 ]; then 
-		AfterUpdate
-	else
-		whiptail --title $"Update failed" --msgbox $"The auto update failed. This usually means you aren't connected to the internet" 8 78
-		exec /bin/bash pinet
+	if [ $exitstatus = 0 ] && [ "$1" = "IgnoreAfterUpdate" ]; then
+	    whiptail --title $"Restarting PiNet" --msgbox $"Restarting PiNet to guarantee is running the correct branch version." 8 78
+        exec /bin/bash pinet
+        exit
+    else
+        if [ $exitstatus = 0 ]; then
+            AfterUpdate
+        else
+            whiptail --title $"Update failed" --msgbox $"The auto update failed. This usually means you aren't connected to the internet" 8 78
+            exec /bin/bash pinet
+        fi
 	fi
-	
 
 }
 
@@ -2166,6 +2171,8 @@ ChooseReleaseChannel(){
         else
             Menu
         fi
+    else
+        Updater "IgnoreAfterUpdate"
     fi
 
 }
@@ -2737,7 +2744,10 @@ FullInstall(){
   checkInternetDetailed
   if [ $? -eq 0 ]; then
 		FirstTimeImportUsers
-		ChooseReleaseChannel 1
+		ConfigFileRead
+		if [ "$ReleaseChannel" = "" ]; then
+		    ChooseReleaseChannel 1
+		fi
 		$p initialInstallSoftwareList
 		whiptail --title $"Full Install" --msgbox $"A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
 		installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS

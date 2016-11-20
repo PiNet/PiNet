@@ -2129,3 +2129,5 @@ if __name__ == "__main__":
             verify_correct_group_users()
         elif sys.argv[1] == "selectReleaseChannel":
             select_release_channel()
+        elif sys.argv[1] == "buildDownloadURL":
+            return_data(build_download_url(sys.argv[2], sys.argv[3]))
