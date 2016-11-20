@@ -2131,9 +2131,9 @@ CheckRaspberryPiUIModsAllUsers(){
 }
 
 InstallRaspberryPiUIMods(){
-#Installs the new Raspberry Pi UI mods, but fixes the mistakes made in the wallpaper setting
-		ltsp-chroot apt-get update
-		ltsp-chroot apt-get -o Dpkg::Options::="--force-confnew" install -y raspberrypi-ui-mods 
+#Fixes the mistakes made in the wallpaper setting of RaspberryPi-UI-Mods
+		#ltsp-chroot apt-get update
+		#ltsp-chroot apt-get -o Dpkg::Options::="--force-confnew" install -y raspberrypi-ui-mods
 		FixUIConfigFile "System" "pcmanfm.conf"
 		FixUIConfigFile "System" "desktop-items-0.conf"
 		CheckRaspberryPiUIModsAllUsers 
@@ -2224,7 +2224,8 @@ DeleteUsersFromCSV(){
 
 CheckInstallSuccess(){
 	if [ -d "/opt/ltsp/armhf/debootstrap" ]; then
-		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is highly recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		echo $"You may wish to check the PiNet logs to help diagnose the issue. They can be found at /var/log/pinet.log."
 		exit
 	fi
 }
@@ -2750,8 +2751,6 @@ FullInstall(){
 		FixDesktopIcons   #Adds desktop icons
 		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		#whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
-		#ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
 		UpdateConfig NBD true
 		UpdateConfig NBDuse true
 		$p installSoftwareFromFile
@@ -2762,7 +2761,7 @@ FullInstall(){
 		SetupSharedStandalone
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
-		fixGroups   #Adds all current users to the pupil and video group
+		fixGroups   #Adds all current users to the correct groups.
 		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes
