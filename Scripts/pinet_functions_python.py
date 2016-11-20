@@ -383,6 +383,7 @@ def get_package_version_to_install(package_name):
     pinet_package_versions_path = "/opt/PiNet/pinet-package-versions.txt"
     # If the file doesn't exist or is over 12 hours old, get the newest copy off the web.
     if not os.path.isfile(pinet_package_versions_path) or ((current_time - os.path.getctime(pinet_package_versions_path)) / 3600 > 12):
+        make_folder("/opt/PiNet") # In case folder doesn't exist yet.
         remove_file(pinet_package_versions_path)
         download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path)
     return get_config_file_parameter(package_name, config_file_path=pinet_package_versions_path)
@@ -1368,7 +1369,7 @@ def install_software_list(hold_off_install=False):
         SoftwarePackage("Arduino-IDE", APT, description=_("Programming environment for Arduino microcontrollers"),
                         install_commands=["arduino", ]),
         SoftwarePackage("Scratch-gpio", SCRATCH_GPIO, description=_("A special version of scratch for GPIO work")),
-        SoftwarePackage(EPOPTES, EPOPTES, description=_("Free and open source classroom management software")),
+        SoftwarePackage("Epoptes", EPOPTES, description=_("Free and open source classroom management software")),
         SoftwarePackage("Custom-package", CUSTOM_APT,
                         description=_(
                             "Allows you to enter the name of a package from Raspbian repository")),
@@ -1382,7 +1383,6 @@ def install_software_list(hold_off_install=False):
     if (shutil.get_terminal_size()[0] < 105) or (shutil.get_terminal_size()[0] < 30):
         print("\x1b[8;30;105t")
         time.sleep(0.05)
-        # print("Resizing")
     while not done:
         whiptail_box("msgbox", _("Additional Software"), _(
             "In the next window you can select additional software you wish to install. Use space bar to select applications and hit enter when you are finished."),
