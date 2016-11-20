@@ -69,6 +69,8 @@ DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 configFileData = {}
 fileLogger = None
 
+APT, PIP, SCRIPT, EPOPTES, SCRATCH_GPIO, CUSTOM_APT, CUSTOM_PIP = 1, 2, 3, 4, 5, 6, 7
+
 # Groups every user should be added to.
 PINET_UNRESTRICTED_GROUPS = {"adm": None,
                              "dialout": None,
@@ -106,9 +108,10 @@ class SoftwarePackage():
     marked = False
     install_on_server = False
     parameters = ()
+    version = None
 
     def __init__(self, name, install_type, install_commands=None, description="", install_on_server=False,
-                 parameters=()):
+                 parameters=(), version = None):
         super(SoftwarePackage, self).__init__()
         self.name = name
         self.description = description
@@ -116,6 +119,7 @@ class SoftwarePackage():
         self.install_commands = install_commands
         self.install_on_server = install_on_server
         self.parameters = parameters
+        self.version = version
 
     def install_package(self):
         debug("Installing " + self.name)
@@ -126,7 +130,7 @@ class SoftwarePackage():
             programs = self.name
         else:
             programs = self.install_commands
-        if self.install_type == "pip":
+        if self.install_type == PIP:
             self.marked = False
             if self.install_on_server:
                 run_bash("pip install -U " + programs, ignore_errors=True)
@@ -135,16 +139,16 @@ class SoftwarePackage():
                 ltsp_chroot("pip install -U " + programs, ignore_errors=True)
                 ltsp_chroot("pip3 install -U " + programs, ignore_errors=True)
             return
-        elif self.install_type == "apt":
+        elif self.install_type == APT:
             self.marked = False
-            install_apt_package(programs, install_on_server=self.install_on_server, parameters=self.parameters)
-        elif self.install_type == "script":
+            install_apt_package(programs, install_on_server=self.install_on_server, parameters=self.parameters, version=self.version)
+        elif self.install_type == SCRIPT:
             for i in self.install_commands:
                 run_bash("ltsp-chroot --arch armhf " + i)
             self.marked = False
-        elif self.install_type == "epoptes":
+        elif self.install_type == EPOPTES:
             install_epoptes()
-        elif self.install_type == "scratchGPIO":
+        elif self.install_type == SCRATCH_GPIO:
             install_scratch_gpio()
         else:
             print(_("Error in installing") + " " + self.name + " " + _("due to invalid install type."))
@@ -153,7 +157,7 @@ class SoftwarePackage():
     def custom_apt_pip(self):
         done = False
         while done == False:
-            if self.install_type == "customApt":
+            if self.install_type == CUSTOM_APT:
                 package_name = whiptail_box("inputbox", _("Custom package"),
                                             _(
                                                 "Enter the name of the name of your package from apt you wish to install."),
@@ -170,12 +174,12 @@ class SoftwarePackage():
                         # print("Setting marked to false")
                         # self.marked = False
                 else:
-                    self.install_type = "apt"
+                    self.install_type = APT
                     self.install_commands = [package_name, ]
                     self.marked = True
                     done = True
 
-            elif self.install_type == "customPip":
+            elif self.install_type == CUSTOM_PIP:
                 package_name = whiptail_box("inputbox", _("Custom Python package"), _(
                     "Enter the name of the name of your python package from pip you wish to install."), False,
                                             return_err=True)
@@ -190,7 +194,7 @@ class SoftwarePackage():
                     else:
                         self.marked = False
                 else:
-                    self.install_type = "pip"
+                    self.install_type = PIP
                     self.install_commands = [package_name, ]
                     self.marked = True
                     done = True
@@ -329,16 +333,18 @@ def ltsp_chroot(command, return_status=True, return_string=False, ignore_errors=
                     return_string=return_string, ignore_errors=ignore_errors)
 
 
-def install_apt_package(to_install, update=False, upgrade=False, install_on_server=False, parameters=()):
+def install_apt_package(to_install, update=False, upgrade=False, install_on_server=False, parameters=(), version=""):
     parameters = " ".join(parameters)
+    if version:
+        version = "=" + version
     if update:
         run_bash("apt-get update")
     if upgrade:
         run_bash("apt-get upgrade -y")
     if install_on_server:
-        run_bash("apt-get install -y " + parameters + " " + str(to_install))
+        run_bash("apt-get install -y {} {}{}".format(parameters, to_install, version))
     else:
-        ltsp_chroot("apt-get install -y " + parameters + " " + str(to_install))
+        ltsp_chroot("apt-get install -y {} {}{}".format(parameters, to_install, version))
 
 
 def make_folder(directory):
@@ -1216,9 +1222,9 @@ def install_epoptes():
     Install Epoptes classroom management software. Key is making sure groups are correct.
     :return:
     """
-    SoftwarePackage("epoptes", "apt", install_on_server=True).install_package()
+    SoftwarePackage(EPOPTES, APT, install_on_server=True).install_package()
     run_bash("gpasswd -a root staff")
-    SoftwarePackage("epoptes-client", "apt", parameters=("--no-install-recommends",)).install_package()
+    SoftwarePackage("epoptes-client", APT, parameters=("--no-install-recommends",)).install_package()
     ltsp_chroot("epoptes-client -c")
     replace_line_or_add("/etc/default/epoptes", "SOCKET_GROUP", "SOCKET_GROUP=teacher")
 
@@ -1269,14 +1275,14 @@ def install_software_list(hold_off_install=False):
     Checks what options the user has collected, then saves the packages list to file (using pickle). If hold_off_install is False, then runs installSoftwareFromFile().
     """
     software = [
-        SoftwarePackage("Arduino-IDE", "apt", description=_("Programming environment for Arduino microcontrollers"),
+        SoftwarePackage("Arduino-IDE", APT, description=_("Programming environment for Arduino microcontrollers"),
                         install_commands=["arduino", ]),
-        SoftwarePackage("Scratch-gpio", "scratchGPIO", description=_("A special version of scratch for GPIO work")),
-        SoftwarePackage("Epoptes", "epoptes", description=_("Free and open source classroom management software")),
-        SoftwarePackage("Custom-package", "customApt",
+        SoftwarePackage("Scratch-gpio", SCRATCH_GPIO, description=_("A special version of scratch for GPIO work")),
+        SoftwarePackage(EPOPTES, EPOPTES, description=_("Free and open source classroom management software")),
+        SoftwarePackage("Custom-package", CUSTOM_APT,
                         description=_(
                             "Allows you to enter the name of a package from Raspbian repository")),
-        SoftwarePackage("Custom-python", "customPip",
+        SoftwarePackage("Custom-python", CUSTOM_PIP,
                         description=_("Allows you to enter the name of a Python library from pip."))]
 
     software_list = []
@@ -1348,172 +1354,173 @@ def install_software_from_file(packages=None):
 def install_chroot_software():
     ltsp_chroot("apt-get autoremove -y")
     packages = []
-    packages.append(SoftwarePackage("idle", "apt"))
-    packages.append(SoftwarePackage("idle3", "apt"))
-    packages.append(SoftwarePackage("python-dev", "apt"))
-    packages.append(SoftwarePackage("nano", "apt"))
-    packages.append(SoftwarePackage("python3-dev", "apt"))
-    packages.append(SoftwarePackage("scratch", "apt"))
-    packages.append(SoftwarePackage("python3-tk", "apt"))
-    packages.append(SoftwarePackage("git", "apt"))
-    packages.append(SoftwarePackage("debian-reference-en", "apt"))
-    packages.append(SoftwarePackage("dillo", "apt"))
-    packages.append(SoftwarePackage("python", "apt"))
-    packages.append(SoftwarePackage("python-pygame", "apt"))
-    packages.append(SoftwarePackage("python3-pygame", "apt"))
-    packages.append(SoftwarePackage("python-tk", "apt"))
-    packages.append(SoftwarePackage("sudo", "apt"))
-    packages.append(SoftwarePackage("sshpass", "apt"))
-    packages.append(SoftwarePackage("pcmanfm", "apt"))
-    packages.append(SoftwarePackage("python3-numpy", "apt"))
-    packages.append(SoftwarePackage("wget", "apt"))
-    packages.append(SoftwarePackage("xpdf", "apt"))
-    packages.append(SoftwarePackage("gtk2-engines", "apt"))
-    packages.append(SoftwarePackage("alsa-utils", "apt"))
-    packages.append(SoftwarePackage("wpagui", "apt"))
-    packages.append(SoftwarePackage("omxplayer", "apt"))
-    packages.append(SoftwarePackage("lxde", "apt"))
-    packages.append(SoftwarePackage("net-tools", "apt"))
-    packages.append(SoftwarePackage("mpg123", "apt"))
-    packages.append(SoftwarePackage("ssh", "apt"))
-    packages.append(SoftwarePackage("locales", "apt"))
-    packages.append(SoftwarePackage("less", "apt"))
-    packages.append(SoftwarePackage("fbset", "apt"))
-    packages.append(SoftwarePackage("sudo", "apt"))
-    packages.append(SoftwarePackage("psmisc", "apt"))
-    packages.append(SoftwarePackage("strace", "apt"))
-    packages.append(SoftwarePackage("module-init-tools", "apt"))
-    packages.append(SoftwarePackage("ifplugd", "apt"))
-    packages.append(SoftwarePackage("ed", "apt"))
-    packages.append(SoftwarePackage("ncdu", "apt"))
-    packages.append(SoftwarePackage("console-setup", "apt"))
-    packages.append(SoftwarePackage("keyboard-configuration", "apt"))
-    packages.append(SoftwarePackage("debconf-utils", "apt"))
-    packages.append(SoftwarePackage("parted", "apt"))
-    packages.append(SoftwarePackage("unzip", "apt"))
-    packages.append(SoftwarePackage("build-essential", "apt"))
-    packages.append(SoftwarePackage("manpages-dev", "apt"))
-    packages.append(SoftwarePackage("python", "apt"))
-    packages.append(SoftwarePackage("bash-completion", "apt"))
-    packages.append(SoftwarePackage("gdb", "apt"))
-    packages.append(SoftwarePackage("pkg-config", "apt"))
-    packages.append(SoftwarePackage("python-rpi.gpio", "apt"))
-    packages.append(SoftwarePackage("v4l-utils", "apt"))
-    packages.append(SoftwarePackage("lua5.1", "apt"))
-    packages.append(SoftwarePackage("luajit", "apt"))
-    packages.append(SoftwarePackage("hardlink", "apt"))
-    packages.append(SoftwarePackage("ca-certificates", "apt"))
-    packages.append(SoftwarePackage("curl", "apt"))
-    packages.append(SoftwarePackage("fake-hwclock", "apt"))
-    packages.append(SoftwarePackage("ntp", "apt"))
-    packages.append(SoftwarePackage("nfs-common", "apt"))
-    packages.append(SoftwarePackage("usbutils", "apt"))
-    packages.append(SoftwarePackage("libraspberrypi-dev", "apt"))
-    packages.append(SoftwarePackage("libraspberrypi-doc", "apt"))
-    packages.append(SoftwarePackage("libfreetype6-dev", "apt"))
-    packages.append(SoftwarePackage("python3-rpi.gpio", "apt"))
-    packages.append(SoftwarePackage("python-rpi.gpio", "apt"))
-    packages.append(SoftwarePackage("python-pip", "apt"))
-    packages.append(SoftwarePackage("python3-pip", "apt"))
-    packages.append(SoftwarePackage("python-picamera", "apt"))
-    packages.append(SoftwarePackage("python3-picamera", "apt"))
-    packages.append(SoftwarePackage("x2x", "apt"))
-    packages.append(SoftwarePackage("wolfram-engine", "apt"))
-    packages.append(SoftwarePackage("xserver-xorg-video-fbturbo", "apt"))
-    packages.append(SoftwarePackage("netsurf-common", "apt"))
-    packages.append(SoftwarePackage("netsurf-gtk", "apt"))
-    packages.append(SoftwarePackage("rpi-update", "apt"))
-    packages.append(SoftwarePackage("ftp", "apt"))
-    packages.append(SoftwarePackage("libraspberrypi-bin", "apt"))
-    packages.append(SoftwarePackage("python3-pifacecommon", "apt"))
-    packages.append(SoftwarePackage("python3-pifacedigitalio", "apt"))
-    packages.append(SoftwarePackage("python3-pifacedigital-scratch-handler", "apt"))
-    packages.append(SoftwarePackage("python-pifacecommon", "apt"))
-    packages.append(SoftwarePackage("python-pifacedigitalio", "apt"))
-    packages.append(SoftwarePackage("i2c-tools", "apt"))
-    packages.append(SoftwarePackage("man-db", "apt"))
-    packages.append(SoftwarePackage("cifs-utils", "apt", parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("midori", "apt", parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("lxtask", "apt", parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("epiphany-browser", "apt", parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("minecraft-pi", "apt"))
-    packages.append(SoftwarePackage("python-smbus", "apt"))
-    packages.append(SoftwarePackage("python3-smbus", "apt"))
-    packages.append(SoftwarePackage("dosfstools", "apt"))
-    packages.append(SoftwarePackage("ruby", "apt"))
-    packages.append(SoftwarePackage("iputils-ping", "apt"))
-    packages.append(SoftwarePackage("scrot", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-x", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-omx", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-plugins-base", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-plugins-good", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-plugins-bad", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-alsa", "apt"))
-    packages.append(SoftwarePackage("gstreamer1.0-libav", "apt"))
+    packages.append(SoftwarePackage("idle", APT))
+    packages.append(SoftwarePackage("idle3", APT))
+    packages.append(SoftwarePackage("python-dev", APT))
+    packages.append(SoftwarePackage("nano", APT))
+    packages.append(SoftwarePackage("python3-dev", APT))
+    packages.append(SoftwarePackage("scratch", APT))
+    packages.append(SoftwarePackage("python3-tk", APT))
+    packages.append(SoftwarePackage("git", APT))
+    packages.append(SoftwarePackage("debian-reference-en", APT))
+    packages.append(SoftwarePackage("dillo", APT))
+    packages.append(SoftwarePackage("python", APT))
+    packages.append(SoftwarePackage("python-pygame", APT))
+    packages.append(SoftwarePackage("python3-pygame", APT))
+    packages.append(SoftwarePackage("python-tk", APT))
+    packages.append(SoftwarePackage("sudo", APT))
+    packages.append(SoftwarePackage("sshpass", APT))
+    packages.append(SoftwarePackage("pcmanfm", APT))
+    packages.append(SoftwarePackage("python3-numpy", APT))
+    packages.append(SoftwarePackage("wget", APT))
+    packages.append(SoftwarePackage("xpdf", APT))
+    packages.append(SoftwarePackage("gtk2-engines", APT))
+    packages.append(SoftwarePackage("alsa-utils", APT))
+    packages.append(SoftwarePackage("wpagui", APT))
+    packages.append(SoftwarePackage("omxplayer", APT))
+    packages.append(SoftwarePackage("lxde", APT))
+    packages.append(SoftwarePackage("net-tools", APT))
+    packages.append(SoftwarePackage("mpg123", APT))
+    packages.append(SoftwarePackage("ssh", APT))
+    packages.append(SoftwarePackage("locales", APT))
+    packages.append(SoftwarePackage("less", APT))
+    packages.append(SoftwarePackage("fbset", APT))
+    packages.append(SoftwarePackage("sudo", APT))
+    packages.append(SoftwarePackage("psmisc", APT))
+    packages.append(SoftwarePackage("strace", APT))
+    packages.append(SoftwarePackage("module-init-tools", APT))
+    packages.append(SoftwarePackage("ifplugd", APT))
+    packages.append(SoftwarePackage("ed", APT))
+    packages.append(SoftwarePackage("ncdu", APT))
+    packages.append(SoftwarePackage("console-setup", APT))
+    packages.append(SoftwarePackage("keyboard-configuration", APT))
+    packages.append(SoftwarePackage("debconf-utils", APT))
+    packages.append(SoftwarePackage("parted", APT))
+    packages.append(SoftwarePackage("unzip", APT))
+    packages.append(SoftwarePackage("build-essential", APT))
+    packages.append(SoftwarePackage("manpages-dev", APT))
+    packages.append(SoftwarePackage("python", APT))
+    packages.append(SoftwarePackage("bash-completion", APT))
+    packages.append(SoftwarePackage("gdb", APT))
+    packages.append(SoftwarePackage("pkg-config", APT))
+    packages.append(SoftwarePackage("python-rpi.gpio", APT))
+    packages.append(SoftwarePackage("v4l-utils", APT))
+    packages.append(SoftwarePackage("lua5.1", APT))
+    packages.append(SoftwarePackage("luajit", APT))
+    packages.append(SoftwarePackage("hardlink", APT))
+    packages.append(SoftwarePackage("ca-certificates", APT))
+    packages.append(SoftwarePackage("curl", APT))
+    packages.append(SoftwarePackage("fake-hwclock", APT))
+    packages.append(SoftwarePackage("ntp", APT))
+    packages.append(SoftwarePackage("nfs-common", APT))
+    packages.append(SoftwarePackage("usbutils", APT))
+    packages.append(SoftwarePackage("libraspberrypi-dev", APT))
+    packages.append(SoftwarePackage("libraspberrypi-doc", APT))
+    packages.append(SoftwarePackage("libfreetype6-dev", APT))
+    packages.append(SoftwarePackage("python3-rpi.gpio", APT))
+    packages.append(SoftwarePackage("python-rpi.gpio", APT))
+    packages.append(SoftwarePackage("python-pip", APT))
+    packages.append(SoftwarePackage("python3-pip", APT))
+    packages.append(SoftwarePackage("python-picamera", APT))
+    packages.append(SoftwarePackage("python3-picamera", APT))
+    packages.append(SoftwarePackage("x2x", APT))
+    packages.append(SoftwarePackage("wolfram-engine", APT))
+    packages.append(SoftwarePackage("xserver-xorg-video-fbturbo", APT))
+    packages.append(SoftwarePackage("netsurf-common", APT))
+    packages.append(SoftwarePackage("netsurf-gtk", APT))
+    packages.append(SoftwarePackage("rpi-update", APT))
+    packages.append(SoftwarePackage("ftp", APT))
+    packages.append(SoftwarePackage("libraspberrypi-bin", APT))
+    packages.append(SoftwarePackage("python3-pifacecommon", APT))
+    packages.append(SoftwarePackage("python3-pifacedigitalio", APT))
+    packages.append(SoftwarePackage("python3-pifacedigital-scratch-handler", APT))
+    packages.append(SoftwarePackage("python-pifacecommon", APT))
+    packages.append(SoftwarePackage("python-pifacedigitalio", APT))
+    packages.append(SoftwarePackage("i2c-tools", APT))
+    packages.append(SoftwarePackage("man-db", APT))
+    packages.append(SoftwarePackage("cifs-utils", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("midori", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("lxtask", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("epiphany-browser", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("minecraft-pi", APT))
+    packages.append(SoftwarePackage("python-smbus", APT))
+    packages.append(SoftwarePackage("python3-smbus", APT))
+    packages.append(SoftwarePackage("dosfstools", APT))
+    packages.append(SoftwarePackage("ruby", APT))
+    packages.append(SoftwarePackage("iputils-ping", APT))
+    packages.append(SoftwarePackage("scrot", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-x", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-omx", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-plugins-base", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-plugins-good", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-plugins-bad", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-alsa", APT))
+    packages.append(SoftwarePackage("gstreamer1.0-libav", APT))
     packages.append(
-        SoftwarePackage("raspberrypi-sys-mods", "apt", parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
+        SoftwarePackage("raspberrypi-sys-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
     packages.append(
-        SoftwarePackage("raspberrypi-net-mods", "apt", parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
+        SoftwarePackage("raspberrypi-net-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
     packages.append(
-        SoftwarePackage("raspberrypi-ui-mods", "apt", parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
-    packages.append(SoftwarePackage("java-common", "apt"))
-    packages.append(SoftwarePackage("oracle-java8-jdk", "apt"))
-    packages.append(SoftwarePackage("apt-utils", "apt"))
-    packages.append(SoftwarePackage("wpasupplicant", "apt"))
-    packages.append(SoftwarePackage("wireless-tools", "apt"))
-    packages.append(SoftwarePackage("firmware-atheros", "apt"))
-    packages.append(SoftwarePackage("firmware-brcm80211", "apt"))
-    packages.append(SoftwarePackage("firmware-libertas", "apt"))
-    packages.append(SoftwarePackage("firmware-ralink", "apt"))
-    packages.append(SoftwarePackage("firmware-realtek", "apt"))
-    packages.append(SoftwarePackage("libpng12-dev", "apt"))
-    packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi", "apt"))
-    packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi2", "apt"))
-    # packages.append(SoftwarePackage("linux-image-3.12-1-rpi", "apt"))
-    # packages.append(SoftwarePackage("linux-image-3.10-3-rpi", "apt"))
-    # packages.append(SoftwarePackage("linux-image-3.2.0-4-rpi", "apt"))
-    packages.append(SoftwarePackage("linux-image-rpi-rpfv", "apt"))
-    packages.append(SoftwarePackage("linux-image-rpi2-rpfv", "apt"))
-    packages.append(SoftwarePackage("libreoffice", "apt", parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("libreoffice-gtk", "apt", parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("myspell-en-gb", "apt"))
-    packages.append(SoftwarePackage("mythes-en-us", "apt"))
-    packages.append(SoftwarePackage("smartsim", "apt"))
-    packages.append(SoftwarePackage("penguinspuzzle", "apt"))
-    packages.append(SoftwarePackage("alacarte", "apt"))
-    packages.append(SoftwarePackage("rc-gui", "apt"))
-    packages.append(SoftwarePackage("claws-mail", "apt"))
-    packages.append(SoftwarePackage("tree", "apt"))
-    packages.append(SoftwarePackage("greenfoot", "apt"))
-    packages.append(SoftwarePackage("bluej", "apt"))
-    packages.append(SoftwarePackage("raspi-gpio", "apt"))
-    packages.append(SoftwarePackage("libreoffice", "apt"))
-    packages.append(SoftwarePackage("nuscratch", "apt"))
-    packages.append(SoftwarePackage("iceweasel", "apt"))
-    packages.append(SoftwarePackage("mu", "apt"))
-    packages.append(SoftwarePackage("python-twython", "apt"))
-    packages.append(SoftwarePackage("python3-twython", "apt"))
-    packages.append(SoftwarePackage("python-flask", "apt"))
-    packages.append(SoftwarePackage("python3-flask", "apt"))
-    packages.append(SoftwarePackage("python-picraft", "apt"))
-    packages.append(SoftwarePackage("python3-picraft", "apt"))
-    packages.append(SoftwarePackage("python3-codebug-tether", "apt"))
-    packages.append(SoftwarePackage("python3-codebug-i2c-tether", "apt"))
+        SoftwarePackage("raspberrypi-ui-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
+    packages.append(SoftwarePackage("java-common", APT))
+    packages.append(SoftwarePackage("oracle-java8-jdk", APT))
+    packages.append(SoftwarePackage("apt-utils", APT))
+    packages.append(SoftwarePackage("wpasupplicant", APT))
+    packages.append(SoftwarePackage("wireless-tools", APT))
+    packages.append(SoftwarePackage("firmware-atheros", APT))
+    packages.append(SoftwarePackage("firmware-brcm80211", APT))
+    packages.append(SoftwarePackage("firmware-libertas", APT))
+    packages.append(SoftwarePackage("firmware-ralink", APT))
+    packages.append(SoftwarePackage("firmware-realtek", APT))
+    packages.append(SoftwarePackage("libpng12-dev", APT))
+    packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi", APT))
+    packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi2", APT))
+    # packages.append(SoftwarePackage("linux-image-3.12-1-rpi", APT))
+    # packages.append(SoftwarePackage("linux-image-3.10-3-rpi", APT))
+    # packages.append(SoftwarePackage("linux-image-3.2.0-4-rpi", APT))
+    packages.append(SoftwarePackage("linux-image-rpi-rpfv", APT))
+    packages.append(SoftwarePackage("linux-image-rpi2-rpfv", APT))
+    packages.append(SoftwarePackage("libreoffice", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("libreoffice-gtk", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("myspell-en-gb", APT))
+    packages.append(SoftwarePackage("mythes-en-us", APT))
+    packages.append(SoftwarePackage("smartsim", APT))
+    packages.append(SoftwarePackage("penguinspuzzle", APT))
+    packages.append(SoftwarePackage("alacarte", APT))
+    packages.append(SoftwarePackage("rc-gui", APT))
+    packages.append(SoftwarePackage("claws-mail", APT))
+    packages.append(SoftwarePackage("tree", APT))
+    packages.append(SoftwarePackage("greenfoot", APT))
+    packages.append(SoftwarePackage("bluej", APT))
+    packages.append(SoftwarePackage("raspi-gpio", APT))
+    packages.append(SoftwarePackage("libreoffice", APT))
+    packages.append(SoftwarePackage("nuscratch", APT))
+    packages.append(SoftwarePackage("iceweasel", APT))
+    packages.append(SoftwarePackage("mu", APT))
+    packages.append(SoftwarePackage("python-twython", APT))
+    packages.append(SoftwarePackage("python3-twython", APT))
+    packages.append(SoftwarePackage("python-flask", APT))
+    packages.append(SoftwarePackage("python3-flask", APT))
+    packages.append(SoftwarePackage("python-picraft", APT))
+    packages.append(SoftwarePackage("python3-picraft", APT))
+    packages.append(SoftwarePackage("python3-codebug-tether", APT))
+    packages.append(SoftwarePackage("python3-codebug-i2c-tether", APT))
 
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
-    packages.append(SoftwarePackage("libjpeg-dev", "apt"))
-    packages.append(SoftwarePackage("pillow", "pip"))
-    packages.append(SoftwarePackage("sense-hat", "apt"))
-    packages.append(SoftwarePackage("nodered", "apt"))
-    packages.append(SoftwarePackage("libqt4-network", "apt"))  # Remove when Sonic-Pi update fixes dependency issue.
-    packages.append((SoftwarePackage("python-sense-emu", "apt")))
-    packages.append((SoftwarePackage("python3-sense-emu", "apt")))
-    packages.append((SoftwarePackage("sense-emu-tools", "apt")))
-    packages.append((SoftwarePackage("python-sense-emu-doc", "apt")))
+    packages.append(SoftwarePackage("libjpeg-dev", APT))
+    packages.append(SoftwarePackage("pillow", PIP))
+    packages.append(SoftwarePackage("sense-hat", APT))
+    packages.append(SoftwarePackage("nodered", APT))
+    packages.append(SoftwarePackage("libqt4-network", APT))  # Remove when Sonic-Pi update fixes dependency issue.
+    packages.append((SoftwarePackage("python-sense-emu", APT)))
+    packages.append((SoftwarePackage("python3-sense-emu", APT)))
+    packages.append((SoftwarePackage("sense-emu-tools", APT)))
+    packages.append((SoftwarePackage("python-sense-emu-doc", APT)))
+    packages.append((SoftwarePackage("gvfs", APT)))
 
-    packages.append(SoftwarePackage("bindfs", "apt", install_on_server=True))
-    packages.append(SoftwarePackage("python3-feedparser", "apt", install_on_server=True))
-    packages.append(SoftwarePackage("ntp", "apt", install_on_server=True))
+    packages.append(SoftwarePackage("bindfs", APT, install_on_server=True))
+    packages.append(SoftwarePackage("python3-feedparser", APT, install_on_server=True))
+    packages.append(SoftwarePackage("ntp", APT, install_on_server=True))
 
     for package in packages:
         package.install_package()
@@ -1523,15 +1530,17 @@ def install_chroot_software():
 
     python_packages = []
 
-    python_packages.append(SoftwarePackage("gpiozero", "pip"))
-    python_packages.append(SoftwarePackage("pgzero", "pip"))
-    python_packages.append(SoftwarePackage("pibrella", "pip"))
-    python_packages.append(SoftwarePackage("skywriter", "pip"))
-    python_packages.append(SoftwarePackage("unicornhat", "pip"))
-    python_packages.append(SoftwarePackage("piglow", "pip"))
-    python_packages.append(SoftwarePackage("pianohat", "pip"))
-    python_packages.append(SoftwarePackage("explorerhat", "pip"))
-    python_packages.append(SoftwarePackage("twython", "pip"))
+    python_packages.append(SoftwarePackage("gpiozero", PIP))
+    python_packages.append(SoftwarePackage("pgzero", PIP))
+    python_packages.append(SoftwarePackage("pibrella", PIP))
+    python_packages.append(SoftwarePackage("skywriter", PIP))
+    python_packages.append(SoftwarePackage("unicornhat", PIP))
+    python_packages.append(SoftwarePackage("piglow", PIP))
+    python_packages.append(SoftwarePackage("pianohat", PIP))
+    python_packages.append(SoftwarePackage("explorerhat", PIP))
+    python_packages.append(SoftwarePackage("twython", PIP))
+    python_packages.append(SoftwarePackage("python-sonic", PIP))
+
 
     for python_package in python_packages:
         python_package.install_package()
