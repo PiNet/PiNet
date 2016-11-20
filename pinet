@@ -35,26 +35,36 @@ cpuArch="armhf"
 #------------------------
 
 SetupRepositories(){
-        ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
-        if [ "$ReleaseChannel" = "stable" ]; then
-                ReleaseBranch="master"
-        else
-                if [ "$ReleaseChannel" = "dev" ]; then
-                        ReleaseBranch="dev"
-                else
-                    channelLength=${#ReleaseChannel}
-                    if [ channelLength > 9 ]; then
-                        checkChannelCustom=${ReleaseChannel:0:7}
-                        if [ "$checkChannelCustom" = "custom:" ]; then
-                            ReleaseBranch=${ReleaseChannel:7:channelLength}
-                        else
-                            ReleaseBranch="master"
-                        fi
-                    else
-                        ReleaseBranch="master"
-                fi
-                fi
-        fi
+    ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
+    case "$ReleaseChannel" in
+        stable)
+            ReleaseBranch="stable"
+        ;;
+
+        beta)
+            ReleaseBranch="beta"
+        ;;
+
+        dev)
+            ReleaseBranch="beta"
+        ;;
+
+        alpha)
+            ReleaseBranch="alpha"
+        ;;
+
+        "custom:*")
+            ReleaseBranch=${ReleaseChannel:7:channelLength}
+        ;;
+
+        *)
+            ReleaseBranch="stable"
+        ;;
+    esac
+
+
+
+
 }
 
 LegacyFixes() {
