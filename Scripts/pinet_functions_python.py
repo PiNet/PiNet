@@ -31,6 +31,7 @@ import traceback
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree
+from collections import OrderedDict
 from logging import debug
 from subprocess import Popen, PIPE, check_output, CalledProcessError
 
@@ -415,7 +416,13 @@ def get_release_channel_old():
 
 def get_release_channel():
     global RELEASE_BRANCH
-    release_channel = get_config_file_parameter("ReleaseChannel").lower()
+    release_channel = get_config_file_parameter("ReleaseChannel")
+    if release_channel:
+        release_channel = release_channel.lower()
+    else:
+        # No ReleaseChannel config value found, assuming Stable.
+        RELEASE_BRANCH = STABLE
+        return
     if release_channel == "stable":
         RELEASE_BRANCH = STABLE
     elif release_channel == "beta":
@@ -712,10 +719,15 @@ def whiptail_box(whiltailType, title, message, return_true_false, height="8", wi
 
 def whiptail_select_menu(title, message, items, height="16", width="78", other="5"):
     cmd = ["whiptail", "--title", title, "--menu", message, height, width, other]
-    for x in range(0, len(items)):
-        cmd.append(items[x])
-        cmd.append("a")
-    cmd.append("--noitem")
+    if isinstance(items, list):
+        for x in range(0, len(items)):
+            cmd.append(items[x])
+            cmd.append("a")
+        cmd.append("--noitem")
+    elif isinstance(items, OrderedDict):
+        for item, item_value in items.items():
+            cmd.append(item)
+            cmd.append(item_value)
     p = Popen(cmd, stderr=PIPE)
     out, err = p.communicate()
     if str(p.returncode) == "0":
@@ -989,58 +1001,69 @@ def check_update(current_version):
         print(_("No Internet Connection"))
         return return_data(0)
     download_file("http://bit.ly/pinetCheckCommits", "/dev/null")
-    d = feedparser.parse(REPOSITORY + '/commits/' + RELEASE_BRANCH + '.atom')
-    data = (d.entries[0].content[0].get('value'))
-    data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
-    data = data.split("\n")
-    this_version = get_version_number(data)
+    pinet_software_update_url = "{}/commits/{}.atom".format(REPOSITORY, RELEASE_BRANCH)
+    d = feedparser.parse(pinet_software_update_url)
+    try:
+        data = (d.entries[0].content[0].get('value'))
 
-    if compare_versions(current_version, this_version):
-        whiptail_box("msgbox", _("Update detected"),
-                     _("An update has been detected for PiNet. Select OK to view the Release History."), False)
-        display_change_log(current_version)
-    else:
-        print(_("No PiNet software updates found"))
-        # print(this_version)
-        # print(current_version)
-        return_data(0)
+        data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
+        data = data.split("\n")
+        this_version = get_version_number(data)
+
+        if compare_versions(current_version, this_version):
+            whiptail_box("msgbox", _("Update detected"),
+                         _("An update has been detected for PiNet. Select OK to view the Release History."), False)
+            display_change_log(current_version)
+        else:
+            print(_("No PiNet software updates found"))
+            return_data(0)
+    except IndexError:
+        print(_("Unable to check for PiNet updates, unable to download {}.".format(pinet_software_update_url)))
 
 
 def check_kernel_file_update_web():
     # downloadFile(RAW_REPOSITORY +"/" + RELEASE_BRANCH + "/boot/version.txt", "/tmp/kernelVersion.txt")
-    download_file(RAW_BOOT_REPOSITORY + "/" + RELEASE_BRANCH + "/boot/version.txt", "/tmp/kernelVersion.txt")
+    kernel_version_url = "{}/{}/boot/version.txt".format(RAW_BOOT_REPOSITORY, RELEASE_BRANCH)
+    download_file(kernel_version_url, "/tmp/kernelVersion.txt")
     user = os.environ['SUDO_USER']
     current_path = "/home/" + user + "/PiBoot/version.txt"
     if (os.path.isfile(current_path)) == True:
         current = int(read_file(current_path)[0])
-        new = int(read_file("/tmp/kernelVersion.txt")[0])
-        if new > current:
-            return_data(1)
-            return False
-        else:
-            return_data(0)
-            print(_("No kernel updates found"))
-            return True
+        try:
+            new = int(read_file("/tmp/kernelVersion.txt")[0])
+            if new > current:
+                return_data(1)
+                return False
+            else:
+                return_data(0)
+                print(_("No kernel updates found"))
+                return True
+        except (ValueError, TypeError):  # If can't find the update data
+            print(_("Unable to check for kernel updates, unable to download {}.".format(kernel_version_url)))
+
     else:
         return_data(0)
         print(_("No kernel updates found"))
 
 
 def check_kernel_updater():
-    download_file(RAW_REPOSITORY + "/" + RELEASE_BRANCH + "/Scripts/kernelCheckUpdate.sh", "/tmp/kernelCheckUpdate.sh")
+    kernel_updater_version_url = "{}/{}/Scripts/kernelCheckUpdate.sh".format(RAW_REPOSITORY, RELEASE_BRANCH)
+    download_file(kernel_updater_version_url, "/tmp/kernelCheckUpdate.sh")
 
     if os.path.isfile("/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"):
-
-        current_version = int(get_config_file_parameter("version", True,
-                                                        config_file_path="/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"))
-        new_version = int(get_config_file_parameter("version", True, config_file_path="/tmp/kernelCheckUpdate.sh"))
-        if current_version < new_version:
-            install_check_kernel_updater()
-            return_data(1)
-            return False
-        else:
-            return_data(0)
-            return True
+        try:
+            current_version = int(get_config_file_parameter("version", True,
+                                                            config_file_path="/opt/ltsp/armhf/etc/init.d/kernelCheckUpdate.sh"))
+            new_version = int(get_config_file_parameter("version", True, config_file_path="/tmp/kernelCheckUpdate.sh"))
+            if current_version < new_version:
+                install_check_kernel_updater()
+                return_data(1)
+                return False
+            else:
+                return_data(0)
+                return True
+        except (ValueError, TypeError): #If can't find the update data
+            print(_("Unable to check for kernel updater updates, unable to download {}.".format(kernel_updater_version_url)))
     else:
         install_check_kernel_updater()
         return_data(1)
@@ -2027,6 +2050,24 @@ def verify_correct_group_users():
             add_linux_user_to_group(user.pw_name, missing_group)
 
 
+def select_release_channel():
+    whiptail_box("msgbox", _("Release channel selection"), _("There are a number of different release channels (branches) for PiNet. The default is stable which is suitable for production use. There is also Beta if you like testing new features, but are happy to accept the risk it could be buggy. Finally, there is Alpha. Alpha is the expermiental versions if you want to help test early copies of PiNet."), return_true_false=False, height="16")
+    current_channel = get_config_file_parameter("ReleaseChannel")
+    if not current_channel:
+        current_channel = _("no channel selected, defaulting to stable")
+    release = decode_bash_output(whiptail_select_menu(_("Release Channel"), _("Select a release channel to use. If in doubt, select Stable. Your current selected channel is \"{}\".".format(current_channel)), OrderedDict([("Stable", _("Extensively tested. Recommended for production use.")), ("Beta", _("Partially tested. Suitable in non production environment.")), ("Alpha", _("Experimental & untested. Use only for testing bleeding edge features."))]), width="80"), True, False)
+    if release in ["Stable", "Beta", "Alpha"]:
+        set_config_parameter("ReleaseChannel", str(release).lower())
+        return_data(1)
+    elif not get_config_file_parameter("ReleaseChannel"):
+        # Isn't anything in the config file under ReleaseChannel, default to stable
+        set_config_parameter("ReleaseChannel", "stable")
+        return_data(1)
+    else:
+        # No change needed
+        return_data(0)
+
+
 # ------------------------------Main program-------------------------
 
 if __name__ == "__main__":
@@ -2086,3 +2127,5 @@ if __name__ == "__main__":
             install_chroot_software()
         elif sys.argv[1] == "verifyCorrectGroupUsers":
             verify_correct_group_users()
+        elif sys.argv[1] == "selectReleaseChannel":
+            select_release_channel()

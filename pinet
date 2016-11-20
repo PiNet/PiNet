@@ -2139,7 +2139,7 @@ InstallRaspberryPiUIMods(){
 		CheckRaspberryPiUIModsAllUsers 
 }
 
-ChooseReleaseChannel(){
+ChooseReleaseChannelOld(){
 	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Development" $"Would you like to use the stable or development (dev) software update channels? Stable is recommended. Do not use the development (dev) channels in a production environment (for example a school) as stability is not guaranteed. " 10 78 
 	if [ $? -eq 0 ]; then 
 		UpdateConfig ReleaseChannel "Stable"
@@ -2151,9 +2151,24 @@ ChooseReleaseChannel(){
 		exec /bin/bash pinet
 		exit
 	fi
-	
 }
 
+ChooseReleaseChannel(){
+    # Select a release channel (branch) for PiNet to use for software updates etc.
+    $p "selectReleaseChannel"
+    exitstatus=$(gp)
+    SetupRepositories
+    if [ $1 = "Restart" ]; then
+        if [ "$exitstatus" = "1" ]; then
+            # If the release channel has changed, restart PiNet software to check for updates etc
+            exec /bin/bash pinet
+            exit
+        else
+            Menu
+        fi
+    fi
+
+}
 GroupCheck(){
 	#Checks if all users permissions are correct in groups. Front end for fixGroups
 	whiptail --title $"Groupcheck" --msgbox $"Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
