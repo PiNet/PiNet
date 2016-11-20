@@ -2051,7 +2051,7 @@ def verify_correct_group_users():
 
 
 def select_release_channel():
-    whiptail_box("msgbox", _("Release channel selection"), _("There are a number of different release channels (branches) for PiNet. The default is stable which is suitable for production use. There is also Beta if you like testing new features, but are happy to accept the risk it could be buggy. Finally, there is Alpha. Alpha is the expermiental versions if you want to help test early copies of PiNet."), return_true_false=False, height="16")
+    whiptail_box("msgbox", _("Release channel selection"), _("There are a number of different release channels (branches) for PiNet. The default is stable which is suitable for production use. There is also Beta if you like testing new features, but are happy to accept the risk it could be buggy. Finally, there is Alpha. Alpha is the expermiental versions if you want to help test early copies of PiNet."), return_true_false=False, height="11")
     current_channel = get_config_file_parameter("ReleaseChannel")
     if not current_channel:
         current_channel = _("no channel selected, defaulting to stable")
@@ -2073,6 +2073,7 @@ def select_release_channel():
 if __name__ == "__main__":
     get_release_channel()
     setup_logger()
+    print(RELEASE_BRANCH)
 
     if len(sys.argv) == 1:
         print(_("This python script does nothing on its own, it must be passed stuff"))

@@ -20,14 +20,14 @@ Timeout=1
 PythonFunctions="/usr/local/bin/pinet_functions_python.py"
 PythonStart="python3"
 p="$PythonStart $PythonFunctions"
-RepositoryBase="https://github.com/pinet/"
-RepositoryName="pinet"
+RepositoryBase="https://github.com/PiNet/"
+RepositoryName="PiNet"
 BootRepositoryName="PiNet-Boot"
-RawRepositoryBase="https://raw.github.com/pinet/"
+RawRepositoryBase="https://raw.github.com/PiNet/"
 Repository="$RepositoryBase$RepositoryName"
 BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
-ReleaseBranch="master"  #Overwriten later on in SetupRepositories()
+ReleaseBranch="jessie-stable"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
 cpuArch="armhf"
 
@@ -1653,6 +1653,7 @@ CheckTerminalSize(){
                 b=';90t'
                 printf "$a$LINES$b"
         fi
+        sleep 0.5 # Time to allow the terminal to resize.
 }
 
 listStatus(){
@@ -2948,7 +2949,7 @@ echo $"Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
 CheckForRaspiLTSP
 
-
+CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 if [ ! -d /opt/ltsp/armhf ]; then
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full PiNet installation?" 8 78
 		exitstatus=$?
@@ -2959,7 +2960,6 @@ if [ ! -d /opt/ltsp/armhf ]; then
     		Menu
 		fi
 fi
-CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 ConfigFileRead  #Reads the main configuration file (/etc/pinet) and loads all values in as environmental variables
 
 if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected, if not asks for one
