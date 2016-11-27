@@ -374,7 +374,6 @@ def group_apt_installer(packages):
             if packages_to_install:
                 print("Going to install {}".format(" ".join(packages_to_install)))
                 returned = ltsp_chroot("apt-get install -y {}".format(" ".join(packages_to_install)), ignore_errors=True)
-                print("RETURNED = {}".format(returned))
                 if returned != True:
                     for single_package in packages_to_install:
                         install_apt_package(single_package)
@@ -384,14 +383,39 @@ def group_apt_installer(packages):
 
 
 def get_package_version_to_install(package_name):
+    """
+    Check if package being installed should have a specific version installed, so can be held on that version
+    :param package_name: Name of package to check.
+    :return: Package version to be installed, or None.
+    """
     current_time = time.time()
     pinet_package_versions_path = "/opt/PiNet/pinet-package-versions.txt"
+    pinet_bootfiles_versions_path = "/opt/PiNet/PiBootBackup/apt_version.txt"
+
+    # Check first if the package is included in /opt/PiNet/PiBootBackup/boot/apt_version.txt. If not, then fall back to general package list at /opt/PiNet/pinet-package-versions.txt.
+    bootfile_package_version = get_config_file_parameter(package_name, config_file_path=pinet_bootfiles_versions_path)
+
     # If the file doesn't exist or is over 12 hours old, get the newest copy off the web.
     if not os.path.isfile(pinet_package_versions_path) or ((current_time - os.path.getctime(pinet_package_versions_path)) / 3600 > 12):
         make_folder("/opt/PiNet") # In case folder doesn't exist yet.
-        remove_file(pinet_package_versions_path)
-        download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path)
-    return get_config_file_parameter(package_name, config_file_path=pinet_package_versions_path)
+        for download_attempts in range(1, 4): # Attempt downloading 3 times with a 30s gap between each if fails first time.
+            remove_file(pinet_package_versions_path)
+            download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path)
+            if read_file(pinet_package_versions_path)[0] != "404: Not Found":
+                # If file correctly downloaded, skip downloading again.
+                break
+            fileLogger.warning("Now able to download package_versions.txt file from {}. Already attempted {} time.".format(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), download_attempts))
+            if download_attempts == 3:
+                # Not able to get the file correctly downloaded. Going to give up and return None after deleting the file.
+                remove_file(pinet_package_versions_path)
+                if bootfile_package_version:
+                    return bootfile_package_version
+            time.sleep(30) # Wait for 30s to allow for any issues with web connectivity.
+
+    if bootfile_package_version:
+        return bootfile_package_version
+    else:
+        return get_config_file_parameter(package_name, config_file_path=pinet_package_versions_path)
 
 
 def make_folder(directory):
@@ -1552,6 +1576,8 @@ def install_chroot_software():
     packages.append(SoftwarePackage("rpi-update", APT))
     packages.append(SoftwarePackage("ftp", APT))
     packages.append(SoftwarePackage("libraspberrypi-bin", APT))
+    packages.append(SoftwarePackage("raspberrypi-kernel", APT))
+    packages.append(SoftwarePackage("raspberrypi-bootloader", APT))
     packages.append(SoftwarePackage("python3-pifacecommon", APT))
     packages.append(SoftwarePackage("python3-pifacedigitalio", APT))
     packages.append(SoftwarePackage("python3-pifacedigital-scratch-handler", APT))
