@@ -570,34 +570,30 @@ if [ "$RESULT" = "y" ]; then
 		sleep 8
 	fi
 fi
-	
-
 }
 
 
 Finished() {
 #Function performing any actions that should happen after the boot image has been created
 whiptail --title $"Install complete" --msgbox $"The client install is complete, a boot.img file has been placed in /root folder, write this to an sd card" 16 78
-
-
 }
 
 
 RaspiTheme(){
-#Grabs a copy of the custom Raspberry Pi login screen and applies it
+#Grabs a copy of the PiNet desktop/login theme and installs
 
-rm -rf pinet
-git clone --depth 1 $Repository.git
-cp -r pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
+rm -rf /tmp/pinet
+git clone --no-single-branch --depth 1 $Repository.git /tmp/pinet #Clones main repository, including boot files
+(cd "/tmp/pinet"; git checkout "$ReleaseBranch")
+cp -r /tmp/pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
 rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
-rm -rf pinet
+rm -rf /tmp/pinet
 cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png
 sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100
 
-
-
 }
+
 
 NBDRun() {
 #Checks if it should be auto NBD compressing or not, if it should be, it recompresses the image
@@ -613,6 +609,7 @@ if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
 		whiptail --title $"WARNING" --msgbox $"Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
 	fi
 fi
+
 }
 
 NBDSetup() {

@@ -1054,11 +1054,16 @@ def check_kernel_file_update_web():
     download_file(kernel_version_url, "/tmp/kernelVersion.txt")
     user = os.environ['SUDO_USER']
     current_path = "/home/" + user + "/PiBoot/version.txt"
-    if (os.path.isfile(current_path)) == True:
+    raspbian_boot_fiels_copy_path = "/opt/ltsp/armhf/bootfiles/version.txt"
+    if os.path.isfile(current_path):
         current = int(read_file(current_path)[0])
+        if os.path.isfile(raspbian_boot_fiels_copy_path):
+            raspbian_current = int(read_file(raspbian_boot_fiels_copy_path)[0])
+        else:
+            raspbian_current = None
         try:
             new = int(read_file("/tmp/kernelVersion.txt")[0])
-            if new > current:
+            if new > current or (raspbian_current and new > raspbian_current):
                 return_data(1)
                 return False
             else:
@@ -2162,6 +2167,19 @@ def update_sd():
         # If not connected to the internet and no local backup copy of boot files is available.
         whiptail_box("msgbox", _("Internet connection unavailable"), _("Unable to download boot files as unable to detect an active internet connection. Please connect to the internet to proceed."), False)
         return False
+
+    if os.path.isdir("/opt/ltsp/armhf/bootfiles"):
+        user = os.environ['SUDO_USER']
+        current_path = "/home/" + user + "/PiBoot/version.txt"
+        raspbian_boot_fiels_copy_path = "/opt/ltsp/armhf/bootfiles/version.txt"
+        if os.path.isfile(current_path):
+            current = int(read_file(current_path)[0])
+            raspbian_current = int(read_file(raspbian_boot_fiels_copy_path)[0])
+            if current > raspbian_current:
+                remove_file("/opt/ltsp/armhf/bootfiles")
+                copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
+                remove_file("/opt/ltsp/armhf/bootfiles/cmdline.txt")
+
 
 
 def create_sd_card_image_file():
