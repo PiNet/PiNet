@@ -111,6 +111,11 @@ LegacyFixes() {
 	if [ -f "/usr/local/bin/pinet-functions-python.py" ]; then
 	    mv "/usr/local/bin/pinet-functions-python.py" "/usr/local/bin/pinet_functions_python.py"
 	fi
+
+    # Make sure that all the required Python libraries are installed
+	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
+	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
+	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
 		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update"
@@ -293,20 +298,10 @@ checkInternet(){
 if [ ! "$CheckInternetConnection" = "false" ]; then
 	$p CheckInternet $Timeout
 	result=$(gp)
-	echo $result
+	return $result
 else
-	echo 0
+	return 0
 fi
-#WGET="/usr/bin/wget"
-
-#$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
-#if [ ! -s /tmp/google.idx ]
-#then
-#    #return 1
-#    echo 1
-#else
-#    echo 0
-#fi
 
 }
 
@@ -327,8 +322,8 @@ UpdateSD() {
 #echo "$1"
 #if [ $1 -eq 0 ]; then
 #whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
-local Internet=$(checkInternet)
-if [ $Internet -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
 	if [ ! -d "/opt/PiNet" ]; then
 		mkdir /opt/PiNet
 	fi
@@ -347,7 +342,7 @@ else
 		whiptail --title $"Error" --msgbox $"You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
 		toReturn=1
 	else
-		whiptail --title $"Internet" --msgbox $"I detected you are not connected to the internet. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
+		whiptail --title $"Internet" --msgbox $"Unable to detect an active internet connection. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
 		UpdateIP
 		toReturn=0
 	fi
@@ -382,7 +377,7 @@ whiptail --title $"IP address" --yesno $"I have detected your current IP address
 
 exitstatus=$?
 if [ ! $exitstatus = 0 ]; then
-	IP=$(whiptail --title $"IP address" --inputbox $"Please enter an IP address to use on the SD cards" 8 78 $IP 3>&1 1>&2 2>&3)
+	IP=$(whiptail --title $"IP address" --inputbox $"Please enter an IP address (of this PiNet server) to use on the SD cards." 8 78 $IP 3>&1 1>&2 2>&3)
 	exitstatus=$?
 fi
 
@@ -1312,7 +1307,9 @@ Updater(){
 
 CheckReleases(){
 #Checks if there is a new software release. Mainly uses CheckUpdate on Python side. Also runs sendStats.
-	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install python3-feedparser  )
+	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
+	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
+	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
 	$p sendStats
 	$p CheckUpdate $version
 	exitstatus=$(gp)
@@ -1367,7 +1364,8 @@ AddSambaUser(){
 
 UpdateAll(){
 #Does a full system update on the server and on the Raspberry Pi OS
-	if [ $(checkInternet) -eq 0 ]; then
+    checkInternet
+	if [ $? -eq 0 ]; then
 		apt-get update && apt-get upgrade -y
 		ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
 		AddSoftware
@@ -1713,7 +1711,8 @@ done
 
 CheckDesktopShortcut(){
 	#Checks if the PiNet desktop shortcut exists. If not it adds it
-if [ $(checkInternet) -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
 	AddDesktopShortcutToUser $SUDO_USER
 
 	if [ ! -f "/usr/share/pixmaps/pinet-icon.png" ] || [ ! -f "/opt/ltsp/armhf/usr/share/pixmaps/pinet-icon.png" ]; then
@@ -2496,8 +2495,9 @@ EpoptesMenu() {
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
-    Install-Epoptes) 
-    if [ $(checkInternet) -eq 0 ]; then
+    Install-Epoptes)
+    checkInternet
+    if [ $? -eq 0 ]; then
     	whiptail --title $"Epoptes install" --yesno $"I am now going to install Epoptes classroom management software on the server and Raspberry Pis. Would you like to continue?" 8 78
     	if [ $? -eq 0 ];then
     	
@@ -2671,8 +2671,8 @@ esac
 
 ExtraSoftware() {
 #No longer used, replaced with installSoftwareList() in pinet_functions_python.py
-
-if [ $(checkInternet) -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
   MENUEPT=$(whiptail --title "Extra Software Submenu" --cancel-button "Finished" --menu "What would you like to do?" 20 100 10 \
     "Install-Libreoffice" "Libreoffice is a full free office suite, similar to Microsoft office " \
     "Install-Arduino" "The Arduino IDE is for programming and interacting with Arduinos" \
@@ -2791,7 +2791,8 @@ FullInstall(){
 }
 
 RebuildOS(){
-if [ $(checkInternet) -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
     		rm -rf /opt/ltsp/armhf
     		rm -rf /var/lib/tftpboot/ltsp/armhf
 			$p initialInstallSoftwareList
@@ -2968,8 +2969,8 @@ fi
 
 SetupRepositories #Sets up the correct branch varliables as selected in ChooseReleaseChannel()
 
-intStat=$(checkInternet)  #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
-if [ $intStat -eq 0 ]; then
+checkInternet #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
+if [ $? -eq 0 ]; then
 	if [ ! "$DisableUpdateChecking" = "true" ]; then
 			CheckReleases
 			checkKernelFileUpdateWeb
