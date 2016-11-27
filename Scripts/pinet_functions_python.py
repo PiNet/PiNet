@@ -557,7 +557,7 @@ def download_file(url, save_location):
         fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
         return True
     except requests.RequestException as e:
-        fileLogger.debug("Failed to download file from " + url + " to " + save_location + ". Error was " + e.response)
+        fileLogger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
         return False
 
 
@@ -775,7 +775,7 @@ def whiptail_box_yes_no(title, message, return_true_false, height="8", width="78
 
 # ---------------- Main functions -------------------
 
-def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False, add_if_not_exists=True):
+def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False, add_if_not_exists=True, replace_entire_line = True):
     """
     Simple string replacer for text files. Allows replacing a line in a text file if that line contains the
     provided string. If the line does not exist, add it.
@@ -784,13 +784,17 @@ def replace_in_text_file(file_path, string_to_search_for, new_string, replace_al
     :param new_string: String to replace the line with if found.
     :param replace_all_uses: Replace all uses in the file or just first found use.
     :param add_if_not_exists: Add line if it doesn't exist in the file
+    :param replace_entire_line: If found, replace the entire line. If false, does an inplace replace.
     :return: If string was found in file and replaced, return True. If appended on end of file, return False.
     """
     text_file = read_file(file_path)
     found = False
     for index, line in enumerate(text_file):
         if string_to_search_for in line:
-            text_file[index] = new_string
+            if replace_entire_line:
+                text_file[index] = new_string
+            else:
+                text_file[index] = text_file[index].replace(string_to_search_for, new_string)
             found = True
             if not replace_all_uses:
                 break
@@ -1000,9 +1004,11 @@ def get_version_number(data):
 def check_update(current_version):
     if not internet_on(5, False):
         print(_("No Internet Connection"))
-        return return_data(0)
+        return_data(0)
+        return
     download_file("http://bit.ly/pinetCheckCommits", "/dev/null")
     pinet_software_update_url = "{}/commits/{}.atom".format(REPOSITORY, RELEASE_BRANCH)
+    debug("Checking for updates from {}.".format(pinet_software_update_url))
     d = feedparser.parse(pinet_software_update_url)
     try:
         data = (d.entries[0].content[0].get('value'))
@@ -1010,7 +1016,11 @@ def check_update(current_version):
         data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
         data = data.split("\n")
         this_version = get_version_number(data)
-
+        if not this_version:
+            print(_("Unable to perform automatic update checks on this branch as the standard release format isn't followed. To update, use the manual Update-PiNet option."))
+            debug("Unable to perform automatic update check on the currently selected branch - {}. Current version is {} and attempt to get new version returned {}".format(RELEASE_BRANCH, current_version, this_version))
+            return_data(0)
+            return
         if compare_versions(current_version, this_version):
             whiptail_box("msgbox", _("Update detected"),
                          _("An update has been detected for PiNet. Select OK to view the Release History."), False)
@@ -1020,6 +1030,7 @@ def check_update(current_version):
             return_data(0)
     except IndexError:
         print(_("Unable to check for PiNet updates, unable to download {}.".format(pinet_software_update_url)))
+        return_data(0)
 
 
 def check_kernel_file_update_web():
@@ -1674,7 +1685,7 @@ def generate_server_id():
     set_config_parameter("ServerID", str(ID))
 
 
-def get_ip_address():
+def get_ip_address_old():
     """
     Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
     If there is any issues, defaults to returning 0.0.0.0.
@@ -1686,6 +1697,17 @@ def get_ip_address():
     except urllib.error:
         ip_address = "0.0.0.0"
     return ip_address
+
+
+def get_external_ip_address():
+    """
+    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    If there is any issues, defaults to returning 0.0.0.0.
+    """
+    try:
+        return requests.get("http://myip.dnsdynamic.org/").text
+    except requests.RequestException:
+        return "0.0.0.0"
 
 
 def send_status():
@@ -1717,7 +1739,7 @@ def send_status():
         organisation_name = str(get_config_file_parameter("OrganisationName"))
         release_channel = str(get_config_file_parameter("ReleaseChannel"))
 
-    ip_address = get_ip_address()
+    ip_address = get_external_ip_address()
 
     command = 'curl --connect-timeout 2 --data "ServerID=' + server_id + "&" + "PiNetVersion=" + pinet_version + "&" + "Users=" + users + "&" + "KernelVersion=" + kernel_version + "&" + "ReleaseChannel=" + release_channel + "&" + "IPAddress=" + ip_address + "&" + "City=" + city + "&" + "OrganisationType=" + organisation_type + "&" + "OrganisationName=" + organisation_name + '"  https://secure.pinet.org.uk/pinetstatsv1.php -s -o /dev/null 2>&1'
     run_bash(command, ignore_errors=True)
@@ -2073,7 +2095,6 @@ def select_release_channel():
 if __name__ == "__main__":
     get_release_channel()
     setup_logger()
-    print(RELEASE_BRANCH)
 
     if len(sys.argv) == 1:
         print(_("This python script does nothing on its own, it must be passed stuff"))
