@@ -1305,6 +1305,14 @@ Updater(){
 
 }
 
+VerifyPythonPackages(){
+#Verify needed Python packages are installed. If not installed, install them.
+    $PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
+	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
+	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
+}
+
+
 CheckReleases(){
 #Checks if there is a new software release. Mainly uses CheckUpdate on Python side. Also runs sendStats.
 	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
@@ -2949,9 +2957,10 @@ checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to 
 echo $"Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
 CheckForRaspiLTSP
+VerifyPythonPackages
 
 CheckTerminalSize  #Changes the terminal to the minimum size if is too small
-if [ ! -d /opt/ltsp/armhf ]; then
+if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full PiNet installation?" 8 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
