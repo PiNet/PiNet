@@ -38,6 +38,11 @@ from subprocess import Popen, PIPE, check_output, CalledProcessError
 import datetime
 import feedparser
 import requests
+try:
+    import netifaces
+except ImportError:
+    print("Unable to import netifaces. Please run sudo pip3 install netifaces")
+    netifaces = None
 
 
 # basicConfig(level=WARNING)
@@ -670,6 +675,16 @@ def copy_file_folder(src, dest):
         else:
             print('Directory not copied. Error: %s' % e)
             fileLogger.debug('Directory not copied. Error: %s' % e)
+
+
+def set_current_user_to_owner(path):
+    """
+    Sets provided owner of file/folder provided to the SUDO_USER. Leaves group same as was previously.
+    :param path: File path to file/folder to set owner
+    """
+    uid = pwd.getpwnam(os.getenv("SUDO_USER")).pw_uid
+    current_gid = os.stat(path).st_gid
+    os.chown(path, uid, current_gid)
 
 
 # ----------------Whiptail functions-----------------
@@ -2090,6 +2105,89 @@ def select_release_channel():
         return_data(0)
 
 
+
+def get_internal_ip_address():
+    # Using netiface, grab the current internal IP address. If 2 network cards, pick alphabetically
+    try:
+        interfaces = netifaces.interfaces()
+        for interface in interfaces:
+            if str(interface).lower().startswith("e"):
+                addr = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]["addr"]
+                if addr:
+                    return addr
+    except KeyError:
+        pass
+    return "0.0.0.0"
+
+
+def update_sd_card_ip_address():
+    local_ip_address = get_internal_ip_address()
+    continue_on = whiptail_box_yes_no(_("IP Address"), _("Your detected local IP address is {}. This will be added to the SD card boot files. If it has been detected incorrectly, select change below. Otherwise, select continue.".format(local_ip_address)), return_true_false = True, custom_yes=_("Continue"), custom_no=_("Change"), height="9")
+    if not continue_on:
+        local_ip_address = str(whiptail_box("inputbox", _("Custom IP address"),_("Enter the IP address you plan to use for your PiNet server below."),False, return_err=True))
+        if not local_ip_address:
+            return
+    pass # Some sort of check in case they hit cancel?
+    home_folder_path = os.path.expanduser("~")
+    remove_file("{}/PiBoot/".format(home_folder_path))
+    copy_file_folder("/opt/PiNet/PiBootBackup/", "{}/PiBoot/".format(home_folder_path))
+    if get_config_file_parameter("NBD") == "true":
+        remove_file("{}/PiBoot/cmdline.txt".format(home_folder_path))
+        copy_file_folder("{}/PiBoot/cmdlineNBD.txt".format(home_folder_path), "{}/PiBoot/cmdline.txt".format(home_folder_path))
+    replace_in_text_file("{}/PiBoot/cmdline.txt".format(home_folder_path), "1.1.1.1", str(local_ip_address), replace_entire_line=False)
+    set_current_user_to_owner("{}/PiBoot/".format(home_folder_path))
+    run_bash("nautilus ~/PiBoot > /dev/null 2>&1 &", run_as_sudo=False)
+    create_sd_card_image_file()
+
+
+def update_sd():
+    if internet_on():
+        make_folder("/opt/PiNet")
+        remove_file("/tmp/PiBoot")
+        run_bash("git clone --no-single-branch --depth 1 {}.git /tmp/PiBoot".format(REPOSITORY_BASE + BOOT_REPOSITORY), run_as_sudo=False)
+        run_bash("(cd \"/tmp/PiBoot\"; git checkout \"{}\")".format(RELEASE_BRANCH), run_as_sudo=False)
+        if os.path.isfile("/tmp/PiBoot/boot/config.txt"):
+            remove_file("/opt/PiNet/PiBootBackup/")
+            make_folder("/opt/PiNet/PiBootBackup")
+            run_bash("cp -r /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/")
+            update_sd_card_ip_address()
+        else:
+            print("Error - Download failed or PiNet was unable to locate boot files, which should be located in /tmp/PiBoot/boot")
+            fileLogger.warning("Error - Download failed or PiNet was unable to locate boot files, which should be located in /tmp/PiBoot/boot")
+    elif os.path.isdir("/opt/PiNet/PiBootBackup"):
+        # If not connected to the internet, but is a backup of boot files in /opt/PiNet/PiBootBackup
+        whiptail_box("msgbox", _("Internet connection unavailable"), _("Unable to download new boot files as unable to detect an active internet connection. Previous backup copy will be used."), False)
+        update_sd_card_ip_address()
+    else:
+        # If not connected to the internet and no local backup copy of boot files is available.
+        whiptail_box("msgbox", _("Internet connection unavailable"), _("Unable to download boot files as unable to detect an active internet connection. Please connect to the internet to proceed."), False)
+        return False
+
+
+def create_sd_card_image_file():
+    sd_card_image_path = "/tmp/pinet.img"
+    run_bash("dd if=/dev/zero of={} bs=512 count=208845".format(sd_card_image_path))
+    create_partition_table(sd_card_image_path)
+    run_bash("mkdosfs -n PINET -S 512 -s 16 -v {}".format(sd_card_image_path))
+    make_folder("/mnt/sdimage")
+    run_bash("mount {} /mnt/sdimage".format(sd_card_image_path))
+    run_bash("cp -r {}/PiBoot/* /mnt/sdimage/".format(os.path.expanduser("~")))
+    run_bash("umount /mnt/sdimage")
+    remove_file("/mnt/sdimage")
+    copy_file_folder(sd_card_image_path, "{}/pinetSDImage.img".format(os.path.expanduser("~")))
+    set_current_user_to_owner("{}/pinetSDImage.img".format(os.path.expanduser("~")))
+
+
+def create_partition_table(sd_card_image_path):
+    run_bash("""parted {} <<EOF
+    unit b
+    mklabel msdos
+    mkpart primary fat32 $(expr 4 \* 1024 \* 1024) $(expr 60 \* 1024 \* 1024 - 1)
+    print
+    quit
+    EOF""".format(sd_card_image_path))
+
+
 # ------------------------------Main program-------------------------
 
 if __name__ == "__main__":
@@ -2153,3 +2251,5 @@ if __name__ == "__main__":
             select_release_channel()
         elif sys.argv[1] == "buildDownloadURL":
             return_data(build_download_url(sys.argv[2], sys.argv[3]))
+        elif sys.argv[1] == "updateSD":
+            update_sd()

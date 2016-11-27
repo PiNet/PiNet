@@ -319,6 +319,9 @@ fi
 UpdateSD() { 
 #Function for updating the SD card images
 
+$p updateSD
+return
+
 #echo "$1"
 #if [ $1 -eq 0 ]; then
 #whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
