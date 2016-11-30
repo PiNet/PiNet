@@ -369,7 +369,6 @@ def group_apt_installer(packages):
     for package in packages:
         if not package.version and not package.parameters and not package.install_on_server:
             packages_to_install.append(package.name)
-            print("Added {} to list".format(package.name))
         else:
             if packages_to_install:
                 print("Going to install {}".format(" ".join(packages_to_install)))
@@ -1671,6 +1670,16 @@ def install_chroot_software():
 
     #for package in packages:
     #    package.install_package()
+
+    # Unhold all packages
+    pinet_package_versions_path = "/opt/PiNet/pinet-package-versions.txt"
+    pinet_bootfiles_versions_path = "/opt/PiNet/PiBootBackup/apt_version.txt"
+    held_packages = list(parse_config_file(read_file(pinet_package_versions_path)).keys()) + list(parse_config_file(read_file(pinet_bootfiles_versions_path)).keys())
+    for package in held_packages:
+        ltsp_chroot("apt-mark unhold {}".format(package), ignore_errors=True)
+        fileLogger.debug("Marking {} to be unheld for updates.".format(package))
+
+
     group_apt_installer(packages)
 
     ltsp_chroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
