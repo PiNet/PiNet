@@ -1,9 +1,9 @@
 #! /bin/sh
-# Part of Raspi-LTSP https://github.com/gbaman/RaspberryPi-LTSP
+# Part of PiNet https://github.com/PiNet/PiNet
 #
 # See LICENSE file for copyright and license details
 
-version=001
+version=002
 
 ### BEGIN INIT INFO
 # Provides:             None
@@ -47,38 +47,45 @@ checkUpdate(){
 
 echo "Checking for SD card kernel updates"
 
-if [ -e "/dev/mmcblk0p1" ]; then
+# Verify that there is an SD card connected. If has multiple partitions, will be /dev/mmcblk0p1, otherwise /dev/mmcblk0.
+if [ -e "/dev/mmcblk0p1" ] || [ -e "/dev/mmcblk0" ]; then
+    if [ -e "/dev/mmcblk0p1" ]; then
         fpath=$(df -P /dev/mmcblk0p1 | awk '{print $6}' | sed -n 2p)
-        if [ ! "$fpath" = "" ]; then
-        	if [ "$fpath" = "/dev" ]; then
-        		mkdir /media/sdcard
-        		mount /dev/mmcblk0p1 /media/sdcard
-        		fpath="/media/sdcard"
-        	fi
-                if [ -e "/dev/mmcblk0p1" ]; then
-                        if [ -f "$fpath/bootcode.bin" ]; then
-                                if [ -f "/bootfiles/bootcode.bin" ]; then
-                                        if [ -f "$fpath/version.txt" ]; then
-                                                current=$(head -n 1 "$fpath/version.txt")
-                                                new=$(head -n 1 "/bootfiles/version.txt")
-                                                if [ ! "$current" = "$new" ]; then
-                                                        runUpdate
-                                                else
-                                                        echo "No new updates found"
-                                                        if [ "$fpath$" = "/media/sdcard" ]; then
-                                                        	umount "/media/sdcard"
-                                                        fi
-                                                fi
-                                        else
-                                                runUpdate
-                                        fi
-                                fi
+        sdpath="/dev/mmcblk0p1"
+    elif [ -e "/dev/mmcblk0" ]; then
+        fpath=$(df -P /dev/mmcblk0 | awk '{print $6}' | sed -n 2p)
+        sdpath="/dev/mmcblk0"
+    fi
+    if [ ! "$fpath" = "" ]; then
+        # If the SD card isn't mounted, mount it to /media/sdcard.
+        if [ "$fpath" = "/dev" ]; then
+            mkdir /media/sdcard
+            mount "$sdpath" "/media/sdcard"
+            fpath="/media/sdcard"
+        fi
+
+        # Verify there is actual boot files on the SD card.
+        if [ -f "$fpath/bootcode.bin" ] && [ -f "/bootfiles/bootcode.bin" ]; then
+            # Compare versions of version.txt
+            if [ -f "$fpath/version.txt" ]; then
+                current=$(head -n 1 "$fpath/version.txt")
+                new=$(head -n 1 "/bootfiles/version.txt")
+                if [ ! "$current" = "$new" ]; then
+                        runUpdate
+                else
+                        echo "No new updates found"
+                        if [ "$fpath$" = "/media/sdcard" ]; then
+                            umount "/media/sdcard"
                         fi
                 fi
+            else
+                runUpdate
+            fi
         fi
-else
-        echo "No SD card filesystem mounted"
+    fi
+
 fi
+
 
 }
 
