@@ -579,7 +579,7 @@ def download_file_urllib(url, save_location):
 
 def download_file(url, save_location):
     try:
-        response = requests.get(url, headers={'User-agent': 'Mozilla 5.10'})
+        response = requests.get(url, headers={'User-agent': 'Mozilla 5.10'}, timeout=5)
         with open(save_location, 'wb') as f:
             f.write(response.content)
         fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
@@ -1760,7 +1760,7 @@ def get_external_ip_address():
     If there is any issues, defaults to returning 0.0.0.0.
     """
     try:
-        return requests.get("http://myip.dnsdynamic.org/").text
+        return requests.get("http://myip.dnsdynamic.org/", timeout=2).text
     except requests.RequestException:
         return "0.0.0.0"
 
