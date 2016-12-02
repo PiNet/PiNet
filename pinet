@@ -1276,19 +1276,17 @@ SetupSambaPi(){
 
 AfterUpdate(){
 #Code run after a successful update on the BASH side, given that most update code is handled via Python
-whiptail --title $"Update complete" --msgbox $"The update succeeded. PiNet is now up to date." 8 78
-#if [ $exitstatus = "0" ]; then
-
-		whiptail --title $"Update-all" --yesno $"After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
-		exitstatus=$?
-		if [ $exitstatus = 0 ]; then
-			exec /bin/bash pinet Update-All
-			exit
-		else
-			exec /bin/bash pinet
-			exit
-		fi
-	#fi
+    ConfigFileRead
+    whiptail --title $"Update complete" --msgbox $"The update succeeded. PiNet is now up to date on $ReleaseBranch." 8 78
+        whiptail --title $"Update-all" --yesno $"After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+        exitstatus=$?
+        if [ $exitstatus = 0 ]; then
+            exec /bin/bash -x pinet Update-All
+            exit
+        else
+            exec /bin/bash -x pinet
+            exit
+        fi
 }
 
 
@@ -2179,9 +2177,12 @@ ChooseReleaseChannel(){
     SetupRepositories
     if [ $1 = "Restart" ]; then
         if [ "$exitstatus" = "1" ]; then
+            # Invalidate previous package version caches to force them to be redownloaded
+            rm "/opt/PiNet/pinet-package-versions.txt"
+            rm "/opt/PiNet/PiBootBackup/apt_version.txt"
+
             # If the release channel has changed, restart PiNet software to check for updates etc
-            exec /bin/bash pinet
-            exit
+            Updater
         else
             Menu
         fi
