@@ -1281,10 +1281,10 @@ AfterUpdate(){
         whiptail --title $"Update-all" --yesno $"After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
         exitstatus=$?
         if [ $exitstatus = 0 ]; then
-            exec /bin/bash -x pinet Update-All
+            exec /bin/bash pinet Update-All
             exit
         else
-            exec /bin/bash -x pinet
+            exec /bin/bash pinet
             exit
         fi
 }
@@ -2983,9 +2983,9 @@ if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected,
 	ChooseReleaseChannel "Restart"
 fi
 
-SetupRepositories #Sets up the correct branch varliables as selected in ChooseReleaseChannel()
+SetupRepositories #Sets up the correct branch variables as selected in ChooseReleaseChannel()
 
-checkInternet #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
+checkInternet #Checks if PiNet server has a web connection. If so, checks for updates on PiNet, PiNet kernels and PiNet kernel updater
 if [ $? -eq 0 ]; then
 	if [ ! "$DisableUpdateChecking" = "true" ]; then
 			CheckReleases
