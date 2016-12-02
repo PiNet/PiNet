@@ -320,6 +320,11 @@ UpdateSD() {
 #Function for updating the SD card images
 
 $p updateSD
+ConfigFileRead  # Grab updated $NBDBuildNeeded
+if [ "$NBDBuildNeeded" = "true" ]; then
+		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update."
+		NBDRun
+	fi
 return
 
 #echo "$1"

@@ -319,7 +319,7 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
                 return c.returncode
             else:
                 # If user Retry
-                return run_bash(command, return_status=return_status, run_as_sudo=run_as_sudo,
+                return run_bash(command, return_status=return_status, run_as_sudo=False,
                                 return_string=return_string)
         else:
             return c.returncode
@@ -2214,6 +2214,12 @@ def update_sd():
                 remove_file("/opt/ltsp/armhf/bootfiles")
                 copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
                 remove_file("/opt/ltsp/armhf/bootfiles/cmdline.txt")
+                set_config_parameter("NBDBuildNeeded", "true")
+
+    elif os.path.isdir("/opt/ltsp/armhf") and os.path.isdir("/opt/PiNet/PiBootBackup/"):
+        copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
+        set_config_parameter("NBDBuildNeeded", "true")
+
 
 
 
