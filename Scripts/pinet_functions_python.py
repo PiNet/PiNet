@@ -399,9 +399,7 @@ def get_package_version_to_install(package_name):
         make_folder("/opt/PiNet") # In case folder doesn't exist yet.
         for download_attempts in range(1, 4): # Attempt downloading 3 times with a 30s gap between each if fails first time.
             remove_file(pinet_package_versions_path)
-            download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path)
-            if read_file(pinet_package_versions_path)[0] != "404: Not Found":
-                # If file correctly downloaded, skip downloading again.
+            if download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path):
                 break
             fileLogger.warning("Now able to download package_versions.txt file from {}. Already attempted {} time.".format(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), download_attempts))
             if download_attempts == 3:
@@ -580,10 +578,13 @@ def download_file_urllib(url, save_location):
 def download_file(url, save_location):
     try:
         response = requests.get(url, headers={'User-agent': 'Mozilla 5.10'}, timeout=5)
-        with open(save_location, 'wb') as f:
-            f.write(response.content)
-        fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
-        return True
+        if response.status_code == requests.codes.ok:
+            with open(save_location, 'wb') as f:
+                f.write(response.content)
+            fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
+            return True
+        else:
+            response.raise_for_status()
     except requests.RequestException as e:
         fileLogger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
         return False

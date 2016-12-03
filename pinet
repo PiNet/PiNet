@@ -2957,6 +2957,9 @@ case "$1" in  #Checks if PiNet needs to run an update all, usually run after an 
 Update-All)
 	UpdateAll
 	;;
+SD-card-update)
+    UpdateSD
+    ;;
 esac
 
 checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to move it
