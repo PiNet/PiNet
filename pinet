@@ -2311,6 +2311,17 @@ DuplicateLTSConf(){
     cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 }
+
+WheezyJessieUpgradePartTwo(){
+    ChooseReleaseChannel "IgnoreAfterUpdate"
+    exec /bin/bash pinet ""
+    exit
+}
+
+WheezyJessieUpgradePartThree(){
+    RebuildOS
+}
+
 #***************************************************************************************************
 backupDeleteTime(){
   MENUEPT=$(whiptail --menu $"How long would you like to store backups? Note this only runs when a backup runs." --nocancel 20 85 10 \
@@ -2959,6 +2970,12 @@ Update-All)
 	;;
 SD-card-update)
     UpdateSD
+    ;;
+Wheezy-upgrade-part-two)
+    WheezyJessieUpgradePartTwo
+    ;;
+Wheezy-upgrade-part-three)
+    WheezyJessieUpgradePartThree
     ;;
 esac
 
