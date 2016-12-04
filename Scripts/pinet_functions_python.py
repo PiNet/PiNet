@@ -1907,15 +1907,15 @@ def backup_chroot(name=None, override=False):
             print("Backing up Raspbian Chroot... This may take up to 20 minutes.")
             print("-------------------------------------------------------------")
             run_bash("sudo cp -rp /opt/ltsp/armhf/ /opt/PiNet/chrootBackups/" + name)
-            print("Copy complete.")
-            whiptail_box("msgbox", _("Backup complete"), _("Backup has been complete"), False)
+            print("Backup complete.")
+            whiptail_box("msgbox", _("Backup complete"), _("Raspbian chroot backup is now complete."), False)
             return True
         except:
             print("Backup failed!")
             whiptail_box("msgbox", _("Error!"), _("Backup failed!"), False)
             return False
     else:
-        print("Space issue...")
+        print("Unable to allocate enough hard drive space for a backup.")
         chroot_size_readable = int(
             decode_bash_output(run_bash("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """, return_string=True),
                                decode=True,
