@@ -2969,6 +2969,7 @@ checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to 
 echo $"Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
 CheckForRaspiLTSP
+VerifyPythonPackages
 
 CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 
