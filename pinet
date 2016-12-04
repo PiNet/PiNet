@@ -2314,7 +2314,7 @@ DuplicateLTSConf(){
 
 WheezyJessieUpgradePartTwo(){
     ChooseReleaseChannel "IgnoreAfterUpdate"
-    exec /bin/bash pinet "WheezyJessieUpgradePartThree"
+    exec /bin/bash pinet "Wheezy-upgrade-part-three"
     exit
 }
 
@@ -2962,7 +2962,15 @@ fi
 CheckOS   #Checks if running Ubuntu, if not complains a little
 if [ "$SUDO_USER" = "" ]; then
 	SUDO_USER=$(whiptail --inputbox $"No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 --title $"Unsupported operating system" 3>&1 1>&2 2>&3)  #Sometimes can't detect username to run program as.
-fi	
+fi
+
+checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to move it
+
+echo $"Starting PiNet - Please wait"
+checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
+CheckForRaspiLTSP
+
+CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 
 case "$1" in  #Checks if PiNet needs to run an update all, usually run after an update when the software is launched by itself
 Update-All)
@@ -2979,14 +2987,6 @@ Wheezy-upgrade-part-three)
     ;;
 esac
 
-checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to move it
-
-echo $"Starting PiNet - Please wait"
-checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
-CheckForRaspiLTSP
-VerifyPythonPackages
-
-CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full PiNet installation?" 8 78
 		exitstatus=$?
