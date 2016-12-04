@@ -1295,9 +1295,12 @@ Updater(){
 	$p updatePiNet
 	exitstatus=$(gp)
 	if [ $exitstatus = 0 ] && [ "$1" = "IgnoreAfterUpdate" ]; then
-	    whiptail --title $"Restarting PiNet" --msgbox $"Restarting PiNet to guarantee is running the correct branch version." 8 78
-        exec /bin/bash pinet
-        exit
+	    if [ ! "$2" = "NoRestart" ]; then
+	        whiptail --title $"Restarting PiNet" --msgbox $"Restarting PiNet to guarantee is running the correct branch version." 8 78
+            exec /bin/bash pinet
+            exit
+        fi
+
     else
         if [ $exitstatus = 0 ]; then
             AfterUpdate
@@ -2187,7 +2190,7 @@ ChooseReleaseChannel(){
             Menu
         fi
     else
-        Updater "IgnoreAfterUpdate"
+        Updater "IgnoreAfterUpdate" "$1"
     fi
 
 }
@@ -2313,7 +2316,7 @@ DuplicateLTSConf(){
 }
 
 WheezyJessieUpgradePartTwo(){
-    ChooseReleaseChannel "IgnoreAfterUpdate"
+    ChooseReleaseChannel "NoRestart"
     exec /bin/bash pinet "Wheezy-upgrade-part-three"
     exit
 }
