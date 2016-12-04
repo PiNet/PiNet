@@ -390,9 +390,16 @@ def get_package_version_to_install(package_name):
     current_time = time.time()
     pinet_package_versions_path = "/opt/PiNet/pinet-package-versions.txt"
     pinet_bootfiles_versions_path = "/opt/PiNet/PiBootBackup/apt_version.txt"
+    pinet_bootfiles_versions_path_reserve = "/tmp/apt_version.txt"
 
     # Check first if the package is included in /opt/PiNet/PiBootBackup/boot/apt_version.txt. If not, then fall back to general package list at /opt/PiNet/pinet-package-versions.txt.
-    bootfile_package_version = get_config_file_parameter(package_name, config_file_path=pinet_bootfiles_versions_path)
+    if os.path.isfile(pinet_bootfiles_versions_path):
+        bootfile_package_version = get_config_file_parameter(package_name, config_file_path=pinet_bootfiles_versions_path)
+    else:
+        # If the apt version list doesn't exist, then download
+        if not os.path.isfile(pinet_bootfiles_versions_path_reserve):
+            download_file(build_download_url("PiNet/PiNet-Boot", "boot/apt_version.txt"), pinet_bootfiles_versions_path_reserve)
+        bootfile_package_version = get_config_file_parameter(package_name, config_file_path=pinet_bootfiles_versions_path)
 
     # If the file doesn't exist or is over 12 hours old, get the newest copy off the web.
     if not os.path.isfile(pinet_package_versions_path) or ((current_time - os.path.getctime(pinet_package_versions_path)) / 3600 > 12):
@@ -1368,7 +1375,7 @@ def install_epoptes():
     """
     Install Epoptes classroom management software. Key is making sure groups are correct.
     """
-    SoftwarePackage(EPOPTES, APT, install_on_server=True).install_package()
+    SoftwarePackage("epoptes", APT, install_on_server=True).install_package()
     run_bash("gpasswd -a root staff")
     SoftwarePackage("epoptes-client", APT, parameters=("--no-install-recommends",)).install_package()
     ltsp_chroot("epoptes-client -c")
@@ -1559,8 +1566,6 @@ def install_chroot_software():
     packages.append(SoftwarePackage("ntp", APT))
     packages.append(SoftwarePackage("nfs-common", APT))
     packages.append(SoftwarePackage("usbutils", APT))
-    packages.append(SoftwarePackage("libraspberrypi-dev", APT))
-    packages.append(SoftwarePackage("libraspberrypi-doc", APT))
     packages.append(SoftwarePackage("libfreetype6-dev", APT))
     packages.append(SoftwarePackage("python3-rpi.gpio", APT))
     packages.append(SoftwarePackage("python-rpi.gpio", APT))
@@ -1575,9 +1580,12 @@ def install_chroot_software():
     packages.append(SoftwarePackage("netsurf-gtk", APT))
     packages.append(SoftwarePackage("rpi-update", APT))
     packages.append(SoftwarePackage("ftp", APT))
-    packages.append(SoftwarePackage("libraspberrypi-bin", APT))
     packages.append(SoftwarePackage("raspberrypi-kernel", APT))
     packages.append(SoftwarePackage("raspberrypi-bootloader", APT))
+    packages.append(SoftwarePackage("libraspberrypi0", APT))
+    packages.append(SoftwarePackage("libraspberrypi-dev", APT))
+    packages.append(SoftwarePackage("libraspberrypi-doc", APT))
+    packages.append(SoftwarePackage("libraspberrypi-bin", APT))
     packages.append(SoftwarePackage("python3-pifacecommon", APT))
     packages.append(SoftwarePackage("python3-pifacedigitalio", APT))
     packages.append(SoftwarePackage("python3-pifacedigital-scratch-handler", APT))

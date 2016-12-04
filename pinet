@@ -442,6 +442,11 @@ service nbd-server restart
 FixRepo() {
 #Adds the repositories used by Raspbian. The public keys are included
 
+# Adds PiNet repo
+echo deb http://apt.pinet.org.uk jessie main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
+sudo ltsp-chroot wget http://apt.pinet.org.uk/pinet.public.key -O /tmp/pinet.public.key
+sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
+
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 echo "deb http://archive.raspberrypi.org/debian/ jessie main ui staging" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
@@ -483,11 +488,6 @@ SELEOF
 #Auto accepts wolfram eula
 
 echo deb http://mirrordirector.raspbian.org/raspbian/ jessie main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
-
-# Adds PiNet repo
-echo deb http://apt.pinet.org.uk jessie main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
-sudo ltsp-chroot wget http://apt.pinet.org.uk/pinet.public.key -O /tmp/pinet.public.key
-sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
 
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists
@@ -2324,7 +2324,10 @@ WheezyJessieUpgradePartTwo(){
 }
 
 WheezyJessieUpgradePartThree(){
+    # Delete old pinet-functions-python.py file (has been replaced by pinet_functions_pinet.py and start OS rebuild.
+    rm /usr/local/bin/pinet-functions-python.py
     RebuildOS
+    UpdateAll
 }
 
 #***************************************************************************************************
