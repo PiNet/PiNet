@@ -443,11 +443,13 @@ FixRepo() {
 #Adds the repositories used by Raspbian. The public keys are included
 
 # Adds PiNet repo
+echo "Adding PiNet repository key."
 echo deb http://apt.pinet.org.uk jessie main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
-sudo ltsp-chroot wget http://apt.pinet.org.uk/pinet.public.key -O /tmp/pinet.public.key
+wget http://apt.pinet.org.uk/pinet.public.key -O /opt/ltsp/armhf/tmp/pinet.public.key
 sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+echo "Adding Raspberry Pi Foundation repository key."
 echo "deb http://archive.raspberrypi.org/debian/ jessie main ui staging" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -2810,6 +2812,7 @@ FullInstall(){
 		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes "NoRecompress"
+		UpdateAll
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
@@ -2849,6 +2852,7 @@ if [ $? -eq 0 ]; then
 			fixGroups
 			DuplicateLTSConf
     		LegacyFixes "NoRecompress"
+    		UpdateAll
 			EnableNBD
     		resetAndCleanup
 			CheckInstallSuccess

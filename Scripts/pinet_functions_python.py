@@ -133,8 +133,8 @@ class SoftwarePackage():
             self.version = get_package_version_to_install(self.name)
 
     def install_package(self):
-        debug("Installing " + self.name)
-        debug("Install commands - " + str(self.install_commands))
+        fileLogger.debug("Installing - {}".format(self.name))
+        fileLogger.debug("Install commands - {}".format(self.install_commands))
         if isinstance(self.install_commands, list) and len(self.install_commands) > 0:
             programs = " ".join(self.install_commands)
         elif self.install_commands is None:
@@ -1982,7 +1982,7 @@ def debian_wheezy_to_jessie_update(try_backup=True):
     if yesno and internet_full_status_check():
         backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
         whiptail_box("msgbox", _("Backup chroot"), _(
-            "Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called " + backupName),
+            "Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backupName, "/opt/PiNet/chrootBackups/" + backupName)),
                      False, height="10")
         if backup_chroot(backupName):
             return_data(1)
