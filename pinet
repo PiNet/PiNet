@@ -2314,7 +2314,7 @@ DuplicateLTSConf(){
 
 WheezyJessieUpgradePartTwo(){
     ChooseReleaseChannel "IgnoreAfterUpdate"
-    exec /bin/bash pinet ""
+    exec /bin/bash pinet "WheezyJessieUpgradePartThree"
     exit
 }
 
