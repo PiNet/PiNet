@@ -117,9 +117,11 @@ LegacyFixes() {
 	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
 	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
 	
-	if [ "$NBDBuildNeeded" = "true" ]; then
+	if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ] ; then
 		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update"
 		NBDRun
+	else
+	    UpdateConfig NBDBuildNeeded false
 	fi
 	$p "checkStatsNotification"
 	
@@ -321,7 +323,7 @@ UpdateSD() {
 
 $p updateSD
 ConfigFileRead  # Grab updated $NBDBuildNeeded
-if [ "$NBDBuildNeeded" = "true" ]; then
+if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ]; then
 		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update."
 		NBDRun
 	fi
@@ -2796,7 +2798,7 @@ FullInstall(){
 		$p installSoftwareFromFile
 		DisableSPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-		UpdateSD   #Runs the IP address selector and builds the SD card image
+		UpdateSD "NoRecompress"   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
 		SetupSharedStandalone
 		installKernelUpdater ""
@@ -2804,7 +2806,7 @@ FullInstall(){
 		fixGroups   #Adds all current users to the correct groups.
 		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
-		LegacyFixes
+		LegacyFixes "NoRecompress"
 		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
@@ -2837,7 +2839,7 @@ if [ $? -eq 0 ]; then
 			$p installSoftwareFromFile
 			DisableSPI
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-    		UpdateSD
+    		UpdateSD "NoRecompress"
     		addSoundcardDefault
     		SetupSharedStandalone
     		installKernelUpdater ""
@@ -2845,7 +2847,7 @@ if [ $? -eq 0 ]; then
 			fixGroups
 			DuplicateLTSConf
     		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-    		LegacyFixes
+    		LegacyFixes "NoRecompress"
 			EnableNBD
     		resetAndCleanup
 			CheckInstallSuccess
