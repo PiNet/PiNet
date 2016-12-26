@@ -399,7 +399,7 @@ def get_package_version_to_install(package_name):
         # If the apt version list doesn't exist, then download
         if not os.path.isfile(pinet_bootfiles_versions_path_reserve):
             download_file(build_download_url("PiNet/PiNet-Boot", "boot/apt_version.txt"), pinet_bootfiles_versions_path_reserve)
-        bootfile_package_version = get_config_file_parameter(package_name, config_file_path=pinet_bootfiles_versions_path)
+        bootfile_package_version = get_config_file_parameter(package_name, config_file_path=pinet_bootfiles_versions_path_reserve)
 
     # If the file doesn't exist or is over 12 hours old, get the newest copy off the web.
     if not os.path.isfile(pinet_package_versions_path) or ((current_time - os.path.getctime(pinet_package_versions_path)) / 3600 > 12):
@@ -697,7 +697,7 @@ def remove_file(file):
 
 def copy_file_folder(src, dest):
     try:
-        shutil.copytree(src, dest)
+        shutil.copytree(src, dest, symlinks=True)
         fileLogger.debug("File/folder has been copied from " + src + " to " + dest + ".")
     except OSError as e:
         # If the error was caused because the source wasn't a directory
@@ -1676,6 +1676,8 @@ def install_chroot_software():
     packages.append(SoftwarePackage("bindfs", APT, install_on_server=True))
     packages.append(SoftwarePackage("python3-feedparser", APT, install_on_server=True))
     packages.append(SoftwarePackage("ntp", APT, install_on_server=True))
+    packages.append(SoftwarePackage("python-pip", APT, install_on_server=True))
+    packages.append(SoftwarePackage("python3-pip", APT, install_on_server=True))
 
     #for package in packages:
     #    package.install_package()
@@ -1736,9 +1738,7 @@ def nbd_run():
             run_bash("ltsp-update-image /opt/ltsp/armhf")
             set_config_parameter("NBDBuildNeeded", "false")
         else:
-            whiptail_box("msgbox", _("WARNING"), _(
-                "Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu."),
-                         False)
+            print(_("Auto recompression of Raspbian OS is disabled. To enable, run NBD-recompress from the Other menu."))
 
 
 def generate_server_id():
@@ -1977,8 +1977,8 @@ def debian_wheezy_to_jessie_update(try_backup=True):
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
     yesno = whiptail_box("yesno", _("Proceed"), _(
-        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st July 2016."),
-                         True)
+        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st March 2017."),
+                         True, height="10")
     if yesno and internet_full_status_check():
         backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
         whiptail_box("msgbox", _("Backup chroot"), _(
