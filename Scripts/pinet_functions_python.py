@@ -144,10 +144,10 @@ class SoftwarePackage():
         if self.install_type == PIP:
             self.marked = False
             if self.install_on_server:
-                run_bash("pip install -U " + programs, ignore_errors=True)
+                run_bash("pip2 install -U " + programs, ignore_errors=True)
                 run_bash("pip3 install -U " + programs, ignore_errors=True)
             else:
-                ltsp_chroot("pip install -U " + programs, ignore_errors=True)
+                ltsp_chroot("pip2 install -U " + programs, ignore_errors=True)
                 ltsp_chroot("pip3 install -U " + programs, ignore_errors=True)
             return
         elif self.install_type == APT:
@@ -162,7 +162,7 @@ class SoftwarePackage():
         elif self.install_type == SCRATCH_GPIO:
             install_scratch_gpio()
         else:
-            print(_("Error in installing") + " " + self.name + " " + _("due to invalid install type."))
+            print(_("Error in installing {} due to invalid install type.").format(self.name))
             self.marked = False
 
     def custom_apt_pip(self):

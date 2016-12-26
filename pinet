@@ -616,7 +616,7 @@ if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
 		ltsp-update-image /opt/ltsp/armhf  #If NBD is enabled, recompress the image
 		UpdateConfig NBDBuildNeeded false
 	else
-		whiptail --title $"WARNING" --msgbox $"Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
+		echo $"Auto recompression of Raspbian OS is disabled. To enable, run NBD-recompress from the Other menu."
 	fi
 fi
 
@@ -1343,7 +1343,6 @@ checkInstallLoc(){
 #Checks PiNet is installed in the correct place (/usr/local/bin/pinet)
 InstallLoc="${BASH_SOURCE[0]}"
 if [ ! "$InstallLoc" = "/usr/local/bin/pinet" ]; then
-	#whiptail --title "Wrong location" --msgbox "I have detected your PiNet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch PiNet." 10 78
 	mv $InstallLoc /usr/local/bin/pinet
 	exec /bin/bash pinet
 fi
@@ -1409,7 +1408,7 @@ SetupSharedStandalone() {
 SetupShared(){
 	#User frontend for SetupSharedStandalone() for when it is not run directly
 	echo $"Setting up shared folders"
-	whiptail --title $"Setting up shared folders" --msgbox $"As this is the first time you are using shared folders, I have to set them up. This may take a few minutes." 8 78
+	whiptail --title $"Setting up shared folders" --msgbox $"As this is the first time you are using shared folders, they must be configured. This may take a few minutes." 8 78
 	SetupSharedStandalone
 	NBDRun
 
@@ -1564,7 +1563,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title $"WARNING!!" --msgbox $"Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
+		whiptail --title $"Invalid shared folder permissions" --msgbox $"Warning - Your shared folder permissions are invalid. This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1898,6 +1897,7 @@ if [ $? -eq 0 ]; then
 	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534)' /etc/group > /root/move/group.mig
 	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534) {print $1}' /etc/passwd | tee - |egrep -f - /etc/shadow > /root/move/shadow.mig
 	cp /etc/gshadow /root/move/gshadow.mig
+	rm /home/$SUDO_USER/toMove.tar.gz # Remove previous toMove.tar.gz file in case is already one there.
 	tar -zcvpf /root/move/home.tar.gz /home
 	tar -zcvpf /home/$SUDO_USER/toMove.tar.gz /root/move
 	chown $SUDO_USER /home/$SUDO_USER/toMove.tar.gz
@@ -1910,7 +1910,7 @@ CheckRestoreMoveBackup(){
 #Checks if LTSP is already installed as importing user data with a server already running PiNet can cause issues..
 if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 	if [ -d /opt/ltsp ]; then
-		whiptail --title $"WARNING!!" --yesno $"I have detected that it looks like PiNet is already installed. It is highly recommended against importing users with a previous PiNet install. You have been warned! Would you like to import them anyway?" 10 78
+		whiptail --title $"WARNING!!" --yesno $"PiNet may already be installed! It is highly recommended against importing users with a previous PiNet install. You have been warned! Would you like to import them anyway?" 10 78
 		if [ $? -eq 0 ]; then 
 			RestoreMoveBackup
 		fi	
@@ -1944,7 +1944,7 @@ if [ $? -eq 0 ]; then
 		fixGroups
 		rm /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
 		AddDesktopShortcutToUser
-		whiptail --title $"Reboot" --yesno $"I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
+		whiptail --title $"Reboot" --yesno $"PiNet has completed importing user data. The server *must* now be rebooted. Once the reboot is complete, y launch PiNet again. Reboot now?" 9 78
 		if [ $? -eq 0 ]; then
 			reboot
 		else
@@ -2812,13 +2812,13 @@ FullInstall(){
 		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes "NoRecompress"
-		UpdateAll
+		AddSoftware
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
 		CheckInstallSuccess
 	
-		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. You will need to flash an SD card with the PiNet boot files, instructions can be found at http://pinet.org.uk/articles/installation/sd-card-copy.html. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
 		whiptail --title "Error" --msgbox "The installation has been cancelled due to a problem accessing key domains used in the installation." 8 78
 		echo "The installation has been cancelled due to a problem accessing key domains used in the installation."
@@ -2852,7 +2852,7 @@ if [ $? -eq 0 ]; then
 			fixGroups
 			DuplicateLTSConf
     		LegacyFixes "NoRecompress"
-    		UpdateAll
+    		AddSoftware
 			EnableNBD
     		resetAndCleanup
 			CheckInstallSuccess
@@ -2985,6 +2985,7 @@ CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 
 case "$1" in  #Checks if PiNet needs to run an update all, usually run after an update when the software is launched by itself
 Update-All)
+    UpdateSD
 	UpdateAll
 	;;
 SD-card-update)
