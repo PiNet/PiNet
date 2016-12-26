@@ -47,3 +47,5 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
+/Scripts/*.log
+/Scripts/__pycache__

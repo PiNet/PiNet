@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.12
+version=1.2.0
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -17,17 +17,17 @@ version=1.1.12
 #------------------------
 ConfigFileLoc=/etc/pinet
 Timeout=1
-PythonFunctions="/usr/local/bin/pinet-functions-python.py"
+PythonFunctions="/usr/local/bin/pinet_functions_python.py"
 PythonStart="python3"
 p="$PythonStart $PythonFunctions"
-RepositoryBase="https://github.com/pinet/"
-RepositoryName="pinet"
+RepositoryBase="https://github.com/PiNet/"
+RepositoryName="PiNet"
 BootRepositoryName="PiNet-Boot"
-RawRepositoryBase="https://raw.github.com/pinet/"
+RawRepositoryBase="https://raw.github.com/PiNet/"
 Repository="$RepositoryBase$RepositoryName"
 BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
-ReleaseBranch="master"  #Overwriten later on in SetupRepositories()
+ReleaseBranch="jessie-stable"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
 cpuArch="armhf"
 
@@ -35,26 +35,36 @@ cpuArch="armhf"
 #------------------------
 
 SetupRepositories(){
-        ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
-        if [ "$ReleaseChannel" = "stable" ]; then
-                ReleaseBranch="master"
-        else
-                if [ "$ReleaseChannel" = "dev" ]; then
-                        ReleaseBranch="dev"
-                else
-                    channelLength=${#ReleaseChannel}
-                    if [ channelLength > 9 ]; then
-                        checkChannelCustom=${ReleaseChannel:0:7}
-                        if [ "$checkChannelCustom" = "custom:" ]; then
-                            ReleaseBranch=${ReleaseChannel:7:channelLength}
-                        else
-                            ReleaseBranch="master"
-                        fi
-                    else
-                        ReleaseBranch="master"
-                fi
-                fi
-        fi
+    ReleaseChannel=$(echo "$ReleaseChannel" | tr '[:upper:]' '[:lower:]')
+    case "$ReleaseChannel" in
+        stable)
+            ReleaseBranch="stable"
+        ;;
+
+        beta)
+            ReleaseBranch="beta"
+        ;;
+
+        dev)
+            ReleaseBranch="beta"
+        ;;
+
+        alpha)
+            ReleaseBranch="alpha"
+        ;;
+
+        "custom:*")
+            ReleaseBranch=${ReleaseChannel:7:channelLength}
+        ;;
+
+        *)
+            ReleaseBranch="stable"
+        ;;
+    esac
+
+
+
+
 }
 
 LegacyFixes() {
@@ -97,10 +107,21 @@ LegacyFixes() {
 	#fi
 	CheckDebianVersion
 	CheckBackupScriptVersion
+
+	if [ -f "/usr/local/bin/pinet-functions-python.py" ]; then
+	    mv "/usr/local/bin/pinet-functions-python.py" "/usr/local/bin/pinet_functions_python.py"
+	fi
+
+    # Make sure that all the required Python libraries are installed
+	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
+	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
+	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
 	
-	if [ "$NBDBuildNeeded" = "true" ]; then
-		echo $"A required system update has been found. I will now compress the operating system again to apply this update"
+	if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ] ; then
+		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update"
 		NBDRun
+	else
+	    UpdateConfig NBDBuildNeeded false
 	fi
 	$p "checkStatsNotification"
 	
@@ -222,8 +243,8 @@ echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tft
 echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
-groupadd -g 2122 pupil
-groupadd -g 2123 teacher
+groupadd -g 628 pupil
+groupadd -g 629 teacher
 
 }
 
@@ -238,8 +259,8 @@ ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
 #cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 DuplicateLTSConf
 
-ltsp-chroot --arch armhf groupadd -g 2122 pupil
-ltsp-chroot --arch armhf groupadd -g 2123 teacher
+ltsp-chroot --arch armhf groupadd -g 628 pupil
+ltsp-chroot --arch armhf groupadd -g 629 teacher
 AddUdevRules
 
 printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
@@ -278,21 +299,11 @@ checkInternet(){
 #Checks if the internet is connected. Mainly passes off to CheckInternet Python programme in Python functions
 if [ ! "$CheckInternetConnection" = "false" ]; then
 	$p CheckInternet $Timeout
-	thing=$(gp)
-	echo $thing
+	result=$(gp)
+	return $result
 else
-	echo 0
+	return 0
 fi
-#WGET="/usr/bin/wget"
-
-#$WGET -q --tries=20 --timeout=10 http://www.google.com -O /tmp/google.idx &> /dev/null
-#if [ ! -s /tmp/google.idx ]
-#then
-#    #return 1
-#    echo 1
-#else
-#    echo 0
-#fi
 
 }
 
@@ -310,11 +321,19 @@ fi
 UpdateSD() { 
 #Function for updating the SD card images
 
+$p updateSD
+ConfigFileRead  # Grab updated $NBDBuildNeeded
+if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ]; then
+		echo $"A required system update has been found. The Raspbian operating system will now be recompressed to apply this update."
+		NBDRun
+	fi
+return
+
 #echo "$1"
 #if [ $1 -eq 0 ]; then
 #whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
-local Internet=$(checkInternet)
-if [ $Internet -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
 	if [ ! -d "/opt/PiNet" ]; then
 		mkdir /opt/PiNet
 	fi
@@ -333,7 +352,7 @@ else
 		whiptail --title $"Error" --msgbox $"You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
 		toReturn=1
 	else
-		whiptail --title $"Internet" --msgbox $"I detected you are not connected to the internet. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
+		whiptail --title $"Internet" --msgbox $"Unable to detect an active internet connection. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
 		UpdateIP
 		toReturn=0
 	fi
@@ -368,7 +387,7 @@ whiptail --title $"IP address" --yesno $"I have detected your current IP address
 
 exitstatus=$?
 if [ ! $exitstatus = 0 ]; then
-	IP=$(whiptail --title $"IP address" --inputbox $"Please enter an IP address to use on the SD cards" 8 78 $IP 3>&1 1>&2 2>&3)
+	IP=$(whiptail --title $"IP address" --inputbox $"Please enter an IP address (of this PiNet server) to use on the SD cards." 8 78 $IP 3>&1 1>&2 2>&3)
 	exitstatus=$?
 fi
 
@@ -421,9 +440,16 @@ service nbd-server restart
 
 
 FixRepo() {
-#Adds the repositories used by Raspbian. They public keys are included
+#Adds the repositories used by Raspbian. The public keys are included
+
+# Adds PiNet repo
+echo "Adding PiNet repository key."
+echo deb http://apt.pinet.org.uk jessie main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
+wget http://apt.pinet.org.uk/pinet.public.key -O /opt/ltsp/armhf/tmp/pinet.public.key
+sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+echo "Adding Raspberry Pi Foundation repository key."
 echo "deb http://archive.raspberrypi.org/debian/ jessie main ui staging" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -458,71 +484,12 @@ m++/7s3K3L0zWopdhMVcgg6Nt9gcjzqN1c0gy55L/g==
 -----END PGP PUBLIC KEY BLOCK-----
 EOF1
 
-rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/collabora.list
-echo "deb http://raspberrypi.collabora.com wheezy rpi" > /opt/ltsp/armhf/etc/apt/sources.list.d/collabora.list
-ltsp-chroot --arch armhf apt-key add - <<EOF1
------BEGIN PGP PUBLIC KEY BLOCK-----
-Version: GnuPG v1.4.13 (GNU/Linux)
-
-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
-HXWu9eprthyEIX6pmEhqzMViFix7FVozfdn2H4U=
-=zyWt
------END PGP PUBLIC KEY BLOCK-----
-EOF1
-
-
 ltsp-chroot --arch armhf debconf-set-selections <<SELEOF
 wolfram-engine shared/accepted-wolfram-eula boolean true
 SELEOF
 #Auto accepts wolfram eula
 
 echo deb http://mirrordirector.raspbian.org/raspbian/ jessie main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
-#Adds the repos to apt-get
 
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists
@@ -613,34 +580,30 @@ if [ "$RESULT" = "y" ]; then
 		sleep 8
 	fi
 fi
-	
-
 }
 
 
 Finished() {
 #Function performing any actions that should happen after the boot image has been created
 whiptail --title $"Install complete" --msgbox $"The client install is complete, a boot.img file has been placed in /root folder, write this to an sd card" 16 78
-
-
 }
 
 
 RaspiTheme(){
-#Grabs a copy of the custom Raspberry Pi login screen and applies it
+#Grabs a copy of the PiNet desktop/login theme and installs
 
-rm -rf pinet
-git clone --depth 1 $Repository.git
-cp -r pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
+rm -rf /tmp/pinet
+git clone --no-single-branch --depth 1 $Repository.git /tmp/pinet #Clones main repository, including boot files
+(cd "/tmp/pinet"; git checkout "$ReleaseBranch")
+cp -r /tmp/pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
 rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
 ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
-rm -rf pinet
+rm -rf /tmp/pinet
 cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png
 sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100
 
-
-
 }
+
 
 NBDRun() {
 #Checks if it should be auto NBD compressing or not, if it should be, it recompresses the image
@@ -653,9 +616,10 @@ if [ "$NBD" = "true" ]; then  #If NBD is enabled on the system overall
 		ltsp-update-image /opt/ltsp/armhf  #If NBD is enabled, recompress the image
 		UpdateConfig NBDBuildNeeded false
 	else
-		whiptail --title $"WARNING" --msgbox $"Auto NBD compressing is disabled, for your changes to push to the Raspberry Pis, run NBD-recompress from main menu" 8 78
+		echo $"Auto recompression of Raspbian OS is disabled. To enable, run NBD-recompress from the Other menu."
 	fi
 fi
+
 }
 
 NBDSetup() {
@@ -690,6 +654,8 @@ AddSoftware(){
 #------------------------------------------------------------------------------------------
 #******************************************************************************************
 
+$p installChrootSoftware
+return 0
 
 # To add more software, just add it to the end of the list below taking a space after each program
 
@@ -715,6 +681,7 @@ ltsp-chroot --arch armhf apt-get install -y greenfoot bluej raspi-gpio
 ltsp-chroot --arch armhf apt-get install -y libreoffice
 ltsp-chroot --arch armhf apt-get install -y nuscratch
 ltsp-chroot --arch armhf apt-get install -y iceweasel
+ltsp-chroot --arch armhf apt-get install -y mu
 
 ltsp-chroot --arch armhf easy_install --upgrade pip #Fixes known "cannot import name IncompleteRead" error
 
@@ -809,60 +776,62 @@ EpoptesRun() {
 }
 
 fixGroups(){
-#Adds users to correct needed groups. Can take a while if there is a lot of users!
-
-
-#Adds all the groups if they don't exist
-for ugroup in adm dialout cdrom audio users sudo video games plugdev input; do
-	egrep -i "^$ugroup" /etc/group >> /dev/null
-	if [ $? = 1 ]; then
-		groupadd $ugroup
+    # Verify correct groups exist, then make sure all users are in correct groups.
+    $p verifyCorrectGroupUsers
+    ConfigFileRead
+    if [ "$NBDBuildNeeded" = "true" ]; then
+		NBDRun
+		whiptail --title $"Reboot required" --msgbox $"A group ID change has taken place to correct an issue. Please reboot your PiNet server as soon as possible." 8 78
 	fi
-done
+}
+
+fixGroupsLegacy(){
+    # Old code for adding groups and users to the groups
 
 
-#Adds all users to all the required groups if they aren't already in them
-cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
-do
-	for ugroup in adm dialout cdrom audio users video games plugdev input pupil; do
-		if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
-			usermod -a -G $ugroup $user
-		fi
-	done
-done
+    #Adds all the groups if they don't exist
+    for ugroup in adm dialout cdrom audio users sudo video games plugdev input gpio spi i2c netdev; do
+        egrep -i "^$ugroup" /etc/group >> /dev/null
+        if [ $? = 1 ]; then
+            groupadd $ugroup
+        fi
+    done
 
-egrep -i "^teachers" /etc/group >/dev/null
-if [ $? -eq 0 ]; then
-	groupdel teachers
-fi	
 
-local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
-if [ ! "$teacherID" = "2123" ]; then
-	groupdel teacher
-	groupadd teacher -g 2123
-	whiptail --title $"Reboot required" --msgbox $"Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
-	fixGroups
-fi	
+    #Adds all users to all the required groups if they aren't already in them
+    cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
+    do
+        for ugroup in adm dialout cdrom audio users sudo video games plugdev input gpio spi i2c netdev pupil; do
+            if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
+                usermod -a -G $ugroup $user
+            fi
+        done
+    done
 
-egrep -i "^teacher" /etc/group >/dev/null
-if [ ! $? -eq 0 ]; then
-	groupadd teacher -g 2123
-fi	
+    egrep -i "^teachers" /etc/group >/dev/null
+    if [ $? -eq 0 ]; then
+        groupdel teachers
+    fi
 
-local pupilID=$(egrep -i "^pupil" /etc/group | cut -d: -f3)
-if [ ! "$pupilID" = "2122" ]; then
-	groupdel pupil
-	groupadd pupil -g 2122
-	fixGroups
-fi	
+    local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
+    if [ ! "$teacherID" = "2123" ]; then
+        groupdel teacher
+        groupadd teacher -g 2123
+        whiptail --title $"Reboot required" --msgbox $"Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
+        fixGroups
+    fi
 
-#cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user
-#do
-#        if groups "$user" | grep -q -E 'staff(\s|$)'; then
-#                gpasswd -a $user teacher
-#                gpasswd -d $user staff
-#        fi
-#done
+    egrep -i "^teacher" /etc/group >/dev/null
+    if [ ! $? -eq 0 ]; then
+        groupadd teacher -g 2123
+    fi
+
+    local pupilID=$(egrep -i "^pupil" /etc/group | cut -d: -f3)
+    if [ ! "$pupilID" = "2122" ]; then
+        groupdel pupil
+        groupadd pupil -g 2122
+        fixGroups
+    fi
 
 }
 
@@ -1013,16 +982,20 @@ fi
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
 
-whiptail --title $"WARNING" --yesno $"Would you like to give students access to the sudo command? Sudo access is vital for use with GPIO, but in theory introduces the possibility of students bypassing built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 10 78 
+whiptail --title $"Sudo access" --yesno $"Would you like to give students access to the sudo command? The sudo command is required for some GPIO work, but in theory introduces the possibility of students bypassing built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 10 78
 
 exitstatus=$?
+rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
+touch /opt/ltsp/armhf/etc/sudoers.d/01pupil
+chmod 440 /opt/ltsp/armhf/etc/sudoers.d/01pupil
 if [ $exitstatus = 0 ]; then
-	rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
-	touch /opt/ltsp/armhf/etc/sudoers.d/01pupil
-	chmod 440 /opt/ltsp/armhf/etc/sudoers.d/01pupil
 	echo '%pupil ALL=NOPASSWD: ALL' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
-	UpdateConfig NBDBuildNeeded true
 fi
+echo '%pupil ALL = NOPASSWD: /sbin/shutdown' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+echo '%pupil ALL = NOPASSWD: /sbin/reboot' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+echo '%pupil ALL = NOPASSWD: /sbin/poweroff' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+echo '%pupil ALL = NOPASSWD: /sbin/halt' >> /opt/ltsp/armhf/etc/sudoers.d/01pupil
+UpdateConfig NBDBuildNeeded true
 }
 
 FinishedInstallingSoftware(){
@@ -1071,7 +1044,7 @@ else
                 echo "$location"
         else
                 cd "$results"
-                fileSelect
+                SingleFileSelect
         fi
 fi
 
@@ -1309,19 +1282,17 @@ SetupSambaPi(){
 
 AfterUpdate(){
 #Code run after a successful update on the BASH side, given that most update code is handled via Python
-whiptail --title $"Update complete" --msgbox $"The update succeeded. PiNet is now up to date." 8 78
-#if [ $exitstatus = "0" ]; then
-
-		whiptail --title $"Update-all" --yesno $"After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
-		exitstatus=$?
-		if [ $exitstatus = 0 ]; then
-			exec /bin/bash pinet Update-All
-			exit
-		else
-			exec /bin/bash pinet
-			exit
-		fi
-	#fi
+    ConfigFileRead
+    whiptail --title $"Update complete" --msgbox $"The update succeeded. PiNet is now up to date on $ReleaseBranch." 8 78
+        whiptail --title $"Update-all" --yesno $"After a software update it is recommended you do a system update. This will update all packages to their most recent version and add any new ones added in the update, do you want to?" 9 78
+        exitstatus=$?
+        if [ $exitstatus = 0 ]; then
+            exec /bin/bash pinet Update-All
+            exit
+        else
+            exec /bin/bash pinet
+            exit
+        fi
 }
 
 
@@ -1329,19 +1300,37 @@ Updater(){
 #Main updater, most of it is handed by updatePiNet on the Python side or by AfterUpdate on BASH side
 	$p updatePiNet
 	exitstatus=$(gp)
-	if [ $exitstatus = 0 ]; then 
-		AfterUpdate
-	else
-		whiptail --title $"Update failed" --msgbox $"The auto update failed. This usually means you aren't connected to the internet" 8 78
-		exec /bin/bash pinet
+	if [ $exitstatus = 0 ] && [ "$1" = "IgnoreAfterUpdate" ]; then
+	    if [ ! "$2" = "NoRestart" ]; then
+	        whiptail --title $"Restarting PiNet" --msgbox $"Restarting PiNet to guarantee is running the correct branch version." 8 78
+            exec /bin/bash pinet
+            exit
+        fi
+
+    else
+        if [ $exitstatus = 0 ]; then
+            AfterUpdate
+        else
+            whiptail --title $"Update failed" --msgbox $"The auto update failed. This usually means you aren't connected to the internet" 8 78
+            exec /bin/bash pinet
+        fi
 	fi
-	
 
 }
 
+VerifyPythonPackages(){
+#Verify needed Python packages are installed. If not installed, install them.
+    $PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
+	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
+	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
+}
+
+
 CheckReleases(){
 #Checks if there is a new software release. Mainly uses CheckUpdate on Python side. Also runs sendStats.
-	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install python3-feedparser  )
+	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
+	$PythonStart -c 'import requests' 2>/dev/null || (sudo apt-get install -y python3-requests  )
+	$PythonStart -c 'import netifaces' 2>/dev/null || (sudo apt-get install -y python3-netifaces  )
 	$p sendStats
 	$p CheckUpdate $version
 	exitstatus=$(gp)
@@ -1356,7 +1345,6 @@ checkInstallLoc(){
 #Checks PiNet is installed in the correct place (/usr/local/bin/pinet)
 InstallLoc="${BASH_SOURCE[0]}"
 if [ ! "$InstallLoc" = "/usr/local/bin/pinet" ]; then
-	#whiptail --title "Wrong location" --msgbox "I have detected your PiNet control script is located in an inconvenient place. It can't be accessed by other users from here. No need to worry though, I will move it now to a good place and relaunch PiNet." 10 78
 	mv $InstallLoc /usr/local/bin/pinet
 	exec /bin/bash pinet
 fi
@@ -1396,7 +1384,8 @@ AddSambaUser(){
 
 UpdateAll(){
 #Does a full system update on the server and on the Raspberry Pi OS
-	if [ $(checkInternet) -eq 0 ]; then
+    checkInternet
+	if [ $? -eq 0 ]; then
 		apt-get update && apt-get upgrade -y
 		ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
 		AddSoftware
@@ -1421,7 +1410,7 @@ SetupSharedStandalone() {
 SetupShared(){
 	#User frontend for SetupSharedStandalone() for when it is not run directly
 	echo $"Setting up shared folders"
-	whiptail --title $"Setting up shared folders" --msgbox $"As this is the first time you are using shared folders, I have to set them up. This may take a few minutes." 8 78
+	whiptail --title $"Setting up shared folders" --msgbox $"As this is the first time you are using shared folders, they must be configured. This may take a few minutes." 8 78
 	SetupSharedStandalone
 	NBDRun
 
@@ -1576,7 +1565,7 @@ CheckSharedFolderIntegrity(){
 	inFile=$(grep "bindfs" /usr/local/bin/bindfs-mount  | wc -l)
 	inFolder=$(ls -1 /home/shared | wc -l)
 	if [ ! "$inFile" = "$inFolder" ]; then
-		whiptail --title $"WARNING!!" --msgbox $"Warning - Your shared folder permissions are wrong! This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78	
+		whiptail --title $"Invalid shared folder permissions" --msgbox $"Warning - Your shared folder permissions are invalid. This may be because you imported shared folders from a previous system. You must reselect the correct permission level for each folder now." 9 78
 		for i in 1 2 3 4 5 6 7 8 9 10
 		do
 			ReplaceAnyTextOnLine /usr/local/bin/bindfs-mount "/home/shared/" ""
@@ -1682,6 +1671,7 @@ CheckTerminalSize(){
                 b=';90t'
                 printf "$a$LINES$b"
         fi
+        sleep 0.5 # Time to allow the terminal to resize.
 }
 
 listStatus(){
@@ -1705,18 +1695,15 @@ echo "---------------------------------------------------"
 echo "Current version                        - $version"
 echo "Server IP address                      - $IP"
 echo "---------------------------------------------------"
-#echo ""
 echo "Been running version $version since     - $(stat -c %y /usr/local/bin/pinet | cut -d ' ' -f1)"
-echo "Piboot folder last updated             - $(stat -c %y PiBoot | cut -d ' ' -f1)"
+echo "Piboot folder last updated             - $(stat -c %y /home/$SUDO_USER/PiBoot | cut -d ' ' -f1)"
 echo "Last system-wide update (update-all)   - $(stat -c %y /var/lib/apt/periodic/update-success-stamp | cut -d ' ' -f1)"
-#echo ""
 echo "----------------"
-echo "Hard Drive Usage"
+echo "Hard Drive Usage (may be inaccurate)"
 echo "----------------"
 echo "Total space                            - $(df -h | sed -n 2p | awk '{print $2}')"
 echo "Used space                             - $(df -h | sed -n 2p | awk '{print $3}')"
 echo "Free space                             - $(df -h | sed -n 2p | awk '{print $4}')"
-#echo ""
 echo "-----"
 echo "Other"
 echo "-----"
@@ -1724,7 +1711,6 @@ echo "CPU usage                              - $CPU%"
 #echo "RAM usage                              - $(free -tom | grep 'Total:' | awk '{print $4}')MB / $(free -tom | grep 'Total:' | awk '{print $2}')MB"
 echo "Epoptes installed                      - $EPOPTES"
 echo "Teacher members                        - $TEACHER"
-#echo ""
 echo "-----------------------"
 echo "Current active users"
 echo "-----------------------"
@@ -1741,7 +1727,8 @@ done
 
 CheckDesktopShortcut(){
 	#Checks if the PiNet desktop shortcut exists. If not it adds it
-if [ $(checkInternet) -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
 	AddDesktopShortcutToUser $SUDO_USER
 
 	if [ ! -f "/usr/share/pixmaps/pinet-icon.png" ] || [ ! -f "/opt/ltsp/armhf/usr/share/pixmaps/pinet-icon.png" ]; then
@@ -1908,6 +1895,7 @@ if [ $? -eq 0 ]; then
 	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534)' /etc/group > /root/move/group.mig
 	awk -v LIMIT=$UGIDLIMIT -F: '($3>=LIMIT) && ($3!=65534) {print $1}' /etc/passwd | tee - |egrep -f - /etc/shadow > /root/move/shadow.mig
 	cp /etc/gshadow /root/move/gshadow.mig
+	rm /home/$SUDO_USER/toMove.tar.gz # Remove previous toMove.tar.gz file in case is already one there.
 	tar -zcvpf /root/move/home.tar.gz /home
 	tar -zcvpf /home/$SUDO_USER/toMove.tar.gz /root/move
 	chown $SUDO_USER /home/$SUDO_USER/toMove.tar.gz
@@ -1920,7 +1908,7 @@ CheckRestoreMoveBackup(){
 #Checks if LTSP is already installed as importing user data with a server already running PiNet can cause issues..
 if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
 	if [ -d /opt/ltsp ]; then
-		whiptail --title $"WARNING!!" --yesno $"I have detected that it looks like PiNet is already installed. It is highly recommended against importing users with a previous PiNet install. You have been warned! Would you like to import them anyway?" 10 78
+		whiptail --title $"WARNING!!" --yesno $"PiNet may already be installed! It is highly recommended against importing users with a previous PiNet install. You have been warned! Would you like to import them anyway?" 10 78
 		if [ $? -eq 0 ]; then 
 			RestoreMoveBackup
 		fi	
@@ -1939,27 +1927,9 @@ RestoreMoveBackup() {
 whiptail --title $"Warning" --yesno $"Importing should only be performed on a completely fresh Ubuntu install. PiNet or Raspi-LTSP must not already be installed. Make sure to manually check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
-		mkdir /root/newsusers.bak
-		cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
-		cd /
-		tar -zxvf /home/$SUDO_USER/toMove.tar.gz
-		#cd /root/move
-		#cat passwd.mig >> /etc/passwd
-		#cat group.mig >> /etc/group
-		#cat shadow.mig >> /etc/shadow
-		#/bin/cp gshadow.mig /etc/gshadow
-		$p "previousImport"
-		cd /
-		tar -zxvf /root/move/home.tar.gz
-		fixGroups
-		rm /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
-		AddDesktopShortcutToUser
-		whiptail --title $"Reboot" --yesno $"I have completed importing user data, I must now reboot your computer (it is essential), is this ok? Once the reboot is complete, please reopen PiNet. You may need to redownload it." 9 78
-		if [ $? -eq 0 ]; then
-			reboot
-		else
-			exit
-		fi
+	    $p import_migration "/home/$SUDO_USER/toMove.tar.gz"
+	    UpdateConfig "ImportedUsers" "true"
+	    return 0
 	else
 		whiptail --title $"Import failed" --yesno $"The user import has failed, /home/$SUDO_USER/toMove.tar.gz wasn't found? Are you sure you copied it to that location? Would you like to try again?" 9 78
 		if [ $? -eq 0 ]; then
@@ -2058,9 +2028,9 @@ InstallBlueJ(){
 checkPythonFunctionsInstalled(){
 #Checks the vital Python functions file is installed on the system. If not, it goes and downloads it from the web
 	if [ ! -f $PythonFunctions ]; then
-		wget $RawRepository/$ReleaseBranch/Scripts/pinet-functions-python.py -O $PythonFunctions
+		wget $RawRepository/$ReleaseBranch/Scripts/pinet_functions_python.py -O $PythonFunctions
 		if [ ! $? -eq 0 ]; then 
-			whiptail --title $"Error!" --msgbox $"I am sorry, there has been a critical error with pinet. A required library file could not be acquired. PiNet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem. Please manually download the file from http://bit.ly/14aU4u1 and copy it to $PythonFunctions. If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
+			whiptail --title $"Error!" --msgbox $"I am sorry, there has been a critical error with pinet. A required library file could not be acquired. PiNet is unable to function without this library. This may be because you are not connected to the internet or there may be another problem. Please manually download the file from http://bit.ly/pinet-fn and copy it to $PythonFunctions. If the issue persists, please contact support at http://PiNet.org.uk/support.html" 16 78
 			rm -rf $PythonFunctions
 			exit
 		fi
@@ -2165,15 +2135,15 @@ CheckRaspberryPiUIModsAllUsers(){
 }
 
 InstallRaspberryPiUIMods(){
-#Installs the new Raspberry Pi UI mods, but fixes the mistakes made in the wallpaper setting
-		ltsp-chroot apt-get update
-		ltsp-chroot apt-get -o Dpkg::Options::="--force-confnew" install -y raspberrypi-ui-mods 
+#Fixes the mistakes made in the wallpaper setting of RaspberryPi-UI-Mods
+		#ltsp-chroot apt-get update
+		#ltsp-chroot apt-get -o Dpkg::Options::="--force-confnew" install -y raspberrypi-ui-mods
 		FixUIConfigFile "System" "pcmanfm.conf"
 		FixUIConfigFile "System" "desktop-items-0.conf"
 		CheckRaspberryPiUIModsAllUsers 
 }
 
-ChooseReleaseChannel(){
+ChooseReleaseChannelOld(){
 	whiptail --title $"Release channels" --yesno --yes-button $"Stable" --no-button $"Development" $"Would you like to use the stable or development (dev) software update channels? Stable is recommended. Do not use the development (dev) channels in a production environment (for example a school) as stability is not guaranteed. " 10 78 
 	if [ $? -eq 0 ]; then 
 		UpdateConfig ReleaseChannel "Stable"
@@ -2185,9 +2155,29 @@ ChooseReleaseChannel(){
 		exec /bin/bash pinet
 		exit
 	fi
-	
 }
 
+ChooseReleaseChannel(){
+    # Select a release channel (branch) for PiNet to use for software updates etc.
+    $p "selectReleaseChannel"
+    exitstatus=$(gp)
+    SetupRepositories
+    if [ $1 = "Restart" ]; then
+        if [ "$exitstatus" = "1" ]; then
+            # Invalidate previous package version caches to force them to be redownloaded
+            rm "/opt/PiNet/pinet-package-versions.txt"
+            rm "/opt/PiNet/PiBootBackup/apt_version.txt"
+
+            # If the release channel has changed, restart PiNet software to check for updates etc
+            Updater
+        else
+            Menu
+        fi
+    else
+        Updater "IgnoreAfterUpdate" "$1"
+    fi
+
+}
 GroupCheck(){
 	#Checks if all users permissions are correct in groups. Front end for fixGroups
 	whiptail --title $"Groupcheck" --msgbox $"Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
@@ -2219,7 +2209,7 @@ ImportUsersFromCSV(){
 		cd /home/$SUDO_USER
 		local fileLoc=$(SingleFileSelect)
 		if [ ! fileLoc = "The user canceled :(" ]; then
-			password=$(whiptail --inputbox $"Enter a default password to use if I am unable to find one." 8 78 --title $"Password" 3>&1 1>&2 2>&3)
+			password=$(whiptail --inputbox $"Enter a default password to use if am unable to find one." 8 78 --title $"Password" 3>&1 1>&2 2>&3)
 			if [ password = "" ]; then
 				whiptail --title $"Error" --msgbox $"Default password box can't be left blank!" 9 78
 			else
@@ -2243,7 +2233,8 @@ DeleteUsersFromCSV(){
 
 CheckInstallSuccess(){
 	if [ -d "/opt/ltsp/armhf/debootstrap" ]; then
-		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is higely recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is highly recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
+		echo $"You may wish to check the PiNet logs to help diagnose the issue. They can be found at /var/log/pinet.log."
 		exit
 	fi
 }
@@ -2285,9 +2276,7 @@ CheckPipSymbolicLinkBug(){
 CheckDebianVersion(){
     $p checkDebianVersion
     exitstatus=$(gp)
-    echo "$exitstatus"
 	if [ "$exitstatus" = "1" ]; then
-	    whiptail --title $"Jessie rebuild" --msgbox $"Raspbian will now be rebuilt to use Jessie. This may take 1-2 hours." 9 78
 	    RebuildOS
 	fi
 
@@ -2309,6 +2298,20 @@ DuplicateLTSConf(){
     cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
 
 }
+
+WheezyJessieUpgradePartTwo(){
+    ChooseReleaseChannel "NoRestart"
+    exec /bin/bash pinet "Wheezy-upgrade-part-three"
+    exit
+}
+
+WheezyJessieUpgradePartThree(){
+    # Delete old pinet-functions-python.py file (has been replaced by pinet_functions_pinet.py and start OS rebuild.
+    rm /usr/local/bin/pinet-functions-python.py
+    RebuildOS
+    UpdateAll
+}
+
 #***************************************************************************************************
 backupDeleteTime(){
   MENUEPT=$(whiptail --menu $"How long would you like to store backups? Note this only runs when a backup runs." --nocancel 20 85 10 \
@@ -2343,7 +2346,7 @@ esac
 	
 #***************************************************************************************************
 backupFrequency(){
-  MENUEPT=$(whiptail --menu $"How often should I create a backup?" --nocancel 20 85 10 \
+  MENUEPT=$(whiptail --menu $"How often should PiNet create a backup?" --nocancel 20 85 10 \
     "Every-day" $"Will create a new backup every day" \
     "Twice-weekly" $"Will create a backup on Tuesday and Thursday" \
     "Once-a-week" $"Will create a backup every Friday" \
@@ -2441,7 +2444,7 @@ case "$MENUEPT" in
 	;;
 	Full-Install)
 	if [ -d /opt/ltsp/armhf ]; then
-		whiptail --title $"Error" --yesno $"An LTSP install has been detected.. Not recommended to continue. Should I continue?" 8 78
+		whiptail --title $"Error" --yesno $"An LTSP install has been detected.. Not recommended to continue. Should PiNet continue?" 8 78
 	exitstatus=$?
 	if [ $exitstatus = 0 ]; then
 			echo ""
@@ -2508,8 +2511,9 @@ EpoptesMenu() {
     3>&1 1>&2 2>&3)
 
 case "$MENUEPT" in
-    Install-Epoptes) 
-    if [ $(checkInternet) -eq 0 ]; then
+    Install-Epoptes)
+    checkInternet
+    if [ $? -eq 0 ]; then
     	whiptail --title $"Epoptes install" --yesno $"I am now going to install Epoptes classroom management software on the server and Raspberry Pis. Would you like to continue?" 8 78
     	if [ $? -eq 0 ];then
     	
@@ -2617,8 +2621,7 @@ UserGroups() {
   	"Add-teacher" $"Add user to the staff permission group" \
 	"Import-Users" $"Import usernames and passwords from a CSV file" \
 	"Delete-Batch" $"Batch delete users from a CSV file" \
-    "Enable-Sudo" $"Enables the use of sudo for pupils. Used for GPIO access" \
-    "Disable-Sudo" $"Disables the use of sudo for pupils" \
+	"Change-Sudo" $"Change student sudo permissions. Used for GPIO access" \
 	"Group-check" $"Checks all users are in the correct system groups" \
     "Export-users" $"Export all user data for migrating to new PiNet server" \
     3>&1 1>&2 2>&3)
@@ -2657,20 +2660,11 @@ case "$MENUEPT" in
     fixGroups
     Menu
 	;;
-	Enable-Sudo)
+	Change-Sudo)
     SudoMenu
     if [ "$NBDBuildNeeded" = "true" ]; then
 		NBDRun
 	fi
-    Menu
-	;;
-	Disable-Sudo)
-    rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
-    NBDRun
-    Menu
-	;;
-	Add-Samab-user)
-    AddSambaUser
     Menu
 	;;
 	
@@ -2692,9 +2686,9 @@ esac
 } #***************************************************************************************************
 
 ExtraSoftware() {
-#No longer used, replaced with installSoftwareList() in pinet-functions-python.py
-
-if [ $(checkInternet) -eq 0 ]; then
+#No longer used, replaced with installSoftwareList() in pinet_functions_python.py
+checkInternet
+if [ $? -eq 0 ]; then
   MENUEPT=$(whiptail --title "Extra Software Submenu" --cancel-button "Finished" --menu "What would you like to do?" 20 100 10 \
     "Install-Libreoffice" "Libreoffice is a full free office suite, similar to Microsoft office " \
     "Install-Arduino" "The Arduino IDE is for programming and interacting with Arduinos" \
@@ -2766,8 +2760,13 @@ fi
 FullInstall(){
   checkInternetDetailed
   if [ $? -eq 0 ]; then
-		FirstTimeImportUsers
-		ChooseReleaseChannel 1
+		ConfigFileRead
+		if [ "$ImportedUsers" = "" ]; then
+		    FirstTimeImportUsers
+		fi
+		if [ "$ReleaseChannel" = "" ]; then
+		    ChooseReleaseChannel 1
+		fi
 		$p initialInstallSoftwareList
 		whiptail --title $"Full Install" --msgbox $"A full install will take around 1-2 hours depending on your Internet speed. There will be a number of options to select at the end so do not close this terminal until the install has completed!" 10 78
 		installLTSP   #Installs LTSP and other packages required to build an Raspberry Pi OS
@@ -2781,29 +2780,27 @@ FullInstall(){
 		FixDesktopIcons   #Adds desktop icons
 		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		#whiptail --title "Extra software" --msgbox "Select any additional software you want to use or use Install-Custom-software to install a specific package from the Raspbian apt repository if you know its name. To quit the menu, use the finished option. This menu can be later accessed from Install-Program from the main menu." 12 78
-		#ExtraSoftware   #Runs ExtraSoftware menu to let the user select additional software they wish to install
+		UpdateConfig NBD true
+		UpdateConfig NBDuse true
 		$p installSoftwareFromFile
 		DisableSPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-		UpdateConfig NBD true
-		UpdateConfig NBDuse true
-		UpdateSD   #Runs the IP address selector and builds the SD card image
+		UpdateSD "NoRecompress"   #Runs the IP address selector and builds the SD card image
 		addSoundcardDefault
 		SetupSharedStandalone
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
-		fixGroups   #Adds all current users to the pupil and video group
+		fixGroups   #Adds all current users to the correct groups.
 		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
-		LegacyFixes
-		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
+		LegacyFixes "NoRecompress"
+		AddSoftware
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
 		CheckInstallSuccess
 	
-		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 10 78
+		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. You will need to flash an SD card with the PiNet boot files, instructions can be found at http://pinet.org.uk/articles/installation/sd-card-copy.html. Then plug the Raspberry Pi into the network and boot it up." 10 78
 	else
 		whiptail --title "Error" --msgbox "The installation has been cancelled due to a problem accessing key domains used in the installation." 8 78
 		echo "The installation has been cancelled due to a problem accessing key domains used in the installation."
@@ -2812,7 +2809,8 @@ FullInstall(){
 }
 
 RebuildOS(){
-if [ $(checkInternet) -eq 0 ]; then
+checkInternet
+if [ $? -eq 0 ]; then
     		rm -rf /opt/ltsp/armhf
     		rm -rf /var/lib/tftpboot/ltsp/armhf
 			$p initialInstallSoftwareList
@@ -2828,15 +2826,15 @@ if [ $(checkInternet) -eq 0 ]; then
 			$p installSoftwareFromFile
 			DisableSPI
 			SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
-    		UpdateSD
+    		UpdateSD "NoRecompress"
     		addSoundcardDefault
     		SetupSharedStandalone
     		installKernelUpdater ""
 			$p checkKernelFileUpdateWeb
 			fixGroups
 			DuplicateLTSConf
-    		whiptail --title $"Compression" --msgbox $"The operating system will now be compressed. This normally takes around 5 minutes." 8 78
-    		LegacyFixes
+    		LegacyFixes "NoRecompress"
+    		AddSoftware
 			EnableNBD
     		resetAndCleanup
 			CheckInstallSuccess
@@ -2956,22 +2954,34 @@ fi
 CheckOS   #Checks if running Ubuntu, if not complains a little
 if [ "$SUDO_USER" = "" ]; then
 	SUDO_USER=$(whiptail --inputbox $"No user in the SUDO_USER variable was detected. This occurs when you didn't launch the application with sudo. Please enter your normal Linux username." 9 78 --title $"Unsupported operating system" 3>&1 1>&2 2>&3)  #Sometimes can't detect username to run program as.
-fi	
-
-case "$1" in  #Checks if I need to run an update all, usually run after an update when the software is launched by itself
-Update-All)
-	UpdateAll
-	;;
-esac
+fi
 
 checkInstallLoc   #Checks PiNet is installed in /usr/local/bin. If not offer to move it
 
 echo $"Starting PiNet - Please wait"
 checkPythonFunctionsInstalled  #Checks the supporting Python functions are installed correctly
 CheckForRaspiLTSP
+VerifyPythonPackages
 
+CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 
-if [ ! -d /opt/ltsp/armhf ]; then
+case "$1" in  #Checks if PiNet needs to run an update all, usually run after an update when the software is launched by itself
+Update-All)
+    UpdateSD
+	UpdateAll
+	;;
+SD-card-update)
+    UpdateSD
+    ;;
+Wheezy-upgrade-part-two)
+    WheezyJessieUpgradePartTwo
+    ;;
+Wheezy-upgrade-part-three)
+    WheezyJessieUpgradePartThree
+    ;;
+esac
+
+if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full PiNet installation?" 8 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
@@ -2981,23 +2991,23 @@ if [ ! -d /opt/ltsp/armhf ]; then
     		Menu
 		fi
 fi
-CheckTerminalSize  #Changes the terminal to the minimum size if is too small
 ConfigFileRead  #Reads the main configuration file (/etc/pinet) and loads all values in as environmental variables
 
 if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected, if not asks for one
 	ChooseReleaseChannel "Restart"
 fi
 
-SetupRepositories #Sets up the correct branch varliables as selected in ChooseReleaseChannel()
+SetupRepositories #Sets up the correct branch variables as selected in ChooseReleaseChannel()
 
-intStat=$(checkInternet)  #Checks if PiNet server has a web connection. If so, checks for updates on a PiNet, PiNet kernels and PiNet kernel updater
-if [ $intStat -eq 0 ]; then
+checkInternet #Checks if PiNet server has a web connection. If so, checks for updates on PiNet, PiNet kernels and PiNet kernel updater
+if [ $? -eq 0 ]; then
 	if [ ! "$DisableUpdateChecking" = "true" ]; then
 			CheckReleases
 			checkKernelFileUpdateWeb
 			checkKernelUpdater "NBD"
 	fi	
 fi
+fixGroups #Verify all groups are set up correctly with correct users
 LegacyFixes #Makes sure all configuration data is correctly configured
 CheckInstallSuccess
 Menu #Runs main menu

@@ -16,8 +16,11 @@ There is also a desktop shortcut embedded in the main pinet script which is adde
 ### KernelCheckUpdate.sh
 A script added in as a startup script on the Raspbian chroot. It checks the boot files on the SD card are up to date vs the copy the server is storing in /opt/ltsp/armhf/bootfiles.
 
-### Pinet-functions-python.py
+### Pinet_functions_python.py
 The second section of the main pinet script. It contains hundreds of lines of supporting functions for PiNet to use written in Python. Slowly more and more of PiNet is getting moved over into this script and away from Bash.   
 
 ### Pinet-screenshot.sh
 A simple script for taking screenshots using Raspi2png. Is based off the simple Zenity library.   
+
+### Pinet-functions-python.py (note dashes)
+Older name for pinet_functions_python.py. Now deprecated and only kept for legacy reasons. 
