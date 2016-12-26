@@ -708,6 +708,24 @@ def copy_file_folder(src, dest):
             fileLogger.debug('Directory not copied. Error: %s' % e)
 
 
+def change_owner_file_folder(path, user_id, group_id):
+    user_id = int(user_id)
+    group_id = int(group_id)
+    item_path = ""
+    # Taken from http://stackoverflow.com/questions/2853723/whats-the-python-way-for-recursively-setting-file-permissions
+    fileLogger.debug("Changing ownership of folder {} to user ID of {} and group ID of {}".format(path, user_id, group_id))
+    try:
+        for root, dirs, files in os.walk(path):
+            for directory in dirs:
+                item_path = os.path.join(root, directory)
+                os.chown(item_path, user_id, group_id)
+            for file in files:
+                item_path = os.path.join(root, file)
+                os.chown(item_path, user_id, group_id)
+    except FileNotFoundError:
+        fileLogger.debug("Unable to change owner on {} as it can't be found.".format(item_path))
+
+
 def set_current_user_to_owner(path):
     """
     Sets provided owner of file/folder provided to the SUDO_USER. Leaves group same as was previously.
@@ -2014,7 +2032,7 @@ def custom_config_txt():
     write_file(additional_config_path, read_file(temp_config_file.name)[5:])
 
 
-def add_linux_group(group_name, group_id=None, in_chroot=False):
+def add_linux_group(group_name, group_id=None, in_chroot=False, ignore_errors=False):
     """
     Add new Linux group.
     :param group_name: Name of group to add
@@ -2028,10 +2046,10 @@ def add_linux_group(group_name, group_id=None, in_chroot=False):
 
     if in_chroot:
         fileLogger.info("Adding new group to the Raspbian chroot - " + group_name)
-        ltsp_chroot(cmd)
+        ltsp_chroot(cmd, ignore_errors=ignore_errors)
     else:
         fileLogger.info("Adding new group to the Server - " + group_name)
-        run_bash(cmd)
+        run_bash(cmd, ignore_errors=ignore_errors)
 
 
 def modify_linux_group(group_name, group_id, in_chroot=False):
@@ -2051,7 +2069,7 @@ def modify_linux_group(group_name, group_id, in_chroot=False):
         run_bash(cmd)
 
 
-def add_linux_user_to_group(username, group_name):
+def add_linux_user_to_group(username, group_name, ignore_errors=False):
     """
     Add a Linux user to a group.
     :param username: The username of the user to add to the group.
@@ -2060,7 +2078,20 @@ def add_linux_user_to_group(username, group_name):
     """
     fileLogger.info("Adding " + username + " to group " + group_name)
     cmd = ["usermod", "-a", "-G", group_name, username]
-    run_bash(cmd)
+    run_bash(cmd, ignore_errors=ignore_errors)
+
+
+def add_linux_user(username, user_id, group_id, encrypted_password, ignore_errors=False):
+    """
+    :param username: The linux username
+    :param user_id: The user ID
+    :param group_id: The default group ID for user
+    :param encrypted_password: Pre-encrypted password for user
+    :return:
+    """
+    fileLogger.info("Creating username {} with ID of {} and group_id of {}".format(username, user_id, group_id))
+    cmd = ["useradd", username, "--password", encrypted_password, "--uid", user_id, "--gid", group_id]
+    run_bash(cmd, ignore_errors=ignore_errors)
 
 
 def parse_group_file(lines):
@@ -2256,6 +2287,108 @@ def create_partition_table(sd_card_image_path):
     EOF""".format(sd_card_image_path))
 
 
+def parse_mig_file(path):
+    """
+    Parse mig(ration) files. These are copied versions of passwd, shadow etc files.
+    :param path: Path to mig file
+    :return: Dictionary of mig file values
+    """
+    mig_raw = read_file(path)
+    mig_parsed = {}
+    for line in mig_raw:
+        mig_parsed_single = line.split(":")
+        for index, section in enumerate(mig_parsed_single):
+            if "," in section:
+                mig_parsed_single[index] = section.split(",")
+        mig_parsed[mig_parsed_single[0]] = mig_parsed_single[1:]
+    return mig_parsed
+
+
+def import_migration_create_users(base_path = "/tmp/pinet_unpack/root/move/"):
+    """
+    Import tool for importing users/groups after a PiNet server migration.
+    Recreates the groups, then the users and finally adds the users to the correct groups.
+    :param base_path: Path that the unzipped user/group files are held.
+    """
+
+    # Parse migration files
+    passwd = parse_mig_file("{}passwd.mig".format(base_path))
+    shadow = parse_mig_file("{}shadow.mig".format(base_path))
+
+    gpasswd = parse_mig_file("{}group.mig".format(base_path))
+    gshadow = parse_mig_file("{}gshadow.mig".format(base_path))
+
+    # Add the Linux groups
+    for group in gpasswd:
+        add_linux_group(group, gpasswd[group][1], ignore_errors=True)
+
+    # Add the Linux user accounts
+    for username in passwd:
+        add_linux_user(username, passwd[username][1], passwd[username][2], shadow[username][0], ignore_errors=True)
+
+        # Check if the user has a home folder, if not create one from /etc/skel
+        if not os.path.exists("/home/{}".format(username)):
+            fileLogger.warning("User {} does not have a home folder at /home/{} as part of import. Creating from /etc/skel.".format(username, username))
+            copy_file_folder("/etc/skel/", "/home/{}".format(username))
+            # Set home folder owner to the user/group if new coming from /etc/skel
+            change_owner_file_folder("/home/{}".format(username), passwd[username][1], passwd[username][2])
+
+    # Add the users into correct groups
+    for group in gpasswd:
+        if len(gpasswd[group]) > 2 and isinstance(gpasswd[group][2], list):
+            for username in gpasswd[group][2]:
+                add_linux_user_to_group(username, group, ignore_errors=True)
+
+
+def import_migration_unpack_home_folders(migration_file_path):
+    """
+    Unpack the migration tar.gz, then move home folders into correct locations with correct permissions
+    :param migration_file_path: Path to the toMove.tar.gz migration blob
+    :return: Status of migration as True/False
+    """
+    # First verify that the migration tar.gz exists
+    if os.path.isfile(migration_file_path):
+        unpack_path = "/tmp/pinet_unpack/"
+        home_files_path_tar = "{}root/move/home.tar.gz".format(unpack_path)
+        if os.path.isdir(unpack_path):
+            remove_file(unpack_path)
+        make_folder(unpack_path)
+        print(_("Extracting main migration archive."))
+        # Unpack the main migration tar.gz
+        run_bash("tar -zxvf {} -C {}".format(migration_file_path, unpack_path))
+        # Verify all the key files are included in the main migration tar.gz
+        if os.path.isfile(home_files_path_tar) and os.path.isfile("{}root/move/group.mig".format(unpack_path)) and os.path.isfile("{}root/move/passwd.mig".format(unpack_path)) and os.path.isfile("{}root/move/shadow.mig".format(unpack_path)):
+            print(_("Extracting home folder archive."))
+            # Extract the sub-tar.gz file containing the home folders
+            run_bash("tar -zxvf {} -C {}".format(home_files_path_tar, "{}".format(unpack_path)))
+            ignored_users = []
+            for folder in os.listdir("{}home/".format(unpack_path)): # Get all files/folders in folder of home folders
+                full_folder_path = "{}home/{}".format(unpack_path, folder)
+                if os.path.isdir(full_folder_path):
+                    if not os.path.exists("/home/{}".format(folder)):
+                        # If it is a folder and the folder doesn't already exist in /home, then copy it from the import.
+                        remove_file("{}.pulse".format(full_folder_path)) # Remove pulse audio files which can cause login issues.
+                        print(_("Importing {} home folder.".format(folder)))
+                        # Copy the home folders back into /home using -p to maintain the initial owner/permissions.
+                        run_bash(["cp", "-r", "-p", full_folder_path, "/home/{}".format(folder)], ignore_errors=True) # Needed to maintain file permissions/owners
+                    else: # If the home folder already exists in /home, so is ignored
+                        ignored_users.append(folder)
+
+            print(_("Home folders import complete. The following home folders were ignored as already existed - {}".format(", ".join(ignored_users))))
+            remove_file("{}home/".format(unpack_path)) # Clean up home folders from /tmp
+            return True
+        else:
+            print(_("Key files missing from {}root/move/ ! It should include home.tar.gz, group.mig, passwd.mig and shadow.mig.".format(unpack_path)))
+            return False
+    else:
+        return False
+
+
+def import_migration(migration_file_path):
+    if import_migration_unpack_home_folders(migration_file_path):
+        import_migration_create_users()
+
+
 # ------------------------------Main program-------------------------
 
 if __name__ == "__main__":
@@ -2321,3 +2454,5 @@ if __name__ == "__main__":
             return_data(build_download_url(sys.argv[2], sys.argv[3]))
         elif sys.argv[1] == "updateSD":
             update_sd()
+        elif sys.argv[1] == "import_migration":
+            import_migration(sys.argv[2])

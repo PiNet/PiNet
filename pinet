@@ -1929,6 +1929,13 @@ RestoreMoveBackup() {
 whiptail --title $"Warning" --yesno $"Importing should only be performed on a completely fresh Ubuntu install. PiNet or Raspi-LTSP must not already be installed. Make sure to manually check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
+	    $p import_migration "/home/$SUDO_USER/toMove.tar.gz"
+	    UpdateConfig "ImportedUsers" "true"
+	    return 0
+
+        # Legacy importer below, no longer used
+
+
 		mkdir /root/newsusers.bak
 		cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
 		cd /
@@ -2780,8 +2787,10 @@ fi
 FullInstall(){
   checkInternetDetailed
   if [ $? -eq 0 ]; then
-		FirstTimeImportUsers
 		ConfigFileRead
+		if [ "$ImportedUsers" = "" ]; then
+		    FirstTimeImportUsers
+		fi
 		if [ "$ReleaseChannel" = "" ]; then
 		    ChooseReleaseChannel 1
 		fi
