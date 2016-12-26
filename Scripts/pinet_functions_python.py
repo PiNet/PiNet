@@ -1203,45 +1203,6 @@ def display_change_log(version):
         return "ERROR"
 
 
-def previous_import():
-    # TODO: Rewrite this function, is too fragile.
-    items = ["passwd", "group", "shadow", "gshadow"]
-    # items = ["group",]
-    to_add = []
-    for x in range(0, len(items)):
-        # migLoc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x] + ".mig"
-        # etc_loc = "/Users/Andrew/Documents/Code/pinetImportTest/" + items[x]
-        mig_loc = "/root/move/" + items[x] + ".mig"
-        etc_loc = "/etc/" + items[x]
-        debug("mig loc " + mig_loc)
-        debug("etc loc " + etc_loc)
-        mig = read_file(mig_loc)
-        etc = read_file(etc_loc)
-        for i in range(0, len(mig)):
-            mig[i] = str(mig[i]).split(":")
-        for i in range(0, len(etc)):
-            etc[i] = str(etc[i]).split(":")
-        for i in range(0, len(mig)):
-            unfound = True
-            for y in range(0, len(etc)):
-                bob = mig[i][0]
-                thing = etc[y][0]
-                if bob == thing:
-                    unfound = False
-            if unfound:
-                to_add.append(mig[i])
-        for i in range(0, len(to_add)):
-            etc.append(to_add[i])
-        for i in range(0, len(etc)):
-            line = ""
-            for y in range(0, len(etc[i])):
-                line = line + etc[i][y] + ":"
-            line = line[0:len(line) - 1]
-            etc[i] = line
-        debug(etc)
-        write_file(etc_loc, etc)
-
-
 def open_csv_file(theFile):
     data_list = []
     if os.path.isfile(theFile):
@@ -2413,8 +2374,6 @@ if __name__ == "__main__":
             check_kernel_updater()
         elif sys.argv[1] == "installCheckKernelUpdater":
             install_check_kernel_updater()
-        elif sys.argv[1] == "previousImport":
-            previous_import()
         elif sys.argv[1] == "importFromCSV":
             import_users_csv(sys.argv[2], sys.argv[3])
         elif sys.argv[1] == "usersCSVDelete":

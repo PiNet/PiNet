@@ -243,8 +243,8 @@ echo '#!/bin/sh' >> /etc/network/if-up.d/tftpd-hpa      #Script to make sure tft
 echo "service tftpd-hpa restart" >> /etc/network/if-up.d/tftpd-hpa
 chmod 755 /etc/network/if-up.d/tftpd-hpa
 service tftpd-hpa restart
-groupadd -g 2122 pupil
-groupadd -g 2123 teacher
+groupadd -g 628 pupil
+groupadd -g 629 teacher
 
 }
 
@@ -259,8 +259,8 @@ ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
 #cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 DuplicateLTSConf
 
-ltsp-chroot --arch armhf groupadd -g 2122 pupil
-ltsp-chroot --arch armhf groupadd -g 2123 teacher
+ltsp-chroot --arch armhf groupadd -g 628 pupil
+ltsp-chroot --arch armhf groupadd -g 629 teacher
 AddUdevRules
 
 printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
@@ -1930,31 +1930,6 @@ if [ $? -eq 0 ]; then
 	    $p import_migration "/home/$SUDO_USER/toMove.tar.gz"
 	    UpdateConfig "ImportedUsers" "true"
 	    return 0
-
-        # Legacy importer below, no longer used
-
-
-		mkdir /root/newsusers.bak
-		cp /etc/passwd /etc/shadow /etc/group /etc/gshadow /root/newsusers.bak
-		cd /
-		tar -zxvf /home/$SUDO_USER/toMove.tar.gz
-		#cd /root/move
-		#cat passwd.mig >> /etc/passwd
-		#cat group.mig >> /etc/group
-		#cat shadow.mig >> /etc/shadow
-		#/bin/cp gshadow.mig /etc/gshadow
-		$p "previousImport"
-		cd /
-		tar -zxvf /root/move/home.tar.gz
-		fixGroups
-		rm /home/$SUDO_USER/Desktop/Raspi-LTSP.desktop
-		AddDesktopShortcutToUser
-		whiptail --title $"Reboot" --yesno $"PiNet has completed importing user data. The server *must* now be rebooted. Once the reboot is complete, y launch PiNet again. Reboot now?" 9 78
-		if [ $? -eq 0 ]; then
-			reboot
-		else
-			exit
-		fi
 	else
 		whiptail --title $"Import failed" --yesno $"The user import has failed, /home/$SUDO_USER/toMove.tar.gz wasn't found? Are you sure you copied it to that location? Would you like to try again?" 9 78
 		if [ $? -eq 0 ]; then
