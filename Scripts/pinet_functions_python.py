@@ -13,7 +13,9 @@
 
 import crypt
 import csv
+import datetime
 import errno
+import feedparser
 import grp
 import logging
 import os
@@ -22,6 +24,7 @@ import pickle
 import pwd
 import random
 import re
+import requests
 import shutil
 import socket
 import sys
@@ -35,9 +38,6 @@ from collections import OrderedDict
 from logging import debug
 from subprocess import Popen, PIPE, check_output, CalledProcessError
 
-import datetime
-import feedparser
-import requests
 try:
     import netifaces
 except ImportError:
