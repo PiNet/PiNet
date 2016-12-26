@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.1.8
+version=1.1.9
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -96,6 +96,7 @@ LegacyFixes() {
 		UpdateConfig NBDBuildNeeded true
 	fi
 	CheckBackupScriptVersion
+	CheckDebianVersion
 	
 	if [ "$NBDBuildNeeded" = "true" ]; then
 		echo $"A required system update has been found. I will now compress the operating system again to apply this update"
@@ -2236,6 +2237,18 @@ CheckBackupScriptVersion(){
             createBackupScript
         fi
     fi
+
+}
+
+CheckDebianVersion(){
+    $p checkDebianVersion
+    exitstatus=$(gp)
+	if [ "$exitstatus" = "1" ]; then
+	    wget http://links.pinet.org.uk/jessie-stable-pinet -O /usr/local/bin/pinet
+	    wget http://links.pinet.org.uk/PiNet--PiNet---jessie-stable---Scripts--pinet_functions_python -O /usr/local/bin/pinet_functions_python.py
+	    exec /bin/bash pinet Wheezy-upgrade-part-two
+	    exit
+	fi
 
 }
 
