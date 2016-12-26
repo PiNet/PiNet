@@ -778,8 +778,10 @@ EpoptesRun() {
 fixGroups(){
     # Verify correct groups exist, then make sure all users are in correct groups.
     $p verifyCorrectGroupUsers
+    ConfigFileRead
     if [ "$NBDBuildNeeded" = "true" ]; then
 		NBDRun
+		whiptail --title $"Reboot required" --msgbox $"A group ID change has taken place to correct an issue. Please reboot your PiNet server as soon as possible." 8 78
 	fi
 }
 

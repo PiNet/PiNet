@@ -91,13 +91,13 @@ PINET_UNRESTRICTED_GROUPS = {"adm": None,
                              "plugdev": None,
                              "input": None,
                              "netdev": None,
-                             "gpio": 2124,
-                             "spi": 2125,
-                             "i2c": 2126,
-                             "pupil": 2122}
+                             "gpio": 625,
+                             "spi": 626,
+                             "i2c": 627,
+                             "pupil": 628}
 
 # Groups that not all users should be added to.
-PINET_RESTRICTED_GROUPS = {"teacher": 2123, }
+PINET_RESTRICTED_GROUPS = {"teacher": 629, }
 
 PINET_GROUPS = {}
 PINET_GROUPS.update(PINET_UNRESTRICTED_GROUPS)
@@ -2117,10 +2117,9 @@ def verify_groups():
     for group in PINET_GROUPS:
         if group in server_groups:
             if PINET_GROUPS[group] and PINET_GROUPS[group] != server_groups[group]:
-                fileLogger.warning(
-                    "The group with name " + group + " on server has an ID mismatch! It is currently using " + str(
-                        server_groups[group] + " and should be using " + str(PINET_GROUPS[group])))
-                modify_linux_group(group, PINET_GROUPS[group])
+                fileLogger.warning("The groupw ith name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
+                modify_linux_group(group, PINET_GROUPS[group], in_chroot=False)
+                set_config_parameter("NBDBuildNeeded", "true")
         else:
             # If required group doesn't exist on the server, add it.
             add_linux_group(group, PINET_GROUPS[group])
@@ -2128,11 +2127,9 @@ def verify_groups():
         if PINET_GROUPS[group]:
             if group in pi_groups:
                 if PINET_GROUPS[group] != pi_groups[group]:
-                    fileLogger.warning(
-                        "The group with name " + group + " on Raspbian chroot has an ID mismatch! It is currently using " + str(
-                            str(pi_groups[group]) + " and should be using " + str(PINET_GROUPS[group])))
+                    fileLogger.warning("The group with name {} on the Raspbian chroot has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, pi_groups[group], PINET_GROUPS[group]))
                     modify_linux_group(group, PINET_GROUPS[group], in_chroot=True)
-
+                    set_config_parameter("NBDBuildNeeded", "true")
             else:
                 # If required group doesn't exist on the Raspbian chroot, add it.
                 add_linux_group(group, PINET_GROUPS[group], in_chroot=True)
@@ -2154,8 +2151,6 @@ def verify_correct_group_users():
     """
     Verify all users are in the correct groups. If not, fix the group allocations.
     """
-    # TODO - Double check this actually works...
-    # TODO - Run a speed comparison with this vs bash, perhaps can run it every startup of PiNet.
     verify_groups()
     non_system_users = []
     for user in pwd.getpwall():
