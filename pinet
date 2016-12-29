@@ -1386,8 +1386,10 @@ UpdateAll(){
 #Does a full system update on the server and on the Raspberry Pi OS
     checkInternet
 	if [ $? -eq 0 ]; then
-		apt-get update && apt-get upgrade -y
-		ltsp-chroot --arch armhf apt-get update && apt-get upgrade -y
+		apt-get update
+		apt-get upgrade -y
+		ltsp-chroot --arch armhf apt-get update
+		ltsp-chroot --arch armhf apt-get upgrade -y
 		AddSoftware
 		NBDRun
 		whiptail --title $"Update complete" --msgbox $"Updates are complete" 7 78
@@ -1927,7 +1929,7 @@ RestoreMoveBackup() {
 whiptail --title $"Warning" --yesno $"Importing should only be performed on a completely fresh Ubuntu install. PiNet or Raspi-LTSP must not already be installed. Make sure to manually check all files have copied correctly. Do you want to proceed?" 10 78
 if [ $? -eq 0 ]; then 
 	if [ -f /home/$SUDO_USER/toMove.tar.gz ]; then
-	    $p import_migration "/home/$SUDO_USER/toMove.tar.gz"
+	    $p importMigration "/home/$SUDO_USER/toMove.tar.gz"
 	    UpdateConfig "ImportedUsers" "true"
 	    return 0
 	else
@@ -2132,6 +2134,7 @@ CheckRaspberryPiUIModsAllUsers(){
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf side_pane_mode= side_pane_mode=1
 		fi
 	done
+	$p resetThemeCacheForAllUsers
 }
 
 InstallRaspberryPiUIMods(){
@@ -2180,7 +2183,7 @@ ChooseReleaseChannel(){
 }
 GroupCheck(){
 	#Checks if all users permissions are correct in groups. Front end for fixGroups
-	whiptail --title $"Groupcheck" --msgbox $"Group-check basically goes through each user account checking it is assigned the correct groups. It can take a number of minutes if you have a large amount of users." 9 78
+	whiptail --title $"Groupcheck" --msgbox $"Group-check goes through each user account checking it is assigned the correct groups. It also resets UI configuration. It can take a number of minutes if you have a large amount of users." 9 78
 	fixGroups
 	CheckRaspberryPiUIModsAllUsers
 	whiptail --title $"Complete" --msgbox $"All user groups have been checked and if need be, corrected." 8 78
@@ -2309,6 +2312,7 @@ WheezyJessieUpgradePartThree(){
     # Delete old pinet-functions-python.py file (has been replaced by pinet_functions_pinet.py and start OS rebuild.
     rm /usr/local/bin/pinet-functions-python.py
     RebuildOS
+    $p resetThemeCacheForAllUsers
     UpdateAll
 }
 

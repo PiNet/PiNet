@@ -1702,6 +1702,8 @@ def install_chroot_software():
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
     run_bash(
         "sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
+    run_bash("apt-get upgrade -y")
+    ltsp_chroot("apt-get upgrade -y")
     ltsp_chroot("apt-get autoremove -y")
 
 
@@ -2078,7 +2080,7 @@ def verify_groups():
     for group in PINET_GROUPS:
         if group in server_groups:
             if PINET_GROUPS[group] and PINET_GROUPS[group] != server_groups[group]:
-                fileLogger.warning("The groupw ith name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
+                fileLogger.warning("The group with name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
                 modify_linux_group(group, PINET_GROUPS[group], in_chroot=False)
                 set_config_parameter("NBDBuildNeeded", "true")
         else:
@@ -2340,6 +2342,23 @@ def import_migration_unpack_home_folders(migration_file_path):
         return False
 
 
+def reset_theme_cache_for_all_users():
+    """
+    Delete cache files for desktop theme for provided user.
+    This is needed for the migration to Pixel, to bring in the new theme configuration files.
+    """
+    non_system_users = []
+    for user in pwd.getpwall():
+        if 1000 <= user.pw_uid < 65534:
+            non_system_users.append(user)
+    for user in non_system_users:
+        fileLogger.debug("Deleting theme cache for {}.".format(user.pw_name))
+        files_folders_to_delete = [".config/Trolltech.conf", ".config/lxsession", ".config/openbox", ".config/pcmanfm", ".config/lxpanel", ".config/gtk-3.0", ".themes/PiX"]
+        for file_folder in files_folders_to_delete:
+            remove_file("/home/{}/{}".format(user.pw_name, file_folder))
+
+
+
 def import_migration(migration_file_path):
     if import_migration_unpack_home_folders(migration_file_path):
         import_migration_create_users()
@@ -2408,5 +2427,8 @@ if __name__ == "__main__":
             return_data(build_download_url(sys.argv[2], sys.argv[3]))
         elif sys.argv[1] == "updateSD":
             update_sd()
-        elif sys.argv[1] == "import_migration":
+        elif sys.argv[1] == "importMigration":
             import_migration(sys.argv[2])
+        elif sys.argv[1] == "resetThemeCacheForAllUsers":
+            reset_theme_cache_for_all_users()
+
