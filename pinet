@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.2.2
+version=1.2.3
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -313,6 +313,7 @@ if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ]; then
 	fi
 return
 
+}
 
 EnableNBDswap(){
 #Enables NBD swap system. Allows the Raspberry Pis to use NBD partition as swap
@@ -516,65 +517,10 @@ fixGroups(){
 	fi
 }
 
-fixGroupsLegacy(){
-    # Old code for adding groups and users to the groups
-
-
-    #Adds all the groups if they don't exist
-    for ugroup in adm dialout cdrom audio users sudo video games plugdev input gpio spi i2c netdev; do
-        egrep -i "^$ugroup" /etc/group >> /dev/null
-        if [ $? = 1 ]; then
-            groupadd $ugroup
-        fi
-    done
-
-
-    #Adds all users to all the required groups if they aren't already in them
-    cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets
-    do
-        for ugroup in adm dialout cdrom audio users sudo video games plugdev input gpio spi i2c netdev pupil; do
-            if ! groups "$user" | grep -q -E ' $ugroup(\s|$)'; then
-                usermod -a -G $ugroup $user
-            fi
-        done
-    done
-
-    egrep -i "^teachers" /etc/group >/dev/null
-    if [ $? -eq 0 ]; then
-        groupdel teachers
-    fi
-
-    local teacherID=$(egrep -i "^teacher" /etc/group | cut -d: -f3)
-    if [ ! "$teacherID" = "2123" ]; then
-        groupdel teacher
-        groupadd teacher -g 2123
-        whiptail --title $"Reboot required" --msgbox $"Warning, once this upgrade process completes, you must restart the server to refresh user groups which have just changed." 8 78
-        fixGroups
-    fi
-
-    egrep -i "^teacher" /etc/group >/dev/null
-    if [ ! $? -eq 0 ]; then
-        groupadd teacher -g 2123
-    fi
-
-    local pupilID=$(egrep -i "^pupil" /etc/group | cut -d: -f3)
-    if [ ! "$pupilID" = "2122" ]; then
-        groupdel pupil
-        groupadd pupil -g 2122
-        fixGroups
-    fi
-
-}
 
 fixGroupsSingle() {
 	#Check a single user is in the correct groups
-	
-	for ugroup in adm dialout cdrom audio users video games plugdev input pupil; do
-		if ! groups "$1" | grep -q -E ' $ugroup(\s|$)'; then
-			usermod -a -G $ugroup $1
-		fi
-	done
-	
+	$p verifyCorrectGroupSingleUser $1
 }
 
 

@@ -2120,9 +2120,16 @@ def verify_correct_group_users():
         if 1000 <= user.pw_uid < 65534:
             non_system_users.append(user)
     for user in non_system_users:
-        missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user.pw_name))
-        for missing_group in missing_groups:
-            add_linux_user_to_group(user.pw_name, missing_group)
+        verify_correct_group_single_user(user.pw_name)
+
+
+def verify_correct_group_single_user(user):
+    """
+    Verify single provided user is in the correct groups. If not, add to the correct groups.
+    """
+    missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user))
+    for missing_group in missing_groups:
+        add_linux_user_to_group(user, missing_group)
 
 
 def select_release_channel():
@@ -2421,6 +2428,8 @@ if __name__ == "__main__":
             install_chroot_software()
         elif sys.argv[1] == "verifyCorrectGroupUsers":
             verify_correct_group_users()
+        elif sys.argv[1] == "verifyCorrectGroupSingleUser":
+            verify_correct_group_single_user(sys.argv[2])
         elif sys.argv[1] == "selectReleaseChannel":
             select_release_channel()
         elif sys.argv[1] == "buildDownloadURL":
