@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.2.0
+version=1.2.2
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -62,9 +62,6 @@ SetupRepositories(){
         ;;
     esac
 
-
-
-
 }
 
 LegacyFixes() {
@@ -97,14 +94,7 @@ LegacyFixes() {
 	if [ "$exitcode" = "1" ]; then
 		UpdateConfig NBDBuildNeeded true
 	fi
-	
-	#if [ -f "/opt/ltsp/armhf/usr/bin/scratch.old" ]; then
-	#	echo "-------------------------------------------------------------------------------------------------"
-	#	echo $"NuScratch detected. It fails to work correctly with PiNet at this time, so I will remove it."
-	#	echo "-------------------------------------------------------------------------------------------------"
-	#	ltsp-chroot apt-get purge -y nuscratch
-	#	UpdateConfig NBDBuildNeeded true
-	#fi
+
 	CheckDebianVersion
 	CheckBackupScriptVersion
 
@@ -132,8 +122,6 @@ ConfigFileRead(){
 	#Reads the config file and loads in data as variables
 	#Taken from - http://wiki.bash-hackers.org/howto/conffile
 	configfile_secured="/tmp/pinet-config"
-	#touch $configfile_secured
-	#echo "reading $ConfigFileLoc"
 
 	if egrep -q -v '^#|^[^ ]*=[^;]*' "$ConfigFileLoc"; then
   		# filter the original to a new file
@@ -143,7 +131,6 @@ ConfigFileRead(){
   	else
   		source "$ConfigFileLoc"
 	fi
-	#echo config read
 }
 
 ReplaceTextLine(){
@@ -184,6 +171,7 @@ UpdateConfig(){
 	fi	
 ConfigFileRead
 }
+
 
 gp(){
 	#Part of the Python functions code. As Python functions uses a text file to communicate back and forth, this reads it and echos to console.
@@ -254,9 +242,6 @@ configFixes() {
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
-#echo 'NFS_HOME=/home' >> /opt/ltsp/armhf/etc/lts.conf
-
-#cp '/opt/ltsp/armhf/etc/lts.conf' /var/lib/tftpboot/ltsp/armhf/lts.conf
 DuplicateLTSConf
 
 ltsp-chroot --arch armhf groupadd -g 628 pupil
@@ -273,7 +258,6 @@ addSoundcardDefault(){
 #Adds the soundcard settings for Raspbian
 grep -q mmap_emul "/opt/ltsp/armhf/etc/asound.conf" > /dev/null 2>&1
 checkSound=$?
-#echo $checkSound
 if [ ! $checkSound = 1 ]; then
 cat <<\EOF1 > /opt/ltsp/armhf/etc/asound.conf
 pcm.!default {
@@ -328,100 +312,6 @@ if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ]; then
 		NBDRun
 	fi
 return
-
-#echo "$1"
-#if [ $1 -eq 0 ]; then
-#whiptail --title "Internet" --yesno "Do you currently have internet access?" 8 78
-checkInternet
-if [ $? -eq 0 ]; then
-	if [ ! -d "/opt/PiNet" ]; then
-		mkdir /opt/PiNet
-	fi
-	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
-		mkdir /opt/PiNet/PiBootBackup
-	fi
-	rm -rf /tmp/PiBoot
-	git clone --no-single-branch --depth 1 $BootRepository.git /tmp/PiBoot #Clones main repository, including boot files
-	(cd "/tmp/PiBoot"; git checkout "$ReleaseBranch")
-	rm -rf /opt/PiNet/PiBootBackup/*
-	cp -r /tmp/PiBoot/boot/* /opt/PiNet/PiBootBackup/
-	UpdateIP
-	toReturn=0
-else
-	if [ ! -d "/opt/PiNet/PiBootBackup" ]; then
-		whiptail --title $"Error" --msgbox $"You are not connected to the internet and no backup of boot files was found... Please connect to the internet and run again." 8 78
-		toReturn=1
-	else
-		whiptail --title $"Internet" --msgbox $"Unable to detect an active internet connection. A new version of the boot files will not be downloaded, an old backup will be used. This is fine if all you want to do is change the SD card IP address." 9 78
-		UpdateIP
-		toReturn=0
-	fi
-fi
-if [ -d "/opt/ltsp/armhf/bootfiles" ]; then
-	local currentVersion=0
-	local newVersion=0
-	local currentVersion=$(head -n 1 "/opt/ltsp/armhf/bootfiles/version.txt")
-	local newVersion=$(head -n 1 "/opt/PiNet/PiBootBackup/version.txt")
-	if (( 10#$currentVersion < 10#$newVersion )); then
-		rm -rf "/opt/ltsp/armhf/bootfiles/"
-		cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
-		rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
-		NBDRun
-	fi
-else
-	cp -rf "/opt/PiNet/PiBootBackup/" "/opt/ltsp/armhf/bootfiles/"
-	rm -rf "/opt/ltsp/armhf/bootfiles/cmdline.txt"
-	NBDRun
-	
-fi
-return $toReturn
-}
-
-
-
-UpdateIP(){
-
-IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`; #Get the current main IP address
-
-whiptail --title $"IP address" --yesno $"I have detected your current IP address is $IP. Would you like to setup the SD card image with it? (Recommended)" 8 78 #Check with this use that the IP address is correct
-
-exitstatus=$?
-if [ ! $exitstatus = 0 ]; then
-	IP=$(whiptail --title $"IP address" --inputbox $"Please enter an IP address (of this PiNet server) to use on the SD cards." 8 78 $IP 3>&1 1>&2 2>&3)
-	exitstatus=$?
-fi
-
-
-service nfs-kernel-server restart   #Restart the NFS kernel, just in case
-if [ "$SUDO_USER" = "" ]; then
-		rm -rf ~/PiBoot/
-        cp -r /opt/PiNet/PiBootBackup/ ~/PiBoot/
-        if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
-			rm ~/PiBoot/cmdline.txt
-			cp ~/PiBoot/cmdlineNBD.txt ~/PiBoot/cmdline.txt
-		else
-			rm ~/PiBoot/cmdline.txt
-			cp ~/PiBoot/cmdlineNFS.txt ~/PiBoot/cmdline.txt
-		fi
-        sudo sed -i 's/1.1.1.1/'$IP'/g' ~/PiBoot/cmdline.txt
-        nautilus ~/PiBoot > /dev/null 2>&1 &
-else
-		rm -rf "/home/$SUDO_USER/PiBoot/"
-        cp -r /opt/PiNet/PiBootBackup/ "/home/$SUDO_USER/PiBoot/"
-        chown -R "$SUDO_USER" "/home/$SUDO_USER/PiBoot"
-        if [ "$NBD" = "true" ]; then   #If NBD is enabled, us the NBD config file, if not, use NFS config file
-			rm /home/$SUDO_USER/PiBoot/cmdline.txt
-			cp /home/$SUDO_USER/PiBoot/cmdlineNBD.txt /home/$SUDO_USER/PiBoot/cmdline.txt
-		else
-			rm /home/$SUDO_USER/PiBoot/cmdline.txt
-			cp /home/$SUDO_USER/PiBoot/cmdlineNFS.txt /home/$SUDO_USER/PiBoot/cmdline.txt
-		fi
-        sudo sed -i 's/1.1.1.1/'$IP'/g' "/home/$SUDO_USER/PiBoot/cmdline.txt"
-        nautilus "/home/$SUDO_USER/PiBoot" > /dev/null 2>&1 &
-fi
-CreateSDCardImageFile
-
-}
 
 
 EnableNBDswap(){
@@ -494,92 +384,6 @@ echo deb http://mirrordirector.raspbian.org/raspbian/ jessie main contrib non-fr
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists
 
-}
-
-InstallProgram() {
-#No longer used, been replaced by python
-#Installing custom programs into the chroot using apt-get install x
-INSTALLP=$(whiptail --inputbox "What program would you like to install?" 8 78 $INIT --title "You can enter multiple programs by leaving a space between each" 3>&1 1>&2 2>&3)
- 
-exitstatus=$?
-
-clear
-echo "------------------------------------------------------"
-echo "Am about to try and install " $INSTALLP
-echo "Are you sure? y or n"
-echo "------------------------------------------------------"
-read RESULT
-if [ "$RESULT" = "y" ]; then
-	echo "Updating software lists"
-	echo ""
-	ltsp-chroot --arch armhf apt-get update
-	ltsp-chroot --arch armhf apt-get -y install $INSTALLP
-	if [ $? -eq 0 ]; then
-		UpdateConfig NBDBuildNeeded true
-		echo "-----------------------------"
-		echo $INSTALLP " was installed correctly"
-		echo "-----------------------------"
-		sleep 4
-	else
-		echo "-----------------------------"
-		echo "ERROR"
-		echo $INSTALLP " was NOT installed correctly    Read error above"
-		echo "-----------------------------"
-		sleep 8
-	fi
-fi
-	
-
-}
-
-InstallPythonLib() {
-#No longer used, been replaced by python
-#Installing custom programs into the chroot using apt-get install x
-INSTALLP=$(whiptail --inputbox "What Python library would you like to install? PiNet will attempt to install it for both Python 2.7 and 3.2. You can enter multiple Python libraries by leaving a space between each" 11 78 $INIT --title "Python Library installation." 3>&1 1>&2 2>&3)
- 
-exitstatus=$?
-
-clear
-echo "------------------------------------------------------"
-echo "Am about to try and install " $INSTALLP
-echo "Are you sure? y or n"
-echo "------------------------------------------------------"
-read RESULT
-if [ "$RESULT" = "y" ]; then
-	echo "Attempting install with Python 2.7"
-	echo ""
-	ltsp-chroot --arch armhf pip-2.7 install $INSTALLP
-	if [ $? -eq 0 ]; then
-		UpdateConfig NBDBuildNeeded true
-		echo "-----------------------------"
-		echo $INSTALLP " was installed correctly for Python 2.7"
-		echo "-----------------------------"
-		sleep 2
-	else
-		echo "-----------------------------"
-		echo "ERROR"
-		echo $INSTALLP " was NOT installed correctly for Python 2.7    Read error above"
-		echo "-----------------------------"
-		sleep 8
-	fi
-	echo ""
-	echo "Attempting install with Python 3.2"
-	echo ""
-	ltsp-chroot --arch armhf pip-3.2 install $INSTALLP
-	if [ $? -eq 0 ]; then
-		UpdateConfig NBDBuildNeeded true
-		echo "-----------------------------"
-		echo $INSTALLP " was installed correctly for Python 3.2"
-		echo "-----------------------------"
-		sleep 2
-	else
-		echo "-----------------------------"
-		echo "ERROR"
-		echo $INSTALLP " was NOT installed correctly for Python 3.2    Read error above"
-		echo "-----------------------------"
-		sleep 8
-	fi
-fi
 }
 
 
@@ -657,81 +461,8 @@ AddSoftware(){
 $p installChrootSoftware
 return 0
 
-# To add more software, just add it to the end of the list below taking a space after each program
-
-ltsp-chroot --arch armhf apt-get install -y idle idle3 python-dev nano python3-dev scratch python3-tk git debian-reference-en dillo python python-pygame python3-pygame python-tk sudo sshpass pcmanfm python3-numpy wget xpdf gtk2-engines alsa-utils wpagui omxplayer lxde net-tools mpg123
-ltsp-chroot --arch armhf apt-get install -y ssh locales less fbset sudo psmisc strace module-init-tools ifplugd ed ncdu console-setup keyboard-configuration debconf-utils parted unzip build-essential manpages-dev python bash-completion gdb pkg-config python-rpi.gpio v4l-utils lua5.1 luajit hardlink ca-certificates curl fake-hwclock ntp nfs-common usbutils libraspberrypi-dev libraspberrypi-doc libfreetype6-dev
-ltsp-chroot --arch armhf apt-get install -y python3-rpi.gpio python-rpi.gpio python-pip python3-pip python-picamera python3-picamera x2x wolfram-engine xserver-xorg-video-fbturbo netsurf-common netsurf-gtk rpi-update
-ltsp-chroot --arch armhf apt-get install -y ftp libraspberrypi-bin python3-pifacecommon python3-pifacedigitalio python3-pifacedigital-scratch-handler python-pifacecommon python-pifacedigitalio i2c-tools man-db
-ltsp-chroot --arch armhf apt-get install -y --no-install-recommends cifs-utils midori lxtask
-ltsp-chroot --arch armhf apt-get install -y minecraft-pi python-smbus python3-smbus dosfstools ruby iputils-ping scrot
-ltsp-chroot --arch armhf apt-get install -y gstreamer1.0-x gstreamer1.0-omx gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-alsa gstreamer1.0-libav
-ltsp-chroot --arch armhf apt-get install --no-install-recommends -y epiphany-browser
-ltsp-chroot --arch armhf apt-get install -y -o Dpkg::Options::="--force-confold" raspberrypi-sys-mods
-ltsp-chroot --arch armhf apt-get install -y -o Dpkg::Options::="--force-confnew" raspberrypi-net-mods raspberrypi-ui-mods
-ltsp-chroot --arch armhf apt-get install -y java-common oracle-java8-jdk apt-utils wpasupplicant wireless-tools firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek libpng12-dev
-ltsp-chroot --arch armhf update-rc.d nfs-common disable
-ltsp-chroot --arch armhf update-rc.d rpcbind disable
-ltsp-chroot --arch armhf apt-get install -y linux-image-3.18.0-trunk-rpi linux-image-3.18.0-trunk-rpi2 linux-image-3.12-1-rpi linux-image-3.10-3-rpi linux-image-3.2.0-4-rpi linux-image-rpi-rpfv linux-image-rpi2-rpfv
-ltsp-chroot --arch armhf apt-get install -y chromium
-ltsp-chroot --arch armhf apt-get install -y --no-install-recommends libreoffice libreoffice-gtk
-ltsp-chroot --arch armhf apt-get install -y smartsim penguinspuzzle
-ltsp-chroot --arch armhf apt-get install -y alacarte rc-gui claws-mail tree
-ltsp-chroot --arch armhf apt-get install -y greenfoot bluej raspi-gpio
-ltsp-chroot --arch armhf apt-get install -y libreoffice
-ltsp-chroot --arch armhf apt-get install -y nuscratch
-ltsp-chroot --arch armhf apt-get install -y iceweasel
-ltsp-chroot --arch armhf apt-get install -y mu
-
-ltsp-chroot --arch armhf easy_install --upgrade pip #Fixes known "cannot import name IncompleteRead" error
-
-if [ ! -f /opt/ltsp/armhf/usr/bin/pip3 ]; then
-    ltsp-chroot --arch armhf ln -sf /usr/bin/pip-3.2 /usr/bin/pip3
-fi
-
-
-ltsp-chroot --arch armhf touch /boot/config.txt  #Required due to bug in sense-hat package installer
-ltsp-chroot --arch armhf apt-get install -y libjpeg-dev #Required due to a dependancy issue with pillow
-ltsp-chroot --arch armhf pip-3.2 install -U pillow #Install pillow which is required for Raspberry Pi Sense HAT on Python 3.
-ltsp-chroot --arch armhf apt-get install -y sense-hat
-ltsp-chroot --arch armhf apt-get install -y nodered
-
-ltsp-chroot --arch armhf apt-get install -y libqt4-network #Remove this when Sonic-Pi 2 update fixing the dependency issue is released.
-
-sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi
-
-if [ ! -f /opt/ltsp/armhf/usr/local/bin/raspi2png ]; then
-    wget https://github.com/AndrewFromMelbourne/raspi2png/blob/master/raspi2png?raw=true -O /tmp/raspi2png
-    cp -r /tmp/raspi2png /opt/ltsp/armhf/usr/local/bin/raspi2png
-    chmod 755 /opt/ltsp/armhf/usr/local/bin/raspi2png
-fi
-
-ltsp-chroot --arch armhf apt-get -y purge clipit #Remove clipit application as serves no purpose on Raspbian
-
-#Install Pygame Zero and gpiozero
-InstallPipPackage gpiozero
-InstallPipPackage pgzero
-InstallPipPackage pibrella
-InstallPipPackage skywriter
-InstallPipPackage unicornhat
-InstallPipPackage piglow
-InstallPipPackage pianohat
-InstallPipPackage explorerhat
-InstallPipPackage twython
-
-#Server software
-apt-get install -y bindfs python3-feedparser ntp
-
-#******************************************************************************************
-#------------------------------------------------------------------------------------------
-
 }
 
-InstallPipPackage(){
-    sudo ltsp-chroot --arch armhf pip install -U $1
-    sudo ltsp-chroot --arch armhf pip3 install -U $1
-
-}
 
 AddUdevRules(){
 
@@ -742,8 +473,8 @@ ltsp-chroot --arch armhf printf 'SUBSYSTEM=="i2c-dev", GROUP="pupil", MODE="0660
 ltsp-chroot --arch armhf printf 'SUBSYSTEM=="spidev", GROUP="pupil", MODE="0660"\n' >> /etc/udev/rules.d/99-com.rules
 ltsp-chroot --arch armhf printf 'SUBSYSTEM=="bcm2835-gpiomem", GROUP="pupil", MODE="0660"\n' >> /etc/udev/rules.d/99-com.rules
 
-
 }
+
 PiConfigFixes(){
 #Configuration changes to Raspberry Pi files, mostly to do with LXDE instead of Raspbian itself
 
@@ -998,19 +729,6 @@ echo '%pupil ALL = NOPASSWD: /sbin/halt' >> /opt/ltsp/armhf/etc/sudoers.d/01pupi
 UpdateConfig NBDBuildNeeded true
 }
 
-FinishedInstallingSoftware(){
-#Checks if the user has finished installing software. Reason for this is so we don't have to recompress the OS after each package installed, can do in groups
-whiptail --title $"Finished?" --yesno $"Are you finished installing software?" 10 78 
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-	if [ "$NBDBuildNeeded" = "true" ]; then
-		NBDRun
-	fi
-else
-	ExtraSoftware
-fi
-	
-}
 
 fileSelect(){
 #Selects a folder using some BASH/Whiptail trickery
@@ -2403,9 +2121,6 @@ case "$MENUEPT" in
     CollectWork
 	Menu
     ;;
-    Extra-software) 
-    ExtraSoftware
-    ;;
     NBD-compress-disable) 
     UpdateConfig NBDuse false
     ConfigFileRead
@@ -2689,77 +2404,6 @@ case "$MENUEPT" in
 esac
 } #***************************************************************************************************
 
-ExtraSoftware() {
-#No longer used, replaced with installSoftwareList() in pinet_functions_python.py
-checkInternet
-if [ $? -eq 0 ]; then
-  MENUEPT=$(whiptail --title "Extra Software Submenu" --cancel-button "Finished" --menu "What would you like to do?" 20 100 10 \
-    "Install-Libreoffice" "Libreoffice is a full free office suite, similar to Microsoft office " \
-    "Install-Arduino" "The Arduino IDE is for programming and interacting with Arduinos" \
-    "Install-Scratch-gpio" "Scratch GPIO is a special version of scratch for GPIO work" \
-    "Install-Python-hardware" "Python libraries for interacting with boards like the Pibrella" \
-    "Install-Epoptes" "Epoptes is widely used free and open source classroom management program" \
-    "Install-BlueJ" "BlueJ is a Java IDE for developing programs quickly and easily" \
-    "Install-Custom-package" "Allows you to enter the name of a package from Raspbian repository" \
-		"Install-Custom-python" "Allows you to enter the name of a Python library from pip." \
-    3>&1 1>&2 2>&3)
-
-case "$MENUEPT" in
-    Install-Libreoffice) 
-    ltsp-chroot --arch armhf apt-get purge -y openjdk-6-jre-headless openjdk-7-jre-headless ca-certificates-java
-    ltsp-chroot --arch armhf apt-get install -y libreoffice gcj-4.7-jre gcj-jre gcj-jre-headless libgcj13-awt
-    UpdateConfig NBDBuildNeeded true
-    FinishedInstallingSoftware
-    ;;
-	Install-Arduino) 
-    ltsp-chroot --arch armhf apt-get -y install arduino
-    UpdateConfig NBDBuildNeeded true
-    FinishedInstallingSoftware
-    ;;
-    Install-Scratch-gpio) 
-    InstallScratchGPIO
-    UpdateConfig NBDBuildNeeded true
-	FinishedInstallingSoftware
-    ;;
-    Install-Python-hardware) 
-		ltsp-chroot --arch armhf apt-get install python3-microstacknode
-		ltsp-chroot --arch armhf pip install pibrella skywriter unicornhat piglow pianohat explorerhat
-		ltsp-chroot --arch armhf pip-3.2 install pibrella unicornhat pianohat explorerhat
-		UpdateConfig NBDBuildNeeded true
-		FinishedInstallingSoftware
-    ;;
-    Install-Epoptes)
-    EpoptesInstaller
-    UpdateConfig NBDBuildNeeded true
-    FinishedInstallingSoftware
-    ;;
-    Install-BlueJ)
-    InstallBlueJ
-    UpdateConfig NBDBuildNeeded true
-    FinishedInstallingSoftware
-    ;;
-    Install-Custom-package)
-    InstallProgram
-    FinishedInstallingSoftware
-		;;
-    Install-Custom-python)
-		InstallPythonLib
-		UpdateConfig NBDBuildNeeded true
-		FinishedInstallingSoftware
-    ;;
-    *)
-    FinishedInstallingSoftware
-    ;;
-
-esac
-
-else
-	whiptail --title "Error" --msgbox "No internet connection, unable to proceed..." 8 78
-fi
-}
-
-#***************************************************************************************************
-
 
 FullInstall(){
   checkInternetDetailed
@@ -2784,8 +2428,8 @@ FullInstall(){
 		FixDesktopIcons   #Adds desktop icons
 		InstallRaspberryPiUIMods
 		EnableNBDswap   #Enables NBD swap for if the Pi runs out of RAM, it can use server as RAM using NBD
-		UpdateConfig NBD true
-		UpdateConfig NBDuse true
+		UpdateConfig NBD false
+		UpdateConfig NBDuse false
 		$p installSoftwareFromFile
 		DisableSPI
 		SudoMenu   #Asks the user if they wish to enable Sudo for the pupils
@@ -2882,7 +2526,6 @@ Update-SD)
 	Menu
 	;;
 Install-Program)
-	#ExtraSoftware
 	$p installSoftwareList
 	Menu
 	;;

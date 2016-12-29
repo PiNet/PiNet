@@ -1974,7 +1974,7 @@ def debian_wheezy_to_jessie_update(try_backup=True):
 
 def custom_config_txt():
     """
-    Allow users to build a custom config.txt file which will be appended ontfo the main config.txt file.
+    Allow users to build a custom config.txt file which will be appended onto the main config.txt file.
     Very useful if need to use custom values in the config.txt file, such as display settings.
     """
     additional_config_path = "/opt/PiNet/additional_config.txt"
