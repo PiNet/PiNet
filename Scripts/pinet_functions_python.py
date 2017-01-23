@@ -1958,7 +1958,7 @@ def debian_wheezy_to_jessie_update(try_backup=True):
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
     yesno = whiptail_box("yesno", _("Proceed"), _(
-        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st March 2017."),
+        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st July 2017."),
                          True, height="10")
     if yesno and internet_full_status_check():
         backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
@@ -1979,20 +1979,21 @@ def custom_config_txt():
     """
     additional_config_path = "/opt/PiNet/additional_config.txt"
     additional_config = read_file(additional_config_path)
-    whiptail_box("msgbox", _("Custom config.txt values"), _(
-        "Custom config.txt values can be added in the following text file. Any changes made in this file will be added onto the end of the default config.txt file"),
-                 False)
+    whiptail_box("msgbox", _("Custom config.txt values"), _("Custom config.txt values can be added in the following text file. Any changes made in this file will be added onto the end of the default config.txt file"), False, height="10")
     information_lines = []
     information_lines.append("You are now editing a temp file. This program is called Nano and is a very")
     information_lines.append("simple text editor in a terminal. Use arrow keys to move around and when you")
     information_lines.append("are finished, hit ctrl+x, followed by y, finally followed by hitting enter.")
-    information_lines.append("Note - Any changes you make above the line below will not be saves!")
+    information_lines.append("Note - Any changes you make above the line below will not be saved!")
     information_lines.append("----------------------------------------------------------------------------")
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_config_file:
         additional_config = information_lines + additional_config
         temp_config_file.write('\n'.join(additional_config) + '\n')
     run_bash(["nano", temp_config_file.name])
     write_file(additional_config_path, read_file(temp_config_file.name)[5:])
+    if whiptail_box("yesno", _("Update-SD"), _("Config file has been updated. To push this update out, Update-SD needs run. Would you like to run Update-SD?"), True, height="10"):
+        update_sd()
+
 
 
 def add_linux_group(group_name, group_id=None, in_chroot=False, ignore_errors=False):
@@ -2180,6 +2181,8 @@ def update_sd_card_ip_address():
         remove_file("{}/PiBoot/cmdline.txt".format(home_folder_path))
         copy_file_folder("{}/PiBoot/cmdlineNBD.txt".format(home_folder_path), "{}/PiBoot/cmdline.txt".format(home_folder_path))
     replace_in_text_file("{}/PiBoot/cmdline.txt".format(home_folder_path), "1.1.1.1", str(local_ip_address), replace_entire_line=False)
+    # Build a customised config.txt file and replace current one.
+    write_file("{}/PiBoot/config.txt".format(home_folder_path), build_custom_config_txt_file())
     set_current_user_to_owner("{}/PiBoot/".format(home_folder_path))
     run_bash("nautilus ~/PiBoot > /dev/null 2>&1 &", run_as_sudo=False)
     create_sd_card_image_file()
@@ -2211,13 +2214,15 @@ def update_sd():
     if os.path.isdir("/opt/ltsp/armhf/bootfiles"):
         user = os.environ['SUDO_USER']
         current_path = "/home/" + user + "/PiBoot/version.txt"
-        raspbian_boot_fiels_copy_path = "/opt/ltsp/armhf/bootfiles/version.txt"
+        raspbian_boot_files_copy_path = "/opt/ltsp/armhf/bootfiles/version.txt"
         if os.path.isfile(current_path):
             current = int(read_file(current_path)[0])
-            raspbian_current = int(read_file(raspbian_boot_fiels_copy_path)[0])
-            if current > raspbian_current:
+            raspbian_current = int(read_file(raspbian_boot_files_copy_path)[0])
+            # Check if there is a new version of the version.txt file, or if the config.txt files don't exactly match.
+            if current > raspbian_current or read_file("/home/" + user + "/PiBoot/config.txt") != read_file("/opt/ltsp/armhf/bootfiles/config.txt"):
                 remove_file("/opt/ltsp/armhf/bootfiles")
                 copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
+                copy_file_folder("/home/" + user + "/PiBoot/config.txt", "/opt/ltsp/armhf/bootfiles/config.txt")
                 remove_file("/opt/ltsp/armhf/bootfiles/cmdline.txt")
                 set_config_parameter("NBDBuildNeeded", "true")
 
@@ -2225,7 +2230,13 @@ def update_sd():
         copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
         set_config_parameter("NBDBuildNeeded", "true")
 
-
+def build_custom_config_txt_file():
+    base_config = read_file("/opt/PiNet/PiBootBackup/config.txt")
+    custom_config_info = ["", "[all]", "# Below contains any custom user provided configuration.", ""]
+    append_config = read_file("/opt/PiNet/additional_config.txt")
+    if append_config:
+        return base_config + custom_config_info + append_config
+    return base_config
 
 
 def create_sd_card_image_file():
@@ -2440,4 +2451,7 @@ if __name__ == "__main__":
             import_migration(sys.argv[2])
         elif sys.argv[1] == "resetThemeCacheForAllUsers":
             reset_theme_cache_for_all_users()
-
+        elif sys.argv[1] == "getInternalIPAddress":
+            return_data(get_internal_ip_address())
+        elif sys.argv[1] == "customConfig":
+            custom_config_txt()
