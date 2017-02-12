@@ -1730,27 +1730,13 @@ def generate_server_id():
     set_config_parameter("ServerID", str(ID))
 
 
-def get_ip_address_old():
-    """
-    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
-    If there is any issues, defaults to returning 0.0.0.0.
-    """
-    try:
-        with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
-            ip_address = url.read().decode()
-            socket.inet_aton(ip_address)
-    except urllib.error:
-        ip_address = "0.0.0.0"
-    return ip_address
-
-
 def get_external_ip_address():
     """
-    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    Get the PiNet server external IP address using an external server.
     If there is any issues, defaults to returning 0.0.0.0.
     """
     try:
-        return requests.get("http://myip.dnsdynamic.org/", timeout=2).text
+        return requests.get("http://links.pinet.org.uk/external_ip", timeout=5).text
     except requests.RequestException:
         return "0.0.0.0"
 
@@ -1976,6 +1962,7 @@ def custom_config_txt():
     """
     Allow users to build a custom config.txt file which will be appended onto the main config.txt file.
     Very useful if need to use custom values in the config.txt file, such as display settings.
+    Custom config file isn't actually pushed out though till update_sd() is run.
     """
     additional_config_path = "/opt/PiNet/additional_config.txt"
     additional_config = read_file(additional_config_path)
@@ -2382,6 +2369,39 @@ def import_migration(migration_file_path):
         import_migration_create_users()
 
 
+def verify_chroot_integrity():
+    """
+    Verify that Raspbian chroot integrity in correct by checking for key folders.
+    """
+    to_be_verified = {"/usr": False, "/opt": False, "/lib": False, "/bin": False, "/home": False, "/etc": False, "/bob": False}
+
+    for file_folder in to_be_verified:
+        to_be_verified[file_folder] = os.path.exists("/opt/ltsp/armhf{}".format(file_folder))
+    if False in to_be_verified.values():
+        print("------------------------------------")
+        print(_("PiNet integrity check has failed!"))
+        print("------------------------------------")
+        print("")
+        print(_("The following files/folders are missing."))
+        for file_folder in to_be_verified:
+            if not to_be_verified[file_folder]:
+                print("/opt/ltsp/armhf{} - Missing".format(file_folder))
+        print("")
+        print(_("The most likely cause of the missing files/folders above is issues with the PiNet installation process, which is common if used on a filtered internet connection."))
+        print(_("If you are seeing this a long period of time after an installation, it may be that your PiNet Raspbian chroot has become corrupt is some way."))
+        print(_("If you have just installed PiNet, perhaps retry (after fresh full Ubuntu reinstall) using a different internet connection."))
+        print(_("Otherwise, visit http://pinet.org.uk/articles/support.html to get in touch. Include a screenshot of this error message."))
+        print("")
+        print(_("Press enter to continue..."))
+        input()
+        return_data(1)
+        return
+
+    return_data(0)
+    return
+
+
+
 # ------------------------------Main program-------------------------
 
 if __name__ == "__main__":
@@ -2455,3 +2475,5 @@ if __name__ == "__main__":
             return_data(get_internal_ip_address())
         elif sys.argv[1] == "customConfig":
             custom_config_txt()
+        elif sys.argv[1] == "verifyChrootIntegrity":
+            verify_chroot_integrity()
