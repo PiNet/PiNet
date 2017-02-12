@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.2.6
+version=1.2.7
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -659,7 +659,7 @@ fi
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
 
-whiptail --title $"Sudo access" --yesno $"Would you like to give students access to the sudo command on their Raspberry Pi? Sudo (equivalent to run as administrator on Windows) is enabled by default on Raspbian, so disabling it can cause issues with some software. It is required for some GPIO activities as well. Enabling it though does in theory introduce the possibility of students bypassing the built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 12 78
+whiptail --title $"Sudo access" --yesno $"Would you like to give students access to the sudo command on their Raspberry Pi? Sudo (equivalent to run as administrator on Windows) is enabled by default on Raspbian, so disabling it can cause issues with some software. It is required for some GPIO activities as well. Enabling it though does in theory introduce the possibility of students bypassing the built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 13 78
 
 exitstatus=$?
 rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
@@ -1980,7 +1980,7 @@ WheezyJessieUpgradePartThree(){
     rm /usr/local/bin/pinet-functions-python.py
     RebuildOS
     $p resetThemeCacheForAllUsers
-    UpdateAll
+    #UpdateAll
 }
 
 GetInternalIPAddress(){
@@ -2442,7 +2442,7 @@ if [ $? -eq 0 ]; then
 			EnableNBD
     		resetAndCleanup
 			CheckInstallSuccess
-			whiptail --title $"Rebuild complete" --msgbox $"PiNet rebuild is now complete. Please copy the files found in /home/YourUser/PiBoot to the root of an SD card. Then plug the Raspberry Pi into the network and boot it up." 9 78
+			whiptail --title $"Rebuild complete" --msgbox $"PiNet rebuild is now complete. You will need to flash an SD card with the PiNet boot files, instructions can be found at http://pinet.org.uk/articles/installation/sd-card-copy.html. Then plug the Raspberry Pi into the network and boot it up." 10 78
 		else
 			whiptail --title $"Error" --msgbox $"No internet connection, unable to proceed..." 8 78
 		fi
