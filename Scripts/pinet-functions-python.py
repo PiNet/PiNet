@@ -420,7 +420,7 @@ def compareVersions(local, web):
                 returnData(0)
                 return False
 
-def getConfigParameter(filep, searchfor):
+def getConfigParameter(filep, searchfor, readFirstUseOnly=False):
     textFile = getTextFile(filep)
     textFile = stripEndWhitespaces(textFile)
     value = ""
@@ -428,6 +428,8 @@ def getConfigParameter(filep, searchfor):
         found = textFile[i].find(searchfor)
         if (found != -1):
             value = textFile[i][found+len(searchfor):len(textFile[i])]
+            if readFirstUseOnly:
+                return value
 
     if value == "":
         value = "None"
@@ -1118,13 +1120,13 @@ def generateServerID():
 
 def getIPAddress():
     """
-    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    Get the PiNet server external IP address using an external server.
     If there is any issues, defaults to returning 0.0.0.0.
     """
     try:
         import urllib.request
         import socket
-        with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
+        with urllib.request.urlopen("http://links.pinet.org.uk/external_ip", timeout=10) as url:
             IP = url.read().decode()
             socket.inet_aton(IP)
     except:
@@ -1149,8 +1151,9 @@ def sendStats():
         City = "Blank"
         OrganisationType = "Blank"
         OrganisationName = "Blank"
+
     else:
-        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version="))
+        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version=", readFirstUseOnly=True))
         Users = str(len(getUsers()))
         if os.path.exists("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt"):
             KernelVersion = str(getCleanList("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt")[0])
@@ -1319,15 +1322,13 @@ def check_debian_version():
 
 def debian_wheezy_to_jessie_update(try_backup=True):
     whiptailBox("msgbox", _("Raspbian Jessie update"), _(
-        "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
+        "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic upgrade. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
-    yesno = whiptailBox("yesno", _("Proceed"), _(
-        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st March 2017."),
-                         True, height="10")
+    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with the PiNet Jessie upgrade? The process should take 1-2 hours and involves fully rebuilding the Raspbian image on the server. Note PiNet Wheezy support will be officially discontinued on the 1st July 2017."), True, height="13")
     if yesno and internetFullStatusCheck():
         backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
         whiptailBox("msgbox", _("Backup chroot"), _(
-            "Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backupName, "/opt/PiNet/chrootBackups/" + backupName)),
+            "Before proceeding with the upgrade, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backupName, "/opt/PiNet/chrootBackups/" + backupName)),
                      False, height="10")
         if backup_chroot(backupName):
             returnData(1)
