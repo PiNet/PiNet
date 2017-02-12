@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.2.4
+version=1.2.5
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -511,9 +511,9 @@ fixGroups(){
     # Verify correct groups exist, then make sure all users are in correct groups.
     $p verifyCorrectGroupUsers
     ConfigFileRead
-    if [ "$NBDBuildNeeded" = "true" ]; then
+    if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ] ; then
 		NBDRun
-		whiptail --title $"Reboot required" --msgbox $"A group ID change has taken place to correct an issue. Please reboot your PiNet server as soon as possible." 8 78
+		whiptail --title $"Reboot required" --msgbox $"A group ID change has taken place to correct an ID mismatch. This is nothing to worry about unless you are seeing repeatedly. Please reboot your PiNet server as soon as possible." 9 78
 	fi
 }
 
@@ -659,7 +659,7 @@ fi
 SudoMenu(){
 #Used to enable Sudo on pupil accounts
 
-whiptail --title $"Sudo access" --yesno $"Would you like to give students access to the sudo command? The sudo command is required for some GPIO work, but in theory introduces the possibility of students bypassing built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 10 78
+whiptail --title $"Sudo access" --yesno $"Would you like to give students access to the sudo command on their Raspberry Pi? Sudo (equivalent to run as administrator on Windows) is enabled by default on Raspbian, so disabling it can cause issues with some software. It is required for some GPIO activities as well. Enabling it though does in theory introduce the possibility of students bypassing the built in PiNet tampering safeguards. You can change your mind later the in Manage-Users submenu." 12 78
 
 exitstatus=$?
 rm -f /opt/ltsp/armhf/etc/sudoers.d/01pupil
@@ -1903,6 +1903,9 @@ CheckInstallSuccess(){
 		whiptail --title $"Installation error" --msgbox $"An issue with your PiNet installation has been detected! The Raspbian operating system is missing or failed to install correctly. This most commonly is caused by school internet filters blocking software repositories or the internet connection failing in the middle of installation. At this stage it is highly recommended attempting a full (including Ubuntu) reinstall with if possible, a different internet connection. If that fails, contact support http://pinet.org.uk/articles/support.html" 14 78
 		echo $"You may wish to check the PiNet logs to help diagnose the issue. They can be found at /var/log/pinet.log."
 		exit
+
+	else
+	    $p verifyChrootIntegrity
 	fi
 }
 
@@ -2391,7 +2394,7 @@ FullInstall(){
 		SetupSharedStandalone
 		installKernelUpdater ""
 		$p checkKernelFileUpdateWeb
-		fixGroups   #Adds all current users to the correct groups.
+		fixGroups "NoRecompress"   #Adds all current users to the correct groups.
 		DuplicateLTSConf
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes "NoRecompress"
@@ -2432,7 +2435,7 @@ if [ $? -eq 0 ]; then
     		SetupSharedStandalone
     		installKernelUpdater ""
 			$p checkKernelFileUpdateWeb
-			fixGroups
+			fixGroups "NoRecompress"
 			DuplicateLTSConf
     		LegacyFixes "NoRecompress"
     		AddSoftware
