@@ -1702,6 +1702,8 @@ def install_chroot_software():
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
     run_bash(
         "sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
+    run_bash("apt-get upgrade -y")
+    ltsp_chroot("apt-get upgrade -y")
     ltsp_chroot("apt-get autoremove -y")
 
 
@@ -1728,27 +1730,13 @@ def generate_server_id():
     set_config_parameter("ServerID", str(ID))
 
 
-def get_ip_address_old():
-    """
-    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
-    If there is any issues, defaults to returning 0.0.0.0.
-    """
-    try:
-        with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
-            ip_address = url.read().decode()
-            socket.inet_aton(ip_address)
-    except urllib.error:
-        ip_address = "0.0.0.0"
-    return ip_address
-
-
 def get_external_ip_address():
     """
-    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    Get the PiNet server external IP address using an external server.
     If there is any issues, defaults to returning 0.0.0.0.
     """
     try:
-        return requests.get("http://myip.dnsdynamic.org/", timeout=2).text
+        return requests.get("http://links.pinet.org.uk/external_ip", timeout=5).text
     except requests.RequestException:
         return "0.0.0.0"
 
@@ -1956,7 +1944,7 @@ def debian_wheezy_to_jessie_update(try_backup=True):
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
     yesno = whiptail_box("yesno", _("Proceed"), _(
-        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st March 2017."),
+        "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st July 2017."),
                          True, height="10")
     if yesno and internet_full_status_check():
         backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
@@ -1972,25 +1960,27 @@ def debian_wheezy_to_jessie_update(try_backup=True):
 
 def custom_config_txt():
     """
-    Allow users to build a custom config.txt file which will be appended ontfo the main config.txt file.
+    Allow users to build a custom config.txt file which will be appended onto the main config.txt file.
     Very useful if need to use custom values in the config.txt file, such as display settings.
+    Custom config file isn't actually pushed out though till update_sd() is run.
     """
     additional_config_path = "/opt/PiNet/additional_config.txt"
     additional_config = read_file(additional_config_path)
-    whiptail_box("msgbox", _("Custom config.txt values"), _(
-        "Custom config.txt values can be added in the following text file. Any changes made in this file will be added onto the end of the default config.txt file"),
-                 False)
+    whiptail_box("msgbox", _("Custom config.txt values"), _("Custom config.txt values can be added in the following text file. Any changes made in this file will be added onto the end of the default config.txt file"), False, height="10")
     information_lines = []
     information_lines.append("You are now editing a temp file. This program is called Nano and is a very")
     information_lines.append("simple text editor in a terminal. Use arrow keys to move around and when you")
     information_lines.append("are finished, hit ctrl+x, followed by y, finally followed by hitting enter.")
-    information_lines.append("Note - Any changes you make above the line below will not be saves!")
+    information_lines.append("Note - Any changes you make above the line below will not be saved!")
     information_lines.append("----------------------------------------------------------------------------")
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_config_file:
         additional_config = information_lines + additional_config
         temp_config_file.write('\n'.join(additional_config) + '\n')
     run_bash(["nano", temp_config_file.name])
     write_file(additional_config_path, read_file(temp_config_file.name)[5:])
+    if whiptail_box("yesno", _("Update-SD"), _("Config file has been updated. To push this update out, Update-SD needs run. Would you like to run Update-SD?"), True, height="10"):
+        update_sd()
+
 
 
 def add_linux_group(group_name, group_id=None, in_chroot=False, ignore_errors=False):
@@ -2078,7 +2068,7 @@ def verify_groups():
     for group in PINET_GROUPS:
         if group in server_groups:
             if PINET_GROUPS[group] and PINET_GROUPS[group] != server_groups[group]:
-                fileLogger.warning("The groupw ith name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
+                fileLogger.warning("The group with name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
                 modify_linux_group(group, PINET_GROUPS[group], in_chroot=False)
                 set_config_parameter("NBDBuildNeeded", "true")
         else:
@@ -2118,9 +2108,16 @@ def verify_correct_group_users():
         if 1000 <= user.pw_uid < 65534:
             non_system_users.append(user)
     for user in non_system_users:
-        missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user.pw_name))
-        for missing_group in missing_groups:
-            add_linux_user_to_group(user.pw_name, missing_group)
+        verify_correct_group_single_user(user.pw_name)
+
+
+def verify_correct_group_single_user(user):
+    """
+    Verify single provided user is in the correct groups. If not, add to the correct groups.
+    """
+    missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user))
+    for missing_group in missing_groups:
+        add_linux_user_to_group(user, missing_group)
 
 
 def select_release_channel():
@@ -2171,6 +2168,8 @@ def update_sd_card_ip_address():
         remove_file("{}/PiBoot/cmdline.txt".format(home_folder_path))
         copy_file_folder("{}/PiBoot/cmdlineNBD.txt".format(home_folder_path), "{}/PiBoot/cmdline.txt".format(home_folder_path))
     replace_in_text_file("{}/PiBoot/cmdline.txt".format(home_folder_path), "1.1.1.1", str(local_ip_address), replace_entire_line=False)
+    # Build a customised config.txt file and replace current one.
+    write_file("{}/PiBoot/config.txt".format(home_folder_path), build_custom_config_txt_file())
     set_current_user_to_owner("{}/PiBoot/".format(home_folder_path))
     run_bash("nautilus ~/PiBoot > /dev/null 2>&1 &", run_as_sudo=False)
     create_sd_card_image_file()
@@ -2202,13 +2201,15 @@ def update_sd():
     if os.path.isdir("/opt/ltsp/armhf/bootfiles"):
         user = os.environ['SUDO_USER']
         current_path = "/home/" + user + "/PiBoot/version.txt"
-        raspbian_boot_fiels_copy_path = "/opt/ltsp/armhf/bootfiles/version.txt"
+        raspbian_boot_files_copy_path = "/opt/ltsp/armhf/bootfiles/version.txt"
         if os.path.isfile(current_path):
             current = int(read_file(current_path)[0])
-            raspbian_current = int(read_file(raspbian_boot_fiels_copy_path)[0])
-            if current > raspbian_current:
+            raspbian_current = int(read_file(raspbian_boot_files_copy_path)[0])
+            # Check if there is a new version of the version.txt file, or if the config.txt files don't exactly match.
+            if current > raspbian_current or read_file("/home/" + user + "/PiBoot/config.txt") != read_file("/opt/ltsp/armhf/bootfiles/config.txt"):
                 remove_file("/opt/ltsp/armhf/bootfiles")
                 copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
+                copy_file_folder("/home/" + user + "/PiBoot/config.txt", "/opt/ltsp/armhf/bootfiles/config.txt")
                 remove_file("/opt/ltsp/armhf/bootfiles/cmdline.txt")
                 set_config_parameter("NBDBuildNeeded", "true")
 
@@ -2216,7 +2217,13 @@ def update_sd():
         copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
         set_config_parameter("NBDBuildNeeded", "true")
 
-
+def build_custom_config_txt_file():
+    base_config = read_file("/opt/PiNet/PiBootBackup/config.txt")
+    custom_config_info = ["", "[all]", "# Below contains any custom user provided configuration.", ""]
+    append_config = read_file("/opt/PiNet/additional_config.txt")
+    if append_config:
+        return base_config + custom_config_info + append_config
+    return base_config
 
 
 def create_sd_card_image_file():
@@ -2340,9 +2347,59 @@ def import_migration_unpack_home_folders(migration_file_path):
         return False
 
 
+def reset_theme_cache_for_all_users():
+    """
+    Delete cache files for desktop theme for provided user.
+    This is needed for the migration to Pixel, to bring in the new theme configuration files.
+    """
+    non_system_users = []
+    for user in pwd.getpwall():
+        if 1000 <= user.pw_uid < 65534:
+            non_system_users.append(user)
+    for user in non_system_users:
+        fileLogger.debug("Deleting theme cache for {}.".format(user.pw_name))
+        files_folders_to_delete = [".config/Trolltech.conf", ".config/lxsession", ".config/openbox", ".config/pcmanfm", ".config/lxpanel", ".config/gtk-3.0", ".themes/PiX"]
+        for file_folder in files_folders_to_delete:
+            remove_file("/home/{}/{}".format(user.pw_name, file_folder))
+
+
+
 def import_migration(migration_file_path):
     if import_migration_unpack_home_folders(migration_file_path):
         import_migration_create_users()
+
+
+def verify_chroot_integrity():
+    """
+    Verify that Raspbian chroot integrity in correct by checking for key folders.
+    """
+    to_be_verified = {"/usr": False, "/opt": False, "/lib": False, "/bin": False, "/home": False, "/etc": False}
+
+    for file_folder in to_be_verified:
+        to_be_verified[file_folder] = os.path.exists("/opt/ltsp/armhf{}".format(file_folder))
+    if False in to_be_verified.values():
+        print("------------------------------------")
+        print(_("PiNet integrity check has failed!"))
+        print("------------------------------------")
+        print("")
+        print(_("The following files/folders are missing."))
+        for file_folder in to_be_verified:
+            if not to_be_verified[file_folder]:
+                print("/opt/ltsp/armhf{} - Missing".format(file_folder))
+        print("")
+        print(_("The most likely cause of the missing files/folders above is issues with the PiNet installation process, which is common if used on a filtered internet connection."))
+        print(_("If you are seeing this a long period of time after an installation, it may be that your PiNet Raspbian chroot has become corrupt is some way."))
+        print(_("If you have just installed PiNet, perhaps retry (after fresh full Ubuntu reinstall) using a different internet connection."))
+        print(_("Otherwise, visit http://pinet.org.uk/articles/support.html to get in touch. Include a screenshot of this error message."))
+        print("")
+        print(_("Press enter to continue..."))
+        input()
+        return_data(1)
+        return
+
+    return_data(0)
+    return
+
 
 
 # ------------------------------Main program-------------------------
@@ -2402,11 +2459,21 @@ if __name__ == "__main__":
             install_chroot_software()
         elif sys.argv[1] == "verifyCorrectGroupUsers":
             verify_correct_group_users()
+        elif sys.argv[1] == "verifyCorrectGroupSingleUser":
+            verify_correct_group_single_user(sys.argv[2])
         elif sys.argv[1] == "selectReleaseChannel":
             select_release_channel()
         elif sys.argv[1] == "buildDownloadURL":
             return_data(build_download_url(sys.argv[2], sys.argv[3]))
         elif sys.argv[1] == "updateSD":
             update_sd()
-        elif sys.argv[1] == "import_migration":
+        elif sys.argv[1] == "importMigration":
             import_migration(sys.argv[2])
+        elif sys.argv[1] == "resetThemeCacheForAllUsers":
+            reset_theme_cache_for_all_users()
+        elif sys.argv[1] == "getInternalIPAddress":
+            return_data(get_internal_ip_address())
+        elif sys.argv[1] == "customConfig":
+            custom_config_txt()
+        elif sys.argv[1] == "verifyChrootIntegrity":
+            verify_chroot_integrity()

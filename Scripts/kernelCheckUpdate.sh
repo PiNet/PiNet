@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=002
+version=003
 
 ### BEGIN INIT INFO
 # Provides:             None
@@ -70,7 +70,12 @@ if [ -e "/dev/mmcblk0p1" ] || [ -e "/dev/mmcblk0" ]; then
             if [ -f "$fpath/version.txt" ]; then
                 current=$(head -n 1 "$fpath/version.txt")
                 new=$(head -n 1 "/bootfiles/version.txt")
-                if [ ! "$current" = "$new" ]; then
+                if [ -f "$fpath/config.txt" ]; then
+                    currentConfig=`md5sum "$fpath/config.txt" | awk '{ print $1 }'`
+                    newConfig=`md5sum "/bootfiles/config.txt" | awk '{ print $1 }'`
+                fi
+
+                if [ ! "$current" = "$new" ] || [ ! "$currentConfig" = "$newConfig" ]; then
                         runUpdate
                 else
                         echo "No new updates found"
