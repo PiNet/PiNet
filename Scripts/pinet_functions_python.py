@@ -2373,7 +2373,7 @@ def verify_chroot_integrity():
     """
     Verify that Raspbian chroot integrity in correct by checking for key folders.
     """
-    to_be_verified = {"/usr": False, "/opt": False, "/lib": False, "/bin": False, "/home": False, "/etc": False, "/bob": False}
+    to_be_verified = {"/usr": False, "/opt": False, "/lib": False, "/bin": False, "/home": False, "/etc": False}
 
     for file_folder in to_be_verified:
         to_be_verified[file_folder] = os.path.exists("/opt/ltsp/armhf{}".format(file_folder))
