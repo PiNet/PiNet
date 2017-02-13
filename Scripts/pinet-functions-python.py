@@ -420,7 +420,7 @@ def compareVersions(local, web):
                 returnData(0)
                 return False
 
-def getConfigParameter(filep, searchfor):
+def getConfigParameter(filep, searchfor, readFirstUseOnly=False):
     textFile = getTextFile(filep)
     textFile = stripEndWhitespaces(textFile)
     value = ""
@@ -428,6 +428,8 @@ def getConfigParameter(filep, searchfor):
         found = textFile[i].find(searchfor)
         if (found != -1):
             value = textFile[i][found+len(searchfor):len(textFile[i])]
+            if readFirstUseOnly:
+                return value
 
     if value == "":
         value = "None"
@@ -1118,13 +1120,13 @@ def generateServerID():
 
 def getIPAddress():
     """
-    Get the PiNet server external IP address using the dnsdynamic.org IP address checker.
+    Get the PiNet server external IP address using an external server.
     If there is any issues, defaults to returning 0.0.0.0.
     """
     try:
         import urllib.request
         import socket
-        with urllib.request.urlopen("http://myip.dnsdynamic.org/") as url:
+        with urllib.request.urlopen("http://links.pinet.org.uk/external_ip", timeout=10) as url:
             IP = url.read().decode()
             socket.inet_aton(IP)
     except:
@@ -1149,8 +1151,9 @@ def sendStats():
         City = "Blank"
         OrganisationType = "Blank"
         OrganisationName = "Blank"
+
     else:
-        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version="))
+        PiNetVersion = str(getConfigParameter("/usr/local/bin/pinet", "version=", readFirstUseOnly=True))
         Users = str(len(getUsers()))
         if os.path.exists("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt"):
             KernelVersion = str(getCleanList("/home/"+os.environ['SUDO_USER']+"/PiBoot/version.txt")[0])
@@ -1207,6 +1210,133 @@ def askExtraStatsInfo():
     sendStats()
 
 
+def decode_bash_output(input_data, decode=False, remove_n=False):
+    if decode:
+        try:
+            input_data = input_data.decode("utf-8")
+        except:
+            pass
+    if remove_n:
+        input_data = input_data.rstrip('\n')
+
+    return input_data
+
+
+def backup_chroot(name=None, override=False):
+    makeFolder("/opt/PiNet/chrootBackups")
+    chroot_size = int(
+        decode_bash_output(runBashOutput("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """),
+                           decode=True,
+                           remove_n=True))
+    remaining_space = int(
+        decode_bash_output(runBashOutput("""sudo df | grep /dev/ | sed -n 1p | awk '{print $4}' """),
+                           decode=True,
+                           remove_n=True))
+    if ((remaining_space - chroot_size) > 1000000) or override:
+        if name == None:
+            waiting_for_name = True
+            while waiting_for_name:
+                name = whiptailBox("inputbox", _("Backup Chroot name"),
+                                    _("Please enter a name to store the backup chroot under. Do not include spaces."),
+                                    False, returnErr=True)
+                if (' ' in name) or (name == ""):
+                    whiptailBox("msgbox", _("Invalid name"),
+                                 _("Please do not include spaces in the filename or leave the filename blank."), False)
+                else:
+                    waiting_for_name = False
+                    # print("Starting copy. This may take up to 10 minutes.")
+        try:
+            # for i in os.listdir("/opt/ltsp/armhf"):
+            #    if (not i == "proc") and (not i == "dev"):
+            #        print("Copying " + "/opt/ltsp/armhf/" + i)
+            #        #makeFolder("/opt/PiNet/chrootBackups/" + backupName + "/" + i)
+            #        copyFileFolder("/opt/ltsp/armhf/" + i, "/opt/PiNet/chrootBackups/" + backupName + "/" + i)
+            print("-------------------------------------------------------------")
+            print("Backing up Raspbian Chroot... This may take up to 20 minutes.")
+            print("-------------------------------------------------------------")
+            runBash("sudo cp -rp /opt/ltsp/armhf/ /opt/PiNet/chrootBackups/" + name)
+            print("Copy complete.")
+            whiptailBox("msgbox", _("Backup complete"), _("Raspbian chroot backup is now complete."), False)
+            return True
+        except:
+            print("Backup failed!")
+            whiptailBox("msgbox", _("Error!"), _("Backup failed!"), False)
+            return False
+    else:
+        print("Space issue...")
+        chroot_size_readable = int(
+            decode_bash_output(runBash("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """, return_string=True),
+                               decode=True,
+                               remove_n=True))
+        remaining_spacechroot_size_readable = int(
+            decode_bash_output(runBash("""sudo df | grep /dev/ | sed -n 1p | awk '{print $4}' """, returnString=True),
+                               decode=True,
+                               remove_n=True))
+        print(remaining_spacechroot_size_readable, chroot_size_readable)
+        override = whiptailBoxYesNo("Not enough space",
+                                       "PiNet has detected not enough space is left to store the backup. " + str(
+                                           chroot_size_readable) + " is required, but only " + str(
+                                           remaining_spacechroot_size_readable) + " is available. You can choose to override this check.",
+                                       customYes="Override", customNo="Cancel", returnTrueFalse=True, height="11")
+        if override:
+            backup_chroot(name, True)
+            return True
+        return False
+
+
+def restore_chroot():
+    options = []
+    for i in os.listdir("/opt/PiNet/chrootBackups/"):
+        options.append(i)
+    if len(options) == 0:
+        whiptailBox("msgbox", _("No backups"), _("No Raspbian chroots found "), False)
+    else:
+        name = decode_bash_output(
+            whiptailSelectMenu(_("Select backup"), _("Select your Raspbian chroot backup to restore"), options), True,
+            False)
+        if os.path.isdir("/opt/PiNet/chrootBackups/" + name) and name != "" and name != None and os.path.isdir(
+                                "/opt/PiNet/chrootBackups/" + name + "/boot"):
+            answer = whiptailBox("yesno", _("Are you sure?"), _(
+                "The old Raspbian chroot will now be deleted and your chosen one copied into its place. There is no way to undo this process. Are you sure you wish to proceed?"),
+                                  True, height="9")
+            if answer:
+                runBash("rm -rf /opt/ltsp/armhf")
+                print("Starting restore...")
+                runBash("cp -rp /opt/PiNet/chrootBackups/" + name + " /opt/ltsp/armhf")
+                print("Restore complete")
+                nbdRun()
+        else:
+            whiptailBox("msgbox", _("Unable to restore"), _(
+                "Unable to restore backup chroot. The Raspbian chroot being restored is corrupt or damaged. Your previous Rabpain chroot has been left untouched."),
+                         False)
+
+
+def check_debian_version():
+    wheezy = checkStringExists("/opt/ltsp/armhf/etc/apt/sources.list",
+                                 "deb http://mirrordirector.raspbian.org/raspbian/ wheezy")
+    if wheezy:
+        debian_wheezy_to_jessie_update()
+    else:
+        returnData(0)
+
+
+def debian_wheezy_to_jessie_update(try_backup=True):
+    whiptailBox("msgbox", _("Raspbian Jessie update"), _(
+        "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic upgrade. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
+                 False, height="14")
+    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with the PiNet Jessie upgrade? The process should take 1-2 hours and involves fully rebuilding the Raspbian image on the server. Note PiNet Wheezy support will be officially discontinued on the 1st July 2017."), True, height="13")
+    if yesno and internetFullStatusCheck():
+        backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
+        whiptailBox("msgbox", _("Backup chroot"), _(
+            "Before proceeding with the upgrade, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backupName, "/opt/PiNet/chrootBackups/" + backupName)),
+                     False, height="10")
+        if backup_chroot(backupName):
+            returnData(1)
+            return
+
+    returnData(0)
+
+
 #------------------------------Main program-------------------------
 
 if len(sys.argv) == 1:
@@ -1255,3 +1385,5 @@ else:
         internetFullStatusCheck()
     elif sys.argv[1] == "setConfigParameter":
         setConfigParameter(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "checkDebianVersion":
+        check_debian_version()
