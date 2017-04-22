@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.2.7
+version=1.2.8
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -2404,7 +2404,7 @@ FullInstall(){
 		$p triggerInstall
 		CheckInstallSuccess
 	
-		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. You will need to flash an SD card with the PiNet boot files, instructions can be found at http://pinet.org.uk/articles/installation/sd-card-copy.html. Then plug the Raspberry Pi into the network and boot it up." 10 78
+		whiptail --title "Main installation complete" --msgbox "PiNet main installation is now complete. There may be a few other minor updates that will be applied now. You will need to flash an SD card with the PiNet boot files, instructions can be found at http://pinet.org.uk/articles/installation/sd-card-copy.html. Then plug the Raspberry Pi into the network and boot it up." 11 78
 	else
 		whiptail --title "Error" --msgbox "The installation has been cancelled due to a problem accessing key domains used in the installation." 8 78
 		echo "The installation has been cancelled due to a problem accessing key domains used in the installation."
@@ -2451,7 +2451,6 @@ if [ $? -eq 0 ]; then
 
 
 Menu() {
-IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 GetInternalIPAddress
   MENUOPT=$(whiptail --title $"PiNet $version Main Menu - $IP" --cancel-button $"Quit" --ok-button $"Select" --menu $"What would you like to do?" 22 80 14 \
   	"System-Status" $"Display status of key parts of your PiNet server" \
@@ -2585,7 +2584,7 @@ Wheezy-upgrade-part-three)
 esac
 
 if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
-    	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. We have detected PiNet is not installed, would you like to run the full PiNet installation?" 8 78
+    	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. No previous PiNet installation is detected, would you like to run the full PiNet installer? " 8 78
 		exitstatus=$?
 		if [ $exitstatus = 0 ]; then
 			UpdateConfig FirstUser $SUDO_USER
