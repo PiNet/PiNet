@@ -1075,23 +1075,25 @@ def check_update(current_version):
     debug("Checking for updates from {}.".format(pinet_software_update_url))
     d = feedparser.parse(pinet_software_update_url)
     try:
-        data = (d.entries[0].content[0].get('value'))
-
-        data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
-        data = data.split("\n")
-        this_version = get_version_number(data)
-        if not this_version:
-            print(_("Unable to perform automatic update checks on this branch as the standard release format isn't followed. To update, use the manual Update-PiNet option."))
-            debug("Unable to perform automatic update check on the currently selected branch - {}. Current version is {} and attempt to get new version returned {}".format(RELEASE_BRANCH, current_version, this_version))
-            return_data(0)
-            return
-        if compare_versions(current_version, this_version):
-            whiptail_box("msgbox", _("Update detected"),
-                         _("An update has been detected for PiNet. Select OK to view the Release History."), False)
-            display_change_log(current_version)
-        else:
-            print(_("No PiNet software updates found"))
-            return_data(0)
+        for index, entries in enumerate(d.entries): #Iterate over each line in the .atom file up to x5 times to find a line with a version number
+            data = entries.content[0].get('value')
+            data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
+            data = data.split("\n")
+            this_version = get_version_number(data)
+            if this_version:  # If a valid version number was found on the line.
+                if compare_versions(current_version, this_version):
+                    whiptail_box("msgbox", _("Update detected"), _("An update has been detected for PiNet. Select OK to view the Release History."), False)
+                    display_change_log(current_version)
+                    return
+                else:
+                    print(_("No PiNet software updates found"))
+                    return_data(0)
+                    return
+            elif index > 5:  # Only check x5 lines before giving up.
+                print(_("Unable to perform automatic update checks on this branch as the standard release format isn't followed. To update, use the manual Update-PiNet option."))
+                debug("Unable to perform automatic update check on the currently selected branch - {}. Current version is {} and attempt to get new version returned {}".format(RELEASE_BRANCH, current_version, this_version))
+                return_data(0)
+                return
     except IndexError:
         print(_("Unable to check for PiNet updates, unable to download {}.".format(pinet_software_update_url)))
         return_data(0)
@@ -1170,7 +1172,10 @@ def display_change_log(version):
         data = (d.entries[x].content[0].get('value'))
         data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
         data = data.split("\n")
-        this_version = "Release " + get_version_number(data)
+        this_version = get_version_number(data)
+        if not this_version:
+            continue
+        this_version = "Release " + this_version
         if this_version == version:
             break
         elif x == 10:
@@ -1651,12 +1656,14 @@ def install_chroot_software():
     packages.append((SoftwarePackage("sense-emu-tools", APT)))
     packages.append((SoftwarePackage("python-sense-emu-doc", APT)))
     packages.append((SoftwarePackage("gvfs", APT)))
+    packages.append((SoftwarePackage("cups", APT)))
 
     packages.append(SoftwarePackage("bindfs", APT, install_on_server=True))
     packages.append(SoftwarePackage("python3-feedparser", APT, install_on_server=True))
     packages.append(SoftwarePackage("ntp", APT, install_on_server=True))
     packages.append(SoftwarePackage("python-pip", APT, install_on_server=True))
     packages.append(SoftwarePackage("python3-pip", APT, install_on_server=True))
+    packages.append(SoftwarePackage("curl", APT, install_on_server=True))
 
     #for package in packages:
     #    package.install_package()
