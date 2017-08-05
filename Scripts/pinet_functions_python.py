@@ -1743,7 +1743,10 @@ def get_external_ip_address():
     If there is any issues, defaults to returning 0.0.0.0.
     """
     try:
-        return requests.get("http://links.pinet.org.uk/external_ip", timeout=5).text
+        response = requests.get("http://links.pinet.org.uk/external_ip", timeout=5).text.strip()
+        if len(response) > 16: # Verify isn't a blocked site page etc.
+            return "0.0.0.0"
+        return response
     except requests.RequestException:
         return "0.0.0.0"
 
