@@ -797,7 +797,7 @@ def displayChangeLog(version):
         data = (d.entries[x].content[0].get('value'))
         data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
         data = data.split("\n")
-        thisVersion = "Release " + GetVersionNum(data)
+        thisVersion = "Release " + str(GetVersionNum(data))
         #thisVersion = data[0].rstrip()
         if thisVersion == version:
             break
@@ -1324,7 +1324,7 @@ def debian_wheezy_to_jessie_update(try_backup=True):
     whiptailBox("msgbox", _("Raspbian Jessie update"), _(
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic upgrade. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
-    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with the PiNet Jessie upgrade? The process should take 1-2 hours and involves fully rebuilding the Raspbian image on the server. Note PiNet Wheezy support will be officially discontinued on the 1st July 2017."), True, height="13")
+    yesno = whiptailBox("yesno", _("Proceed"), _("Would you like to proceed with the PiNet Jessie upgrade? The process should take 1-2 hours and involves fully rebuilding the Raspbian image on the server. Note PiNet Wheezy support will be officially discontinued on the 31st December 2017."), True, height="13")
     if yesno and internetFullStatusCheck():
         backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
         whiptailBox("msgbox", _("Backup chroot"), _(
