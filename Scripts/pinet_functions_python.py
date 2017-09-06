@@ -167,7 +167,7 @@ class SoftwarePackage():
 
     def custom_apt_pip(self):
         done = False
-        while done == False:
+        while not done:
             if self.install_type == CUSTOM_APT:
                 package_name = whiptail_box("inputbox", _("Custom package"),
                                             _(
@@ -373,7 +373,7 @@ def group_apt_installer(packages):
             if packages_to_install:
                 print("Going to install {}".format(" ".join(packages_to_install)))
                 returned = ltsp_chroot("apt-get install -y {}".format(" ".join(packages_to_install)), ignore_errors=True)
-                if returned != True:
+                if not returned:
                     for single_package in packages_to_install:
                         install_apt_package(single_package)
                 packages_to_install = []
@@ -1018,7 +1018,7 @@ def internet_full_status_check(timeoutLimit=5):
                 answer = whiptail_box("yesno", _("Proceeding not recommended"), _(
                     "A recommended site is inaccessible. Perhaps a proxy or web filtering system may be blockeing access. Would you like to proceed anyway? (not recommended). The domain that is unable to be accessed is - " +
                     site[1]), True, height="11")
-                if answer == False:
+                if not answer:
                     return_data(1)
                     return False
         else:
@@ -1460,7 +1460,7 @@ def install_software_list(hold_off_install=False):
                     done = True
                     save_pickled(software)
 
-    if hold_off_install == False:
+    if not hold_off_install:
         install_software_from_file()
 
 
@@ -1473,7 +1473,7 @@ def install_software_from_file(packages=None):
     if packages is None:
         packages = load_pickled()
     for i in packages:
-        if i.marked == True:
+        if i.marked:
             print(_("Installing") + " " + str(i.name))
             if not need_compress:
                 ltsp_chroot("apt-get update")
