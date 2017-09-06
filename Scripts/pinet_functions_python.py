@@ -1862,7 +1862,7 @@ def backup_chroot(name=None, override=False):
                            decode=True,
                            remove_n=True))
     if ((remaining_space - chroot_size) > 1000000) or override:
-        if name == None:
+        if name is None:
             waiting_for_name = True
             while waiting_for_name:
                 name = whiptail_box("inputbox", _("Backup Chroot name"),
@@ -1923,7 +1923,7 @@ def restore_chroot():
         name = decode_bash_output(
             whiptail_select_menu(_("Select backup"), _("Select your Raspbian chroot backup to restore"), options), True,
             False)
-        if os.path.isdir("/opt/PiNet/chrootBackups/" + name) and name != "" and name != None and os.path.isdir(
+        if os.path.isdir("/opt/PiNet/chrootBackups/" + name) and name != "" and name is not None and os.path.isdir(
                                 "/opt/PiNet/chrootBackups/" + name + "/boot"):
             answer = whiptail_box("yesno", _("Are you sure?"), _(
                 "The old Raspbian chroot will now be deleted and your chosen one copied into its place. There is no way to undo this process. Are you sure you wish to proceed?"),
