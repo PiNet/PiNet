@@ -119,7 +119,7 @@ class SoftwarePackage():
     version = None
 
     def __init__(self, name, install_type, install_commands=None, description="", install_on_server=False,
-                 parameters=(), version = None):
+                 parameters=(), version=None):
         super(SoftwarePackage, self).__init__()
         self.name = name
         self.description = description
@@ -380,7 +380,6 @@ def group_apt_installer(packages):
             install_apt_package(package.name, install_on_server=package.install_on_server, parameters=package.parameters, version=package.version)
 
 
-
 def get_package_version_to_install(package_name):
     """
     Check if package being installed should have a specific version installed, so can be held on that version
@@ -403,8 +402,8 @@ def get_package_version_to_install(package_name):
 
     # If the file doesn't exist or is over 12 hours old, get the newest copy off the web.
     if not os.path.isfile(pinet_package_versions_path) or ((current_time - os.path.getctime(pinet_package_versions_path)) / 3600 > 12):
-        make_folder("/opt/PiNet") # In case folder doesn't exist yet.
-        for download_attempts in range(1, 4): # Attempt downloading 3 times with a 30s gap between each if fails first time.
+        make_folder("/opt/PiNet")  # In case folder doesn't exist yet.
+        for download_attempts in range(1, 4):  # Attempt downloading 3 times with a 30s gap between each if fails first time.
             remove_file(pinet_package_versions_path)
             if download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path):
                 break
@@ -414,7 +413,7 @@ def get_package_version_to_install(package_name):
                 remove_file(pinet_package_versions_path)
                 if bootfile_package_version:
                     return bootfile_package_version
-            time.sleep(30) # Wait for 30s to allow for any issues with web connectivity.
+            time.sleep(30)  # Wait for 30s to allow for any issues with web connectivity.
 
     if bootfile_package_version:
         return bootfile_package_version
@@ -479,7 +478,6 @@ def build_download_url(repo, path):
     else:
         url = "https://raw.githubusercontent.com/{}/{}/{}".format(repo, RELEASE_BRANCH, path)
     return url
-
 
 
 def read_file(file_path):
@@ -839,7 +837,7 @@ def whiptail_box_yes_no(title, message, return_true_false, height="8", width="78
 
 # ---------------- Main functions -------------------
 
-def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False, add_if_not_exists=True, replace_entire_line = True):
+def replace_in_text_file(file_path, string_to_search_for, new_string, replace_all_uses=False, add_if_not_exists=True, replace_entire_line=True):
     """
     Simple string replacer for text files. Allows replacing a line in a text file if that line contains the
     provided string. If the line does not exist, add it.
@@ -1075,7 +1073,7 @@ def check_update(current_version):
     debug("Checking for updates from {}.".format(pinet_software_update_url))
     d = feedparser.parse(pinet_software_update_url)
     try:
-        for index, entries in enumerate(d.entries): #Iterate over each line in the .atom file up to x5 times to find a line with a version number
+        for index, entries in enumerate(d.entries):  # Iterate over each line in the .atom file up to x5 times to find a line with a version number
             data = entries.content[0].get('value')
             data = ''.join(xml.etree.ElementTree.fromstring(data).itertext())
             data = data.split("\n")
@@ -1145,7 +1143,7 @@ def check_kernel_updater():
             else:
                 return_data(0)
                 return True
-        except (ValueError, TypeError): #If can't find the update data
+        except (ValueError, TypeError):  # If can't find the update data
             print(_("Unable to check for kernel updater updates, unable to download {}.".format(kernel_updater_version_url)))
     else:
         install_check_kernel_updater()
@@ -1647,7 +1645,7 @@ def install_chroot_software():
 
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
     packages.append(SoftwarePackage("libjpeg-dev", APT))
-    #packages.append(SoftwarePackage("pillow", PIP))
+    # packages.append(SoftwarePackage("pillow", PIP))
     packages.append(SoftwarePackage("sense-hat", APT))
     packages.append(SoftwarePackage("nodered", APT))
     packages.append(SoftwarePackage("libqt4-network", APT))  # Remove when Sonic-Pi update fixes dependency issue.
@@ -1665,8 +1663,8 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python3-pip", APT, install_on_server=True))
     packages.append(SoftwarePackage("curl", APT, install_on_server=True))
 
-    #for package in packages:
-    #    package.install_package()
+    # for package in packages:
+    #     package.install_package()
 
     # Unhold all packages
     pinet_package_versions_path = "/opt/PiNet/pinet-package-versions.txt"
@@ -1675,7 +1673,6 @@ def install_chroot_software():
     for package in held_packages:
         ltsp_chroot("apt-mark unhold {}".format(package), ignore_errors=True)
         fileLogger.debug("Marking {} to be unheld for updates.".format(package))
-
 
     group_apt_installer(packages)
 
@@ -1694,7 +1691,6 @@ def install_chroot_software():
     python_packages.append(SoftwarePackage("explorerhat", PIP))
     python_packages.append(SoftwarePackage("twython", PIP))
     python_packages.append(SoftwarePackage("python-sonic", PIP))
-
 
     for python_package in python_packages:
         python_package.install_package()
@@ -1744,7 +1740,7 @@ def get_external_ip_address():
     """
     try:
         response = requests.get("http://links.pinet.org.uk/external_ip", timeout=5).text.strip()
-        if len(response) > 16: # Verify isn't a blocked site page etc.
+        if len(response) > 16:  # Verify isn't a blocked site page etc.
             return "0.0.0.0"
         return response
     except requests.RequestException:
@@ -1992,7 +1988,6 @@ def custom_config_txt():
         update_sd()
 
 
-
 def add_linux_group(group_name, group_id=None, in_chroot=False, ignore_errors=False):
     """
     Add new Linux group.
@@ -2148,7 +2143,6 @@ def select_release_channel():
         return_data(0)
 
 
-
 def get_internal_ip_address():
     # Using netiface, grab the current internal IP address. If 2 network cards, pick alphabetically
     try:
@@ -2165,12 +2159,12 @@ def get_internal_ip_address():
 
 def update_sd_card_ip_address():
     local_ip_address = get_internal_ip_address()
-    continue_on = whiptail_box_yes_no(_("IP Address"), _("Your detected local IP address is {}. This will be added to the SD card boot files. If it has been detected incorrectly, select change below. Otherwise, select continue.".format(local_ip_address)), return_true_false = True, custom_yes=_("Continue"), custom_no=_("Change"), height="9")
+    continue_on = whiptail_box_yes_no(_("IP Address"), _("Your detected local IP address is {}. This will be added to the SD card boot files. If it has been detected incorrectly, select change below. Otherwise, select continue.".format(local_ip_address)), return_true_false=True, custom_yes=_("Continue"), custom_no=_("Change"), height="9")
     if not continue_on:
-        local_ip_address = str(whiptail_box("inputbox", _("Custom IP address"),_("Enter the IP address you plan to use for your PiNet server below."),False, return_err=True))
+        local_ip_address = str(whiptail_box("inputbox", _("Custom IP address"), _("Enter the IP address you plan to use for your PiNet server below."), False, return_err=True))
         if not local_ip_address:
             return
-    pass # Some sort of check in case they hit cancel?
+    pass  # Some sort of check in case they hit cancel?
     home_folder_path = os.path.expanduser("~")
     remove_file("{}/PiBoot/".format(home_folder_path))
     copy_file_folder("/opt/PiNet/PiBootBackup/", "{}/PiBoot/".format(home_folder_path))
@@ -2227,6 +2221,7 @@ def update_sd():
         copy_file_folder("/opt/PiNet/PiBootBackup/", "/opt/ltsp/armhf/bootfiles")
         set_config_parameter("NBDBuildNeeded", "true")
 
+
 def build_custom_config_txt_file():
     base_config = read_file("/opt/PiNet/PiBootBackup/config.txt")
     custom_config_info = ["", "[all]", "# Below contains any custom user provided configuration.", ""]
@@ -2277,7 +2272,7 @@ def parse_mig_file(path):
     return mig_parsed
 
 
-def import_migration_create_users(base_path = "/tmp/pinet_unpack/root/move/"):
+def import_migration_create_users(base_path="/tmp/pinet_unpack/root/move/"):
     """
     Import tool for importing users/groups after a PiNet server migration.
     Recreates the groups, then the users and finally adds the users to the correct groups.
@@ -2335,20 +2330,20 @@ def import_migration_unpack_home_folders(migration_file_path):
             # Extract the sub-tar.gz file containing the home folders
             run_bash("tar -zxvf {} -C {}".format(home_files_path_tar, "{}".format(unpack_path)))
             ignored_users = []
-            for folder in os.listdir("{}home/".format(unpack_path)): # Get all files/folders in folder of home folders
+            for folder in os.listdir("{}home/".format(unpack_path)):  # Get all files/folders in folder of home folders
                 full_folder_path = "{}home/{}".format(unpack_path, folder)
                 if os.path.isdir(full_folder_path):
                     if not os.path.exists("/home/{}".format(folder)):
                         # If it is a folder and the folder doesn't already exist in /home, then copy it from the import.
-                        remove_file("{}.pulse".format(full_folder_path)) # Remove pulse audio files which can cause login issues.
+                        remove_file("{}.pulse".format(full_folder_path))  # Remove pulse audio files which can cause login issues.
                         print(_("Importing {} home folder.".format(folder)))
                         # Copy the home folders back into /home using -p to maintain the initial owner/permissions.
-                        run_bash(["cp", "-r", "-p", full_folder_path, "/home/{}".format(folder)], ignore_errors=True) # Needed to maintain file permissions/owners
-                    else: # If the home folder already exists in /home, so is ignored
+                        run_bash(["cp", "-r", "-p", full_folder_path, "/home/{}".format(folder)], ignore_errors=True)  # Needed to maintain file permissions/owners
+                    else:  # If the home folder already exists in /home, so is ignored
                         ignored_users.append(folder)
 
             print(_("Home folders import complete. The following home folders were ignored as already existed - {}".format(", ".join(ignored_users))))
-            remove_file("{}home/".format(unpack_path)) # Clean up home folders from /tmp
+            remove_file("{}home/".format(unpack_path))  # Clean up home folders from /tmp
             return True
         else:
             print(_("Key files missing from {}root/move/ ! It should include home.tar.gz, group.mig, passwd.mig and shadow.mig.".format(unpack_path)))
@@ -2371,7 +2366,6 @@ def reset_theme_cache_for_all_users():
         files_folders_to_delete = [".config/Trolltech.conf", ".config/lxsession", ".config/openbox", ".config/pcmanfm", ".config/lxpanel", ".config/gtk-3.0", ".themes/PiX"]
         for file_folder in files_folders_to_delete:
             remove_file("/home/{}/{}".format(user.pw_name, file_folder))
-
 
 
 def import_migration(migration_file_path):
@@ -2409,7 +2403,6 @@ def verify_chroot_integrity():
 
     return_data(0)
     return
-
 
 
 # ------------------------------Main program-------------------------
