@@ -58,7 +58,7 @@ except ImportError:
 
 def _(placeholder):
     # GNU Gettext placeholder
-    return (placeholder)
+    return placeholder
 
 
 REPOSITORY_BASE = "https://github.com/pinet/"
@@ -104,7 +104,7 @@ PINET_GROUPS.update(PINET_UNRESTRICTED_GROUPS)
 PINET_GROUPS.update(PINET_RESTRICTED_GROUPS)
 
 
-class SoftwarePackage():
+class SoftwarePackage:
     """
     Class for software packages.
     """
@@ -225,36 +225,38 @@ def setup_logger():
     fileLogger.setLevel(logging.DEBUG)
 
 
-def runBashOld(command, checkFailed=False):
+# TODO: Remove
+def run_bash_old(command, check_failed=False):
     # Deprecated in favor of new runBash
     if type(command) == str:
         p = Popen("sudo " + command, shell=True)
         p.wait()
-        returnCode = p.returncode
+        return_code = p.returncode
     else:
         p = Popen(command)
         p.wait()
-        returnCode = p.returncode
-    if checkFailed:
-        if int(returnCode) != 0:
+        return_code = p.returncode
+    if check_failed:
+        if int(return_code) != 0:
             fileLogger.warning("Command \"" + command + "\" failed to execute correctly with a return code of " + str(
-                returnCode) + ".")
-            continueOn = whiptail_box_yes_no(_("Command failed to execute"), _(
+                return_code) + ".")
+            continue_on = whiptail_box_yes_no(_("Command failed to execute"), _(
                 "Command \"" + command + "\" failed to execute correctly with a return code of " + str(
-                    returnCode) + ". Would you like to continue and ignore the error or retry the command?"),
+                    return_code) + ". Would you like to continue and ignore the error or retry the command?"),
                                              return_true_false=True, custom_yes=_("Continue"), custom_no=_("Retry"),
                                              height="9")
-            if continueOn:
+            if continue_on:
                 fileLogger.info("Failed command \"" + command + "\" was ignored and program continued.")
-                return returnCode
+                return return_code
             else:
                 run_bash(command, True)
     else:
         fileLogger.debug("Command \"" + command + "\" executed successfully.")
-        return returnCode
+        return return_code
 
 
-def runBashOutput(command):
+# TODO: Remove
+def run_bash_output(command):
     # Deprecated in favor of new runBash
     output = check_output("sudo " + command, shell=True)
     return output
@@ -325,7 +327,7 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
             return c.returncode
 
 
-def get_users(includeRoot=False):
+def get_users():
     users = []
     for p in pwd.getpwall():
         if (len(str(p[2])) > 3) and (str(p[5])[0:5] == "/home"):  # or (str(p[5])[0:5] == "/root"):
@@ -514,7 +516,7 @@ def check_string_exists(filename, to_search_for):
     unfound = True
     for i in range(0, len(text_file)):
         found = text_file[i].find(to_search_for)
-        if (found != -1):
+        if found != -1:
             unfound = False
             break
     if unfound:
@@ -532,7 +534,7 @@ def find_replace_any_line(text_file, string, new_string):
     unfound = True
     for i in range(0, len(text_file)):
         found = text_file[i].find(string)
-        if (found != -1):
+        if found != -1:
             text_file[i] = new_string
             unfound = False
     if unfound:
@@ -752,7 +754,7 @@ def whiptail(*args):
     p = Popen(cmd, stderr=PIPE)
     out, err = p.communicate()
     if p.returncode == 0:
-        update_PiNet()
+        update_pinet()
         return_data(1)
         return True
     elif p.returncode == 1:
@@ -762,8 +764,8 @@ def whiptail(*args):
         return "ERROR"
 
 
-def whiptail_box(whiltailType, title, message, return_true_false, height="8", width="78", return_err=False, other=""):
-    cmd = ["whiptail", "--title", title, "--" + whiltailType, message, height, width, other]
+def whiptail_box(whiptail_type, title, message, return_true_false, height="8", width="78", return_err=False, other=""):
+    cmd = ["whiptail", "--title", title, "--" + whiptail_type, message, height, width, other]
     p = Popen(cmd, stderr=PIPE)
     out, err = p.communicate()
 
@@ -809,9 +811,9 @@ def whiptail_check_list(title, message, items):
     p = Popen(cmd, stderr=PIPE)
     out, err = p.communicate()
     if str(p.returncode) == "0":
-        return (err)
+        return err
     else:
-        return ("Cancel")
+        return "Cancel"
 
 
 def whiptail_box_yes_no(title, message, return_true_false, height="8", width="78", return_error=False, custom_yes="",
@@ -964,14 +966,14 @@ def internet_full_status_report(timeout_limit=5, whiptail=False, return_status=F
     """
     sites = []
     sites.append(
-        [_("Main Raspbian repository"), "http://archive.raspbian.org/raspbian.public.key", ("Critical"), False])
+        [_("Main Raspbian repository"), "http://archive.raspbian.org/raspbian.public.key", "Critical", False])
     sites.append([_("Raspberry Pi Foundation repository"), "http://archive.raspberrypi.org/debian/raspberrypi.gpg.key",
-                  ("Critical"), False])
-    sites.append([_("Github"), "https://github.com", ("Critical"), False])
-    sites.append([_("Bit.ly"), "http://bit.ly", ("Highly recommended"), False])
-    sites.append([_("Bitbucket (Github mirror, not active yet)"), "https://bitbucket.org", ("Recommended"), False])
+                  "Critical", False])
+    sites.append([_("Github"), "https://github.com", "Critical", False])
+    sites.append([_("Bit.ly"), "http://bit.ly", "Highly recommended", False])
+    sites.append([_("Bitbucket (Github mirror, not active yet)"), "https://bitbucket.org", "Recommended", False])
     # sites.append([_("BlueJ"), "http://bluej.org", ("Recommended"), False])
-    sites.append([_("PiNet metrics"), "https://secure.pinet.org.uk", ("Recommended"), False])
+    sites.append([_("PiNet metrics"), "https://secure.pinet.org.uk", "Recommended", False])
     for website in range(0, len(sites)):
         sites[website][3] = test_site_connection(sites[website][1])
     if return_status:
@@ -993,8 +995,8 @@ def internet_full_status_report(timeout_limit=5, whiptail=False, return_status=F
             print(str(sites[website][2] + " - "))
 
 
-def internet_full_status_check(timeoutLimit=5):
-    results = internet_full_status_report(timeout_limit=timeoutLimit, return_status=True)
+def internet_full_status_check(timeout_limit=5):
+    results = internet_full_status_report(timeout_limit=timeout_limit, return_status=True)
     for site in results:
         if site[2] == "Critical":
             if not site[3]:
@@ -1025,7 +1027,7 @@ def internet_full_status_check(timeoutLimit=5):
     return True
 
 
-def update_PiNet():
+def update_pinet():
     """
     Fetches most recent PiNet and PiNet_functions_python.py
     """
@@ -1196,7 +1198,7 @@ def display_change_log(version):
     p = Popen(cmd, stderr=PIPE)
     out, err = p.communicate()
     if p.returncode == 0:
-        update_PiNet()
+        update_pinet()
         return_data(1)
         return True
     elif p.returncode == 1:
@@ -1206,10 +1208,10 @@ def display_change_log(version):
         return "ERROR"
 
 
-def open_csv_file(theFile):
+def open_csv_file(the_file):
     data_list = []
-    if os.path.isfile(theFile):
-        with open(theFile) as csvFile:
+    if os.path.isfile(the_file):
+        with open(the_file) as csvFile:
             data = csv.reader(csvFile, delimiter=' ', quotechar='|')
             for row in data:
                 try:
@@ -1222,12 +1224,12 @@ def open_csv_file(theFile):
             return data_list
 
     else:
-        print(_("Error! CSV file not found at") + " " + theFile)
+        print(_("Error! CSV file not found at") + " " + the_file)
 
 
-def import_users_csv(theFile, default_password, dry_run=False):
+def import_users_csv(the_file, default_password, dry_run=False):
     user_data_list = []
-    data_list = open_csv_file(theFile)
+    data_list = open_csv_file(the_file)
     if dry_run == "True" or dry_run == True:
         dry_run = True
     else:
@@ -1273,9 +1275,9 @@ def import_users_csv(theFile, default_password, dry_run=False):
             sys.exit()
 
 
-def users_csv_delete(theFile, dry_run):
+def users_csv_delete(the_file, dry_run):
     user_data_list = []
-    data_list = open_csv_file(theFile)
+    data_list = open_csv_file(the_file)
     if dry_run == "True" or dry_run == True:
         dry_run = True
     else:
@@ -1329,12 +1331,12 @@ def check_if_file_contains(file, string):
         return_data(1)
 
 
-def save_pickled(toSave, path="/tmp/pinetSoftware.dump"):
+def save_pickled(to_save, path="/tmp/pinetSoftware.dump"):
     """
     Saves list of SoftwarePackage objects.
     """
     with open(path, "wb") as output:
-        pickle.dump(toSave, output, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(to_save, output, pickle.HIGHEST_PROTOCOL)
 
 
 def load_pickled(path="/tmp/pinetSoftware.dump", delete_after=True):
@@ -1729,8 +1731,8 @@ def generate_server_id():
     """
     Generates random server ID for use with stats system.
     """
-    ID = random.randint(10000000000, 99999999999)
-    set_config_parameter("ServerID", str(ID))
+    server_id = random.randint(10000000000, 99999999999)
+    set_config_parameter("ServerID", str(server_id))
 
 
 def get_external_ip_address():
@@ -1953,11 +1955,11 @@ def debian_wheezy_to_jessie_update(try_backup=True):
         "Would you like to proceed with Raspbian Jessie update? It will take 1-2 hours as Raspbian will be fully rebuilt. Note PiNet Wheezy support will be officially discontinued on 1st July 2017."),
                          True, height="10")
     if yesno and internet_full_status_check():
-        backupName = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
+        backup_name = "RaspbianWheezyBackup" + str(time.strftime("-%d-%m-%Y"))
         whiptail_box("msgbox", _("Backup chroot"), _(
-            "Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backupName, "/opt/PiNet/chrootBackups/" + backupName)),
+            "Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backup_name, "/opt/PiNet/chrootBackups/" + backup_name)),
                      False, height="10")
-        if backup_chroot(backupName):
+        if backup_chroot(backup_name):
             return_data(1)
             return
 
@@ -2425,7 +2427,7 @@ if __name__ == "__main__":
         elif sys.argv[1] == "CompareVersion":
             compare_versions(sys.argv[2], sys.argv[3])
         elif sys.argv[1] == "updatePiNet":
-            update_PiNet()
+            update_pinet()
         elif sys.argv[1] == "triggerInstall":
             download_file("http://bit.ly/pinetinstall1", "/dev/null")
         elif sys.argv[1] == "checkKernelFileUpdateWeb":

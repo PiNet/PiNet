@@ -280,7 +280,7 @@ class Test_check_update(TestPiNet):
         # We're not testing the actual update here, just the mechanism
         # for checking that there is an update to be had
         #
-        pinet_functions.update_PiNet = mock_do_nothing
+        pinet_functions.update_pinet = mock_do_nothing
         pinet_functions.urllib.request.urlopen = mock_urlopen(True)
         pinet_functions.feedparser.parse = mock_feedparser_parse("1.0.1")
         pinet_functions.check_update("0.9.1")
@@ -409,7 +409,7 @@ if False:
             self.touch_web_file(pinet_functions.PINET_PYTHON_DOWNLOAD_URL)
         
         def test_update_PiNet(self):
-            pinet_functions.update_PiNet()
+            pinet_functions.update_pinet()
             
             pinet_binary_filepath = os.path.join(pinet_functions.PINET_BINPATH, pinet_functions.PINET_BINARY)
             with open(self.make_local_filepath(pinet_binary_filepath)) as f:
