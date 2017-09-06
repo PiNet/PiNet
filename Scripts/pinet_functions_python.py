@@ -72,8 +72,7 @@ RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
 PINET_LOG_DIRPATH = "/var/log"
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
-configFileData = {}
-fileLogger = None
+file_logger = None
 
 APT, PIP, SCRIPT, EPOPTES, SCRATCH_GPIO, CUSTOM_APT, CUSTOM_PIP = 1, 2, 3, 4, 5, 6, 7
 RASPBIAN_RELEASE = "jessie"
@@ -133,8 +132,8 @@ class SoftwarePackage:
             self.version = get_package_version_to_install(self.name)
 
     def install_package(self):
-        fileLogger.debug("Installing - {}".format(self.name))
-        fileLogger.debug("Install commands - {}".format(self.install_commands))
+        file_logger.debug("Installing - {}".format(self.name))
+        file_logger.debug("Install commands - {}".format(self.install_commands))
         if isinstance(self.install_commands, list) and len(self.install_commands) > 0:
             programs = " ".join(self.install_commands)
         elif self.install_commands is None:
@@ -215,14 +214,14 @@ class SoftwarePackage:
 
 
 def setup_logger():
-    global fileLogger
-    fileLogger = logging.getLogger()
+    global file_logger
+    file_logger = logging.getLogger()
     handler = logging.FileHandler(PINET_LOG_DIRPATH + '/pinet.log')
     formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
     handler.setFormatter(formatter)
-    fileLogger.addHandler(handler)
-    fileLogger.setLevel(logging.DEBUG)
+    file_logger.addHandler(handler)
+    file_logger.setLevel(logging.DEBUG)
 
 
 # TODO: Remove
@@ -238,7 +237,7 @@ def run_bash_old(command, check_failed=False):
         return_code = p.returncode
     if check_failed:
         if int(return_code) != 0:
-            fileLogger.warning("Command \"" + command + "\" failed to execute correctly with a return code of " + str(
+            file_logger.warning("Command \"" + command + "\" failed to execute correctly with a return code of " + str(
                 return_code) + ".")
             continue_on = whiptail_box_yes_no(_("Command failed to execute"), _(
                 "Command \"" + command + "\" failed to execute correctly with a return code of " + str(
@@ -246,12 +245,12 @@ def run_bash_old(command, check_failed=False):
                                              return_true_false=True, custom_yes=_("Continue"), custom_no=_("Retry"),
                                              height="9")
             if continue_on:
-                fileLogger.info("Failed command \"" + command + "\" was ignored and program continued.")
+                file_logger.info("Failed command \"" + command + "\" was ignored and program continued.")
                 return return_code
             else:
                 run_bash(command, True)
     else:
-        fileLogger.debug("Command \"" + command + "\" executed successfully.")
+        file_logger.debug("Command \"" + command + "\" executed successfully.")
         return return_code
 
 
@@ -292,7 +291,7 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
         if return_string:
             # If returning the text output.
             command_output = check_output(command, shell=shell)
-            fileLogger.debug("Command \"" + str(command) + "\" executed successfully.")
+            file_logger.debug("Command \"" + str(command) + "\" executed successfully.")
             return command_output.decode()
         else:
             # Otherwise, can run with Popen to get the return code.
@@ -302,11 +301,11 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
             if return_code != 0:
                 # If process exited with an error (non 0 return code).
                 raise CalledProcessError(return_code, str(command))
-            fileLogger.debug("Command \"" + str(command) + "\" executed successfully.")
+            file_logger.debug("Command \"" + str(command) + "\" executed successfully.")
             return True
     except CalledProcessError as c:
         # If reaching this section, the process failed to execute correctly.
-        fileLogger.warning("Command \"" + str(command) + "\" failed to execute correctly with a return code of " + str(
+        file_logger.warning("Command \"" + str(command) + "\" failed to execute correctly with a return code of " + str(
             c.returncode) + ".")
         if not ignore_errors:
             # If should be alerting the user to errors.
@@ -317,7 +316,7 @@ def run_bash(command, return_status=True, run_as_sudo=True, return_string=False,
                                               height="11")
             if continue_on:
                 # If the user selects Continue
-                fileLogger.info("Failed command \"" + str(command) + "\" was ignored and program continued.")
+                file_logger.info("Failed command \"" + str(command) + "\" was ignored and program continued.")
                 return c.returncode
             else:
                 # If user Retry
@@ -409,7 +408,7 @@ def get_package_version_to_install(package_name):
             remove_file(pinet_package_versions_path)
             if download_file(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), pinet_package_versions_path):
                 break
-            fileLogger.warning("Now able to download package_versions.txt file from {}. Already attempted {} time.".format(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), download_attempts))
+            file_logger.warning("Now able to download package_versions.txt file from {}. Already attempted {} time.".format(build_download_url("PiNet/PiNet-Configs", "packages/package_versions.txt"), download_attempts))
             if download_attempts == 3:
                 # Not able to get the file correctly downloaded. Going to give up and return None after deleting the file.
                 remove_file(pinet_package_versions_path)
@@ -425,7 +424,7 @@ def get_package_version_to_install(package_name):
 
 def make_folder(directory):
     if not os.path.exists(directory):
-        fileLogger.debug("Creating directory - " + str(directory))
+        file_logger.debug("Creating directory - " + str(directory))
         os.makedirs(directory)
 
 
@@ -572,13 +571,13 @@ def download_file_urllib(url, save_location):
         text_file = open(save_location, "wb")
         text_file.write(f.read())
         text_file.close()
-        fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
+        file_logger.debug("Downloaded file from " + url + " to " + save_location + ".")
         return True
     except urllib.error.URLError as e:
-        fileLogger.debug("Failed to download file from " + url + " to " + save_location + ". Error was " + e.reason)
+        file_logger.debug("Failed to download file from " + url + " to " + save_location + ". Error was " + e.reason)
     except:
         print(traceback.format_exc())
-        fileLogger.debug("Failed to download file from " + url + " to " + save_location + ".")
+        file_logger.debug("Failed to download file from " + url + " to " + save_location + ".")
         return False
 
 
@@ -588,12 +587,12 @@ def download_file(url, save_location):
         if response.status_code == requests.codes.ok:
             with open(save_location, 'wb') as f:
                 f.write(response.content)
-            fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
+            file_logger.debug("Downloaded file from " + url + " to " + save_location + ".")
             return True
         else:
             response.raise_for_status()
     except requests.RequestException as e:
-        fileLogger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
+        file_logger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
         return False
 
 
@@ -690,7 +689,7 @@ def read_return():
 def remove_file(file):
     try:
         shutil.rmtree(file)
-        fileLogger.debug("File at " + file + " has been deleted.")
+        file_logger.debug("File at " + file + " has been deleted.")
     except (OSError, IOError):
         pass
 
@@ -698,14 +697,14 @@ def remove_file(file):
 def copy_file_folder(src, dest):
     try:
         shutil.copytree(src, dest, symlinks=True)
-        fileLogger.debug("File/folder has been copied from " + src + " to " + dest + ".")
+        file_logger.debug("File/folder has been copied from " + src + " to " + dest + ".")
     except OSError as e:
         # If the error was caused because the source wasn't a directory
         if e.errno == errno.ENOTDIR:
             shutil.copy(src, dest)
         else:
             print('Directory not copied. Error: %s' % e)
-            fileLogger.debug('Directory not copied. Error: %s' % e)
+            file_logger.debug('Directory not copied. Error: %s' % e)
 
 
 def change_owner_file_folder(path, user_id, group_id):
@@ -713,7 +712,7 @@ def change_owner_file_folder(path, user_id, group_id):
     group_id = int(group_id)
     item_path = ""
     # Taken from http://stackoverflow.com/questions/2853723/whats-the-python-way-for-recursively-setting-file-permissions
-    fileLogger.debug("Changing ownership of folder {} to user ID of {} and group ID of {}".format(path, user_id, group_id))
+    file_logger.debug("Changing ownership of folder {} to user ID of {} and group ID of {}".format(path, user_id, group_id))
     try:
         for root, dirs, files in os.walk(path):
             for directory in dirs:
@@ -723,7 +722,7 @@ def change_owner_file_folder(path, user_id, group_id):
                 item_path = os.path.join(root, file)
                 os.chown(item_path, user_id, group_id)
     except FileNotFoundError:
-        fileLogger.debug("Unable to change owner on {} as it can't be found.".format(item_path))
+        file_logger.debug("Unable to change owner on {} as it can't be found.".format(item_path))
 
 
 def set_current_user_to_owner(path):
@@ -1674,7 +1673,7 @@ def install_chroot_software():
     held_packages = list(parse_config_file(read_file(pinet_package_versions_path)).keys()) + list(parse_config_file(read_file(pinet_bootfiles_versions_path)).keys())
     for package in held_packages:
         ltsp_chroot("apt-mark unhold {}".format(package), ignore_errors=True)
-        fileLogger.debug("Marking {} to be unheld for updates.".format(package))
+        file_logger.debug("Marking {} to be unheld for updates.".format(package))
 
     group_apt_installer(packages)
 
@@ -2003,10 +2002,10 @@ def add_linux_group(group_name, group_id=None, in_chroot=False, ignore_errors=Fa
         cmd = ["groupadd", group_name]
 
     if in_chroot:
-        fileLogger.info("Adding new group to the Raspbian chroot - " + group_name)
+        file_logger.info("Adding new group to the Raspbian chroot - " + group_name)
         ltsp_chroot(cmd, ignore_errors=ignore_errors)
     else:
-        fileLogger.info("Adding new group to the Server - " + group_name)
+        file_logger.info("Adding new group to the Server - " + group_name)
         run_bash(cmd, ignore_errors=ignore_errors)
 
 
@@ -2020,10 +2019,10 @@ def modify_linux_group(group_name, group_id, in_chroot=False):
     cmd = ["groupmod", group_name, "-g", str(group_id)]
 
     if in_chroot:
-        fileLogger.info("Modifying group to the Raspbian chroot - " + group_name)
+        file_logger.info("Modifying group to the Raspbian chroot - " + group_name)
         ltsp_chroot(cmd)
     else:
-        fileLogger.info("Modifying group to the Server - " + group_name)
+        file_logger.info("Modifying group to the Server - " + group_name)
         run_bash(cmd)
 
 
@@ -2034,7 +2033,7 @@ def add_linux_user_to_group(username, group_name, ignore_errors=False):
     :param group_name: The group the user is to be added to.
     :return:
     """
-    fileLogger.info("Adding " + username + " to group " + group_name)
+    file_logger.info("Adding " + username + " to group " + group_name)
     cmd = ["usermod", "-a", "-G", group_name, username]
     run_bash(cmd, ignore_errors=ignore_errors)
 
@@ -2047,7 +2046,7 @@ def add_linux_user(username, user_id, group_id, encrypted_password, ignore_error
     :param encrypted_password: Pre-encrypted password for user
     :return:
     """
-    fileLogger.info("Creating username {} with ID of {} and group_id of {}".format(username, user_id, group_id))
+    file_logger.info("Creating username {} with ID of {} and group_id of {}".format(username, user_id, group_id))
     cmd = ["useradd", username, "--password", encrypted_password, "--uid", user_id, "--gid", group_id]
     run_bash(cmd, ignore_errors=ignore_errors)
 
@@ -2075,7 +2074,7 @@ def verify_groups():
     for group in PINET_GROUPS:
         if group in server_groups:
             if PINET_GROUPS[group] and PINET_GROUPS[group] != server_groups[group]:
-                fileLogger.warning("The group with name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
+                file_logger.warning("The group with name {} on server has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, server_groups[group], PINET_GROUPS[group]))
                 modify_linux_group(group, PINET_GROUPS[group], in_chroot=False)
                 set_config_parameter("NBDBuildNeeded", "true")
         else:
@@ -2085,7 +2084,7 @@ def verify_groups():
         if PINET_GROUPS[group]:
             if group in pi_groups:
                 if PINET_GROUPS[group] != pi_groups[group]:
-                    fileLogger.warning("The group with name {} on the Raspbian chroot has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, pi_groups[group], PINET_GROUPS[group]))
+                    file_logger.warning("The group with name {} on the Raspbian chroot has an ID mismatch. It is currently using {} and should be using {}. This has been corrected.".format(group, pi_groups[group], PINET_GROUPS[group]))
                     modify_linux_group(group, PINET_GROUPS[group], in_chroot=True)
                     set_config_parameter("NBDBuildNeeded", "true")
             else:
@@ -2194,7 +2193,7 @@ def update_sd():
             update_sd_card_ip_address()
         else:
             print("Error - Download failed or PiNet was unable to locate boot files, which should be located in /tmp/PiBoot/boot")
-            fileLogger.warning("Error - Download failed or PiNet was unable to locate boot files, which should be located in /tmp/PiBoot/boot")
+            file_logger.warning("Error - Download failed or PiNet was unable to locate boot files, which should be located in /tmp/PiBoot/boot")
     elif os.path.isdir("/opt/PiNet/PiBootBackup"):
         # If not connected to the internet, but is a backup of boot files in /opt/PiNet/PiBootBackup
         whiptail_box("msgbox", _("Internet connection unavailable"), _("Unable to download new boot files as unable to detect an active internet connection. Previous backup copy will be used."), False)
@@ -2298,7 +2297,7 @@ def import_migration_create_users(base_path="/tmp/pinet_unpack/root/move/"):
 
         # Check if the user has a home folder, if not create one from /etc/skel
         if not os.path.exists("/home/{}".format(username)):
-            fileLogger.warning("User {} does not have a home folder at /home/{} as part of import. Creating from /etc/skel.".format(username, username))
+            file_logger.warning("User {} does not have a home folder at /home/{} as part of import. Creating from /etc/skel.".format(username, username))
             copy_file_folder("/etc/skel/", "/home/{}".format(username))
             # Set home folder owner to the user/group if new coming from /etc/skel
             change_owner_file_folder("/home/{}".format(username), passwd[username][1], passwd[username][2])
@@ -2364,7 +2363,7 @@ def reset_theme_cache_for_all_users():
         if 1000 <= user.pw_uid < 65534:
             non_system_users.append(user)
     for user in non_system_users:
-        fileLogger.debug("Deleting theme cache for {}.".format(user.pw_name))
+        file_logger.debug("Deleting theme cache for {}.".format(user.pw_name))
         files_folders_to_delete = [".config/Trolltech.conf", ".config/lxsession", ".config/openbox", ".config/pcmanfm", ".config/lxpanel", ".config/gtk-3.0", ".themes/PiX"]
         for file_folder in files_folders_to_delete:
             remove_file("/home/{}/{}".format(user.pw_name, file_folder))
