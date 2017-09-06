@@ -15,7 +15,6 @@ import crypt
 import csv
 import datetime
 import errno
-import feedparser
 import grp
 import logging
 import os
@@ -24,9 +23,7 @@ import pickle
 import pwd
 import random
 import re
-import requests
 import shutil
-import socket
 import sys
 import tempfile
 import time
@@ -37,6 +34,9 @@ import xml.etree.ElementTree
 from collections import OrderedDict
 from logging import debug
 from subprocess import Popen, PIPE, check_output, CalledProcessError
+
+import feedparser
+import requests
 
 try:
     import netifaces
@@ -752,7 +752,7 @@ def whiptail(*args):
     """
     cmd = ["whiptail"] + list(args)
     p = Popen(cmd, stderr=PIPE)
-    out, err = p.communicate()
+    p.communicate()
     if p.returncode == 0:
         update_pinet()
         return_data(1)
@@ -893,25 +893,25 @@ def replace_bit_or_add(file, string, new_string):
     write_file(file, text_file)
 
 
-def internet_on_urllib(timeout_limit=5, return_type=True):
+def internet_on_urllib(timeout_limit=5):
     """
     Checks if there is an internet connection.
     If there is, return a 0, if not, return a 1
     """
     try:
-        response = urllib.request.urlopen('http://www.google.com', timeout=int(timeout_limit))
+        urllib.request.urlopen('http://www.google.com', timeout=int(timeout_limit))
         return_data(0)
         return True
     except urllib.error.URLError:
         pass
     try:
-        response = urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
+        urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
         return_data(0)
         return True
     except urllib.error.URLError:
         pass
     try:
-        response = urllib.request.urlopen('http://18.62.0.96', timeout=int(timeout_limit))
+        urllib.request.urlopen('http://18.62.0.96', timeout=int(timeout_limit))
         return_data(0)
         return True
     except urllib.error.URLError:
@@ -920,7 +920,7 @@ def internet_on_urllib(timeout_limit=5, return_type=True):
     return False
 
 
-def internet_on(timeout_limit=3, return_type=True):
+def internet_on(timeout_limit=3):
     last_checked_str = get_config_file_parameter("InternetConnectionLastCheckSuccess")
     if last_checked_str:
         last_checked = datetime.datetime.strptime(last_checked_str, "%Y-%m-%d-%H:%M:%S")
@@ -954,13 +954,13 @@ def test_site_connection(site_url, timeout_limit=5):
     Tests to see if can access the given website.
     """
     try:
-        response = urllib.request.urlopen(site_url, timeout=int(timeout_limit))
+        urllib.request.urlopen(site_url, timeout=int(timeout_limit))
         return True
     except urllib.error:
         return False
 
 
-def internet_full_status_report(timeout_limit=5, whiptail=False, return_status=False):
+def internet_full_status_report(create_whiptail=False, return_status=False):
     """
     Full check of all sites used by PiNet. Only needed on initial install
     """
@@ -978,7 +978,7 @@ def internet_full_status_report(timeout_limit=5, whiptail=False, return_status=F
         sites[website][3] = test_site_connection(sites[website][1])
     if return_status:
         return sites
-    if whiptail:
+    if create_whiptail:
         message = ""
         for website in sites:
             if sites[3]:
@@ -995,8 +995,8 @@ def internet_full_status_report(timeout_limit=5, whiptail=False, return_status=F
             print(str(sites[website][2] + " - "))
 
 
-def internet_full_status_check(timeout_limit=5):
-    results = internet_full_status_report(timeout_limit=timeout_limit, return_status=True)
+def internet_full_status_check():
+    results = internet_full_status_report(return_status=True)
     for site in results:
         if site[2] == "Critical":
             if not site[3]:
@@ -1066,7 +1066,7 @@ def get_version_number(data):
 
 
 def check_update(current_version):
-    if not internet_on(5, False):
+    if not internet_on(5):
         print(_("No Internet Connection"))
         return_data(0)
         return
@@ -1196,7 +1196,7 @@ def display_change_log(version):
     cmd = ["whiptail", "--title", _("Release history (Use arrow keys to scroll)") + " - " + version, "--scrolltext",
            "--" + "yesno", "--yes-button", _("Install ") + output[0], "--no-button", _("Cancel"), thing, "24", "78"]
     p = Popen(cmd, stderr=PIPE)
-    out, err = p.communicate()
+    p.communicate()
     if p.returncode == 0:
         update_pinet()
         return_data(1)
@@ -1257,7 +1257,7 @@ def import_users_csv(the_file, default_password, dry_run=False):
     cmd = ["whiptail", "--title", _("About to import (Use arrow keys to scroll)"), "--scrolltext", "--" + "yesno",
            "--yes-button", _("Import"), "--no-button", _("Cancel"), all_user_data_string, "24", "78"]
     p = Popen(cmd, stderr=PIPE)
-    out, err = p.communicate()
+    p.communicate()
     if not dry_run:
         if p.returncode == 0:
             for x in range(0, len(user_data_list)):
@@ -1266,7 +1266,7 @@ def import_users_csv(the_file, default_password, dry_run=False):
                 encrypted_password = crypt.crypt(password, "22")
                 cmd = ["useradd", "-m", "-s", "/bin/bash", "-p", encrypted_password, user]
                 p = Popen(cmd, stderr=PIPE)
-                out, err = p.communicate()
+                p.communicate()
                 percent_complete = int(((x + 1) / len(user_data_list)) * 100)
                 print(str(percent_complete) + "% - Import of " + user + " complete.")
             verify_correct_group_users()
@@ -1298,14 +1298,14 @@ def users_csv_delete(the_file, dry_run):
     cmd = ["whiptail", "--title", _("About to attempt to delete (Use arrow keys to scroll)"), "--scrolltext",
            "--" + "yesno", "--yes-button", _("Delete"), "--no-button", _("Cancel"), all_user_data_string, "24", "78"]
     p = Popen(cmd, stderr=PIPE)
-    out, err = p.communicate()
+    p.communicate()
     if not dry_run:
         if p.returncode == 0:
             for x in range(0, len(user_data_list)):
                 user = user_data_list[x][0]
                 cmd = ["userdel", "-r", "-f", user]
                 p = Popen(cmd, stderr=PIPE)
-                out, err = p.communicate()
+                p.communicate()
                 percent_complete = int(((x + 1) / len(user_data_list)) * 100)
                 print(str(percent_complete) + "% - Delete of " + user + " complete.")
             whiptail_box("msgbox", _("Complete"), _("Delete of users from CSV file complete"), False)
@@ -1344,8 +1344,8 @@ def load_pickled(path="/tmp/pinetSoftware.dump", delete_after=True):
     Loads list of SoftwarePackage objects ready to be used.
     """
     try:
-        with open(path, "rb") as input:
-            obj = pickle.load(input)
+        with open(path, "rb") as to_load:
+            obj = pickle.load(to_load)
         if delete_after:
             remove_file(path)
         return obj
@@ -1947,7 +1947,7 @@ def check_debian_version():
         return_data(0)
 
 
-def debian_wheezy_to_jessie_update(try_backup=True):
+def debian_wheezy_to_jessie_update():
     whiptail_box("msgbox", _("Raspbian Jessie update"), _(
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
