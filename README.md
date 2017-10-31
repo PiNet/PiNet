@@ -3,9 +3,9 @@ PiNet (Previously RaspberryPi-LTSP)
 
 ![Login screen](images/Raspi-Login.png)
       
-#PiNet Website - http://pinet.org.uk    
+# PiNet Website - http://pinet.org.uk    
 ------   
-###"*PiNet is a utility for setting up the infrastructure required for a permanent classroom set of Raspberry Pis."*    
+### "*PiNet is a utility for setting up the infrastructure required for a permanent classroom set of Raspberry Pis."*    
 PiNet is has been written to help support educators in using the Raspberry Pi computer in their classrooms   
 Its main features include
 - **Network based user accounts** - A student can log onto any Raspberry Pi in the classroom and have access to their files. Their files are stored centrally on the server.
@@ -30,7 +30,7 @@ Simplicity is the key to PiNet.
 
 ![Lapdocks](images/lapdock-ltsp.jpg)
 
-##Feedback
+## Feedback
 A number of schools across the world have been trialing the Alpha versions of PiNet for a number of months now.   
 The overall feedback has been excellent with overwhelmingly positive feedback from educators.   
 
@@ -42,7 +42,7 @@ The overall feedback has been excellent with overwhelmingly positive feedback fr
 Raspberry Pi Club.**
 
 
-##License
+## License
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
