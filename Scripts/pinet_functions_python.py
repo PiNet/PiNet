@@ -940,7 +940,7 @@ def internet_on(timeout_limit=3, return_type=True):
     try:
         response = requests.get("http://archive.raspberrypi.org/debian/raspberrypi.gpg.key", timeout=int(timeout_limit))
         if response.status_code == requests.codes.ok:
-            set_config_parameter("InternetConnectionLastCheckSuccess", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            set_config_parameter("InternetConnectionLastCheckSuccess", datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
             return_data(0)
             return True
     except (requests.ConnectionError, requests.Timeout):
