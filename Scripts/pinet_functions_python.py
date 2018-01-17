@@ -1491,6 +1491,7 @@ def install_software_from_file(packages=None):
 
 def install_chroot_software():
     ltsp_chroot("apt-get autoremove -y")
+    ltsp_chroot("apt-mark hold ca-certificates-java") # Needed to block OpenJDK installing, which fails to install on PiNet
     packages = []
     packages.append(SoftwarePackage("idle", APT))
     packages.append(SoftwarePackage("idle3", APT))
@@ -1546,7 +1547,6 @@ def install_chroot_software():
     packages.append(SoftwarePackage("lua5.1", APT))
     packages.append(SoftwarePackage("luajit", APT))
     packages.append(SoftwarePackage("hardlink", APT))
-    packages.append(SoftwarePackage("ca-certificates", APT))
     packages.append(SoftwarePackage("curl", APT))
     packages.append(SoftwarePackage("fake-hwclock", APT))
     # packages.append(SoftwarePackage("ntp", APT))
@@ -1574,6 +1574,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("libraspberrypi-bin", APT))
     packages.append(SoftwarePackage("i2c-tools", APT))
     packages.append(SoftwarePackage("man-db", APT))
+    packages.append(SoftwarePackage("ca-certificates", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("cifs-utils", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("midori", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("lxtask", APT, parameters=("--no-install-recommends",)))
@@ -1595,7 +1596,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("raspberrypi-sys-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
     packages.append(SoftwarePackage("raspberrypi-net-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
     packages.append(SoftwarePackage("raspberrypi-ui-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
-    packages.append(SoftwarePackage("java-common", APT))
+    packages.append(SoftwarePackage("java-common", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("oracle-java8-jdk", APT))
     packages.append(SoftwarePackage("apt-utils", APT))
     packages.append(SoftwarePackage("wpasupplicant", APT))
