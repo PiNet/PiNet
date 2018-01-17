@@ -76,8 +76,8 @@ configFileData = {}
 fileLogger = None
 
 APT, PIP, SCRIPT, EPOPTES, SCRATCH_GPIO, CUSTOM_APT, CUSTOM_PIP = 1, 2, 3, 4, 5, 6, 7
-RASPBIAN_RELEASE = "jessie"
-STABLE, BETA, ALPHA = RASPBIAN_RELEASE + "-stable", RASPBIAN_RELEASE + "-beta", RASPBIAN_RELEASE + "-alpha"
+RASPBIAN_RELEASE = "stretch"
+STABLE, BETA, ALPHA, DEVELOPMENT = RASPBIAN_RELEASE + "-stable", RASPBIAN_RELEASE + "-beta", RASPBIAN_RELEASE + "-alpha", RASPBIAN_RELEASE + "-development"
 
 # Groups every user should be added to.
 PINET_UNRESTRICTED_GROUPS = {"adm": None,
@@ -352,13 +352,13 @@ def install_apt_package(to_install, update=False, upgrade=False, install_on_serv
         run_bash("apt-get upgrade -y")
     if install_on_server:
         if version:
-            run_bash("apt-get install -y --force-yes {} {}={}".format(parameters, to_install, version))
+            run_bash("apt-get install -y --allow-downgrades --allow-change-held-packages {} {}={}".format(parameters, to_install, version))
             run_bash("apt-mark hold {}".format(to_install))
         else:
             run_bash("apt-get install -y {} {}".format(parameters, to_install))
     else:
         if version:
-            ltsp_chroot("apt-get install -y --force-yes {} {}={}".format(parameters, to_install, version))
+            ltsp_chroot("apt-get install -y --allow-downgrades --allow-change-held-packages {} {}={}".format(parameters, to_install, version))
             ltsp_chroot("apt-mark hold {}".format(to_install))
         else:
             ltsp_chroot("apt-get install -y {} {}".format(parameters, to_install))
@@ -463,6 +463,8 @@ def get_release_channel():
         RELEASE_BRANCH = BETA
     elif release_channel == "alpha":
         RELEASE_BRANCH = ALPHA
+    elif release_channel == "development":
+        RELEASE_BRANCH = DEVELOPMENT
     elif release_channel == "dev":
         # Legacy from older version of PiNet, replaced by beta now
         set_config_parameter("ReleaseChannel", "beta")
@@ -1489,6 +1491,7 @@ def install_software_from_file(packages=None):
 
 def install_chroot_software():
     ltsp_chroot("apt-get autoremove -y")
+    ltsp_chroot("apt-mark hold ca-certificates-java") # Needed to block OpenJDK installing, which fails to install on PiNet
     packages = []
     packages.append(SoftwarePackage("idle", APT))
     packages.append(SoftwarePackage("idle3", APT))
@@ -1500,6 +1503,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("git", APT))
     packages.append(SoftwarePackage("debian-reference-en", APT))
     packages.append(SoftwarePackage("dillo", APT))
+    packages.append(SoftwarePackage("apt-transport-https", APT))
     packages.append(SoftwarePackage("python", APT))
     packages.append(SoftwarePackage("python-pygame", APT))
     packages.append(SoftwarePackage("python3-pygame", APT))
@@ -1524,7 +1528,6 @@ def install_chroot_software():
     packages.append(SoftwarePackage("sudo", APT))
     packages.append(SoftwarePackage("psmisc", APT))
     packages.append(SoftwarePackage("strace", APT))
-    packages.append(SoftwarePackage("module-init-tools", APT))
     packages.append(SoftwarePackage("ifplugd", APT))
     packages.append(SoftwarePackage("ed", APT))
     packages.append(SoftwarePackage("ncdu", APT))
@@ -1544,10 +1547,9 @@ def install_chroot_software():
     packages.append(SoftwarePackage("lua5.1", APT))
     packages.append(SoftwarePackage("luajit", APT))
     packages.append(SoftwarePackage("hardlink", APT))
-    packages.append(SoftwarePackage("ca-certificates", APT))
     packages.append(SoftwarePackage("curl", APT))
     packages.append(SoftwarePackage("fake-hwclock", APT))
-    packages.append(SoftwarePackage("ntp", APT))
+    # packages.append(SoftwarePackage("ntp", APT))
     packages.append(SoftwarePackage("nfs-common", APT))
     packages.append(SoftwarePackage("usbutils", APT))
     packages.append(SoftwarePackage("libfreetype6-dev", APT))
@@ -1570,13 +1572,9 @@ def install_chroot_software():
     packages.append(SoftwarePackage("libraspberrypi-dev", APT))
     packages.append(SoftwarePackage("libraspberrypi-doc", APT))
     packages.append(SoftwarePackage("libraspberrypi-bin", APT))
-    packages.append(SoftwarePackage("python3-pifacecommon", APT))
-    packages.append(SoftwarePackage("python3-pifacedigitalio", APT))
-    packages.append(SoftwarePackage("python3-pifacedigital-scratch-handler", APT))
-    packages.append(SoftwarePackage("python-pifacecommon", APT))
-    packages.append(SoftwarePackage("python-pifacedigitalio", APT))
     packages.append(SoftwarePackage("i2c-tools", APT))
     packages.append(SoftwarePackage("man-db", APT))
+    packages.append(SoftwarePackage("ca-certificates", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("cifs-utils", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("midori", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("lxtask", APT, parameters=("--no-install-recommends",)))
@@ -1595,13 +1593,10 @@ def install_chroot_software():
     packages.append(SoftwarePackage("gstreamer1.0-plugins-bad", APT))
     packages.append(SoftwarePackage("gstreamer1.0-alsa", APT))
     packages.append(SoftwarePackage("gstreamer1.0-libav", APT))
-    packages.append(
-        SoftwarePackage("raspberrypi-sys-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
-    packages.append(
-        SoftwarePackage("raspberrypi-net-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
-    packages.append(
-        SoftwarePackage("raspberrypi-ui-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
-    packages.append(SoftwarePackage("java-common", APT))
+    packages.append(SoftwarePackage("raspberrypi-sys-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
+    packages.append(SoftwarePackage("raspberrypi-net-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
+    packages.append(SoftwarePackage("raspberrypi-ui-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
+    packages.append(SoftwarePackage("java-common", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("oracle-java8-jdk", APT))
     packages.append(SoftwarePackage("apt-utils", APT))
     packages.append(SoftwarePackage("wpasupplicant", APT))
@@ -1609,11 +1604,11 @@ def install_chroot_software():
     packages.append(SoftwarePackage("firmware-atheros", APT))
     packages.append(SoftwarePackage("firmware-brcm80211", APT))
     packages.append(SoftwarePackage("firmware-libertas", APT))
-    packages.append(SoftwarePackage("firmware-ralink", APT))
+    packages.append(SoftwarePackage("firmware-misc-nonfree", APT))
     packages.append(SoftwarePackage("firmware-realtek", APT))
     packages.append(SoftwarePackage("libpng12-dev", APT))
-    packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi", APT))
-    packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi2", APT))
+    # packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi", APT))
+    # packages.append(SoftwarePackage("linux-image-3.18.0-trunk-rpi2", APT))
     # packages.append(SoftwarePackage("linux-image-3.12-1-rpi", APT))
     # packages.append(SoftwarePackage("linux-image-3.10-3-rpi", APT))
     # packages.append(SoftwarePackage("linux-image-3.2.0-4-rpi", APT))
@@ -1624,7 +1619,6 @@ def install_chroot_software():
     packages.append(SoftwarePackage("myspell-en-gb", APT))
     packages.append(SoftwarePackage("mythes-en-us", APT))
     packages.append(SoftwarePackage("smartsim", APT))
-    packages.append(SoftwarePackage("penguinspuzzle", APT))
     packages.append(SoftwarePackage("alacarte", APT))
     packages.append(SoftwarePackage("rc-gui", APT))
     packages.append(SoftwarePackage("claws-mail", APT))
@@ -1642,8 +1636,12 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python3-flask", APT))
     packages.append(SoftwarePackage("python-picraft", APT))
     packages.append(SoftwarePackage("python3-picraft", APT))
-    packages.append(SoftwarePackage("python3-codebug-tether", APT))
-    packages.append(SoftwarePackage("python3-codebug-i2c-tether", APT))
+    packages.append(SoftwarePackage("libmtp-runtime", APT))
+    packages.append(SoftwarePackage("rsync", APT))
+    packages.append(SoftwarePackage("htop", APT))
+    packages.append(SoftwarePackage("fonts-liberation2", APT))
+    packages.append(SoftwarePackage("gldriver-test", APT))
+    packages.append(SoftwarePackage("python-gpiozero", APT))
 
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
     packages.append(SoftwarePackage("libjpeg-dev", APT))
@@ -1657,6 +1655,9 @@ def install_chroot_software():
     packages.append((SoftwarePackage("python-sense-emu-doc", APT)))
     packages.append((SoftwarePackage("gvfs", APT)))
     packages.append((SoftwarePackage("cups", APT)))
+    packages.append((SoftwarePackage("policykit-1", APT)))
+    packages.append((SoftwarePackage("fonts-droid-fallback", APT)))
+    packages.append((SoftwarePackage("fonts-liberation2", APT)))
 
     packages.append(SoftwarePackage("bindfs", APT, install_on_server=True))
     packages.append(SoftwarePackage("python3-feedparser", APT, install_on_server=True))
@@ -1684,7 +1685,6 @@ def install_chroot_software():
 
     python_packages = []
 
-    python_packages.append(SoftwarePackage("gpiozero", PIP))
     python_packages.append(SoftwarePackage("pgzero", PIP))
     python_packages.append(SoftwarePackage("pibrella", PIP))
     python_packages.append(SoftwarePackage("skywriter", PIP))
@@ -1707,8 +1707,7 @@ def install_chroot_software():
 
     ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
-    run_bash(
-        "sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
+    run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
     run_bash("apt-get upgrade -y")
     ltsp_chroot("apt-get upgrade -y")
     ltsp_chroot("apt-get autoremove -y")
@@ -2136,7 +2135,7 @@ def select_release_channel():
     if not current_channel:
         current_channel = _("no channel selected, defaulting to stable")
     release = decode_bash_output(whiptail_select_menu(_("Release Channel"), _("Select a release channel to use. If in doubt, select Stable. Your current selected channel is \"{}\".".format(current_channel)), OrderedDict([("Stable", _("Extensively tested. Recommended for production use.")), ("Beta", _("Partially tested. Suitable in non production environment.")), ("Alpha", _("Experimental & untested. Use only for testing bleeding edge features."))]), width="80"), True, False)
-    if release in ["Stable", "Beta", "Alpha"]:
+    if release in ["Stable", "Beta", "Alpha", "Development"]:
         set_config_parameter("ReleaseChannel", str(release).lower())
         return_data(1)
     elif not get_config_file_parameter("ReleaseChannel"):
