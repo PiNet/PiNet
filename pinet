@@ -53,6 +53,10 @@ SetupRepositories(){
             ReleaseBranch="alpha"
         ;;
 
+        development)
+            ReleaseBranch="development"
+        ;;
+
         "custom:*")
             ReleaseBranch=${ReleaseChannel:7:channelLength}
         ;;
@@ -211,7 +215,7 @@ MIRROR=http://mirrordirector.raspbian.org/raspbian
 SECURITY_MIRROR=none
 UPDATES_MIRROR=none
 LOCALE="$LANG UTF-8"
-KERNEL_PACKAGES=linux-image-3.10-3-rpi
+KERNEL_PACKAGES=linux-image-rpf
 EOF
 
 VENDOR=Debian ltsp-build-client --arch armhf --config /etc/ltsp/ltsp-raspbian.conf
@@ -335,7 +339,7 @@ FixRepo() {
 
 # Adds PiNet repo
 echo "Adding PiNet repository key."
-echo deb http://apt.pinet.org.uk jessie main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
+echo deb http://apt.pinet.org.uk stretch main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
 wget http://apt.pinet.org.uk/pinet.public.key -O /opt/ltsp/armhf/tmp/pinet.public.key
 sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
 

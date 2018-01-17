@@ -76,8 +76,8 @@ configFileData = {}
 fileLogger = None
 
 APT, PIP, SCRIPT, EPOPTES, SCRATCH_GPIO, CUSTOM_APT, CUSTOM_PIP = 1, 2, 3, 4, 5, 6, 7
-RASPBIAN_RELEASE = "jessie"
-STABLE, BETA, ALPHA = RASPBIAN_RELEASE + "-stable", RASPBIAN_RELEASE + "-beta", RASPBIAN_RELEASE + "-alpha"
+RASPBIAN_RELEASE = "stretch"
+STABLE, BETA, ALPHA, DEVELOPMENT = RASPBIAN_RELEASE + "-stable", RASPBIAN_RELEASE + "-beta", RASPBIAN_RELEASE + "-alpha", RASPBIAN_RELEASE + "-development"
 
 # Groups every user should be added to.
 PINET_UNRESTRICTED_GROUPS = {"adm": None,
@@ -463,6 +463,8 @@ def get_release_channel():
         RELEASE_BRANCH = BETA
     elif release_channel == "alpha":
         RELEASE_BRANCH = ALPHA
+    elif release_channel == "development":
+        RELEASE_BRANCH = DEVELOPMENT
     elif release_channel == "dev":
         # Legacy from older version of PiNet, replaced by beta now
         set_config_parameter("ReleaseChannel", "beta")
@@ -1500,6 +1502,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("git", APT))
     packages.append(SoftwarePackage("debian-reference-en", APT))
     packages.append(SoftwarePackage("dillo", APT))
+    packages.append(SoftwarePackage("apt-transport-https", APT))
     packages.append(SoftwarePackage("python", APT))
     packages.append(SoftwarePackage("python-pygame", APT))
     packages.append(SoftwarePackage("python3-pygame", APT))
@@ -1651,6 +1654,9 @@ def install_chroot_software():
     packages.append((SoftwarePackage("python-sense-emu-doc", APT)))
     packages.append((SoftwarePackage("gvfs", APT)))
     packages.append((SoftwarePackage("cups", APT)))
+    packages.append((SoftwarePackage("policykit-1", APT)))
+    packages.append((SoftwarePackage("fonts-droid-fallback", APT)))
+    packages.append((SoftwarePackage("fonts-liberation2", APT)))
 
     packages.append(SoftwarePackage("bindfs", APT, install_on_server=True))
     packages.append(SoftwarePackage("python3-feedparser", APT, install_on_server=True))
@@ -1700,8 +1706,7 @@ def install_chroot_software():
 
     ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
-    run_bash(
-        "sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
+    run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
     run_bash("apt-get upgrade -y")
     ltsp_chroot("apt-get upgrade -y")
     ltsp_chroot("apt-get autoremove -y")
@@ -2129,7 +2134,7 @@ def select_release_channel():
     if not current_channel:
         current_channel = _("no channel selected, defaulting to stable")
     release = decode_bash_output(whiptail_select_menu(_("Release Channel"), _("Select a release channel to use. If in doubt, select Stable. Your current selected channel is \"{}\".".format(current_channel)), OrderedDict([("Stable", _("Extensively tested. Recommended for production use.")), ("Beta", _("Partially tested. Suitable in non production environment.")), ("Alpha", _("Experimental & untested. Use only for testing bleeding edge features."))]), width="80"), True, False)
-    if release in ["Stable", "Beta", "Alpha"]:
+    if release in ["Stable", "Beta", "Alpha", "Development"]:
         set_config_parameter("ReleaseChannel", str(release).lower())
         return_data(1)
     elif not get_config_file_parameter("ReleaseChannel"):
