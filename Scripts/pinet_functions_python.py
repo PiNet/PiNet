@@ -1560,7 +1560,6 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python-picamera", APT))
     packages.append(SoftwarePackage("python3-picamera", APT))
     packages.append(SoftwarePackage("x2x", APT))
-    packages.append(SoftwarePackage("wolfram-engine", APT))
     packages.append(SoftwarePackage("xserver-xorg-video-fbturbo", APT))
     packages.append(SoftwarePackage("netsurf-common", APT))
     packages.append(SoftwarePackage("netsurf-gtk", APT))
@@ -1598,6 +1597,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("raspberrypi-ui-mods", APT, parameters=("-o", 'Dpkg::Options::="--force-confnew"',)))
     packages.append(SoftwarePackage("java-common", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("oracle-java8-jdk", APT))
+    packages.append(SoftwarePackage("wolfram-engine", APT)) # Must be installed after the Oracle Java packages, otherwise OpenJDK is installed
     packages.append(SoftwarePackage("apt-utils", APT))
     packages.append(SoftwarePackage("wpasupplicant", APT))
     packages.append(SoftwarePackage("wireless-tools", APT))
@@ -1709,6 +1709,7 @@ def install_chroot_software():
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
     run_bash("apt-get upgrade -y")
+    run_bash("ltsp-update-sshkeys")
     ltsp_chroot("apt-get upgrade -y")
     ltsp_chroot("apt-get autoremove -y")
 
