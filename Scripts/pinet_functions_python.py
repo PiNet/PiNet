@@ -1499,6 +1499,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("nano", APT))
     packages.append(SoftwarePackage("python3-dev", APT))
     packages.append(SoftwarePackage("scratch", APT))
+    packages.append(SoftwarePackage("scratch2", APT))
     packages.append(SoftwarePackage("python3-tk", APT))
     packages.append(SoftwarePackage("git", APT))
     packages.append(SoftwarePackage("debian-reference-en", APT))
