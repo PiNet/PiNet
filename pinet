@@ -1330,6 +1330,7 @@ CheckOS(){
 CheckTerminalSize(){
 	#Resizes the terminal to the correct size for the menus
         eval 'resize' &>/dev/null || sudo apt install xterm -y
+        eval $( resize )
         if [ "$LINES" -le "28" ]; then
                 a='\e[8;28;'
                 b='t'
