@@ -27,7 +27,7 @@ RawRepositoryBase="https://raw.github.com/PiNet/"
 Repository="$RepositoryBase$RepositoryName"
 BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
-ReleaseBranch="jessie-stable"  #Overwriten later on in SetupRepositories()
+ReleaseBranch="stretch-alpha"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
 cpuArch="armhf"
 
@@ -246,6 +246,7 @@ configFixes() {
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf INIT_COMMAND_RM_NBD_CHECKUPDATE 'INIT_COMMAND_RM_NBD_CHECKUPDATE="rm -rf /usr/share/ldm/rc.d/I01-nbd-checkupdate"'
 DuplicateLTSConf
 
 ltsp-chroot --arch armhf groupadd -g 628 pupil
