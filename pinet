@@ -3,7 +3,8 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.3.1
+
+version=1.3.2
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -27,7 +28,7 @@ RawRepositoryBase="https://raw.github.com/PiNet/"
 Repository="$RepositoryBase$RepositoryName"
 BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
-ReleaseBranch="jessie-stable"  #Overwriten later on in SetupRepositories()
+ReleaseBranch="stretch-alpha"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
 cpuArch="armhf"
 
@@ -246,6 +247,7 @@ configFixes() {
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
 echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf INIT_COMMAND_RM_NBD_CHECKUPDATE 'INIT_COMMAND_RM_NBD_CHECKUPDATE="rm -rf /usr/share/ldm/rc.d/I01-nbd-checkupdate"'
 DuplicateLTSConf
 
 ltsp-chroot --arch armhf groupadd -g 628 pupil
@@ -1329,7 +1331,8 @@ CheckOS(){
 
 CheckTerminalSize(){
 	#Resizes the terminal to the correct size for the menus
-        eval `resize`
+        eval 'resize' &>/dev/null || sudo apt install xterm -y
+        eval $( resize )
         if [ "$LINES" -le "28" ]; then
                 a='\e[8;28;'
                 b='t'
