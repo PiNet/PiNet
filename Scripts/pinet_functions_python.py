@@ -1031,10 +1031,12 @@ def internet_full_status_check(timeoutLimit=5):
     return True
 
 
-def update_PiNet():
+def update_PiNet(release_branch=None):
     """
     Fetches most recent PiNet and PiNet_functions_python.py
     """
+    if release_branch: # Allow release branch to be overridden if needs be.
+        RELEASE_BRANCH = release_branch
     remove_file("/home/" + os.environ['SUDO_USER'] + "/pinet")
     print("")
     print("----------------------")
@@ -1855,6 +1857,7 @@ def decode_bash_output(input_data, decode=False, remove_n=False):
 
 
 def backup_chroot(name=None, override=False):
+    return True # TODO : Remove this once testing done
     make_folder("/opt/PiNet/chrootBackups")
     chroot_size = int(
         decode_bash_output(run_bash("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """, return_string=True),
@@ -1943,13 +1946,108 @@ def restore_chroot():
                          False)
 
 
-def check_debian_version():
-    wheezy = check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list",
-                                 "deb http://mirrordirector.raspbian.org/raspbian/ wheezy")
-    if wheezy:
-        debian_wheezy_to_jessie_update()
+def get_current_raspbian_release():
+    release_channel = get_config_file_parameter("ReleaseChannel")
+    if release_channel:
+        release_channel = release_channel.lower()
+    try:
+        release_version = int(requests.get("https://links.pinet.org.uk/current_raspbian_release_{}_version".format(release_channel)).text.strip()[:2])
+        release_title = str(requests.get("https://links.pinet.org.uk/current_raspbian_release_{}_title".format(release_channel)).text.strip()[:10])
+        return release_version, release_title
+    except:
+        return RASPBIAN_RELEASE, "Unknown"
+
+
+def get_previously_installed_raspbian_version():
+    # Get the previously installed Raspbian version after an upgrade
+    try:
+        previous_version = int(get_config_file_parameter("PreviousInstalledRaspbianVersion"))
+        return previous_version
+    except:
+        return 8
+
+
+def check_debian_version(): # TODO : Needs some work on this to optimise it better for multiple releases
+    web_raspbian_release_version, web_raspbian_release_title = get_current_raspbian_release()
+    if check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ wheezy"):
+        raspbian_version = 7
+    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ jessie"):
+        raspbian_version = 8
+    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ stretch"):
+        raspbian_version = 9
+    else:
+        raspbian_version = CURRENT_RASPBIAN_RELEASE
+
+    if raspbian_version < web_raspbian_release_version:
+        upgrade_raspbian_release_part_one(RASPBIAN_RELEASES[raspbian_version], web_raspbian_release_title)
+        return
     else:
         return_data(0)
+        return
+
+
+
+    # TODO : The following won't work properly as old versions don't actually know the name of the new versions. Probably have to put that on the web as well...
+    # TODO : Currently working through getting an upgrade working by once upgrade is chosen to go forward, ask them which channel they want to use, download that newer version and have it call something in bash to end up back here.
+
+def upgrade_raspbian_release_part_one(current_release, new_release):  # Runs before new version is installed.
+    if whiptail_box_yes_no(_("Major Raspbian release update"), _("A major update for Raspbian is now available. You are currently running Raspbian {0}, although the next major release (Raspbian {1}) has now been released by the Raspberry Pi Foundation. As they have discontinued support for Raspbian {0}, it is highly recommended to proceed with the following automatic upgrade. To check when your current version will reach end of life/support, please go to https://links.pinet.org.uk/eol. Note the upgrade process will take 2-3 hours and requires an unfiltered internet connection. Would you like to launch the upgrade wizard?".format(current_release, new_release.title())), return_true_false=True, height="17", custom_no="Ignore", custom_yes="Start Upgrade"):
+        select_release_channel()
+        release_channel = get_config_file_parameter("ReleaseChannel").lower()
+        update_PiNet(release_branch="{}-{}".format(new_release, release_channel))
+        set_config_parameter("PreviousInstalledRaspbianVersion", str(current_release))
+        return_data(2)
+        return
+    else: # Upgrade found, but ignored by user
+        return_data(1)
+        return
+
+
+def upgrade_raspbian_release_part_two():  # Runs after new version is installed.
+    old_release = get_previously_installed_raspbian_version()
+    new_release = CURRENT_RASPBIAN_RELEASE
+    backup_name = "Raspbian{}Backup{}".format(RASPBIAN_RELEASES[old_release], str(time.strftime("-%d-%m-%Y")))
+
+    if old_release < 8 or (new_release - old_release) > 1:  # If currently on Wheezy or more than 1 release behind, must force full rebuild.
+        rebuild_required = True
+    else:
+        rebuild_required = False  # If only single release behind (and not on Wheezy), we can offer in place upgrade as option.
+    if not rebuild_required and not whiptail_box_yes_no(_("Inplace upgrade available"), _("This upgrade path supports an inplace upgrade. Inplace upgrades are generally faster, require downloading less from the internet (so useful for capped web connections) and most customisations to Raspbian will come across to the new release. It is though a little risky/unpredictable. If you have not made many customisations, it is recommended to choose standard rebuild. "), return_true_false=True,
+                                                        height="15", custom_yes="Standard rebuild", custom_no="Inplace upgrade"):
+        inplace_upgrade = True
+    else:
+        inplace_upgrade = False
+    whiptail_box("msgbox", _("Backup chroot"), _("Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backup_name, "/opt/PiNet/chrootBackups/" + backup_name)), False, height="10")
+    if backup_chroot(backup_name):
+        if inplace_upgrade:
+            upgrade_raspbian_inplace(new_release)
+            return_data(2)
+        else:
+            return_data(1)
+    else:
+        whiptail_box("msgbox", _("Backup failed"), _("The backup has failed. This is likely due to storage issues. Please contact PiNet support for further assistance - http://pinet.org.uk/articles/support.html"), False)
+        return_data(3)
+
+
+
+def upgrade_raspbian_inplace(new_release_version):
+    for release in RASPBIAN_RELEASES.values():
+        release = release.lower()
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+
+    replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list", "staging", "", replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False) # Remove staging as no longer used beyond Jessie
+
+    ltsp_chroot("apt update")
+    ltsp_chroot("apt -y purge pulseaudio*")
+    ltsp_chroot("apt full-upgrade -y")
+    install_chroot_software()
+    reset_theme_cache_for_all_users()
+    return True
+
+
+
 
 
 def debian_wheezy_to_jessie_update(try_backup=True):
@@ -1969,6 +2067,15 @@ def debian_wheezy_to_jessie_update(try_backup=True):
             return
 
     return_data(0)
+
+
+def debian_jessie_to_stretch_update(previous_release): # TODO - This needs finished off
+    whiptail_box("msgbox", _("Raspbian Stretch update"), _("A major Raspbian release update is now available! Raspbian Stretch has now been released by the Raspberry Pi Foundation and is available for installation with PiNet. The Raspberry Pi Foundation has officially discontinued Raspbian Jessie so upgrading is highly recommended. Note that PiNet Jessie will continue to be supported until 31st August 2018."), False, height="14")
+    proceed_installation = whiptail_box("yesno", _("Proceed"), _("Would you like to proceed with the Raspbian Stretch upgrade? The process will take 1-2 hours and use similar bandwidth to the initial PiNet installation. WARNING - Only proceed if the PiNet server is connected to an unfiltered and reliable internet connection."), True, height="10")
+    if proceed_installation: # TODO : Double check these Whiptail boxes are long enough
+        if previous_release == "jessie":
+            # TODO : Get default no working
+            proceed_installation = whiptail_box("yesno", _("In place upgrade"), _("The current Raspbian version installed supports an in place upgrade to Raspbian Stretch. Although this process is quicker and allows for any Raspbian customisations that have been added to be kept, it can result in unexpected issues/side effects. Would you like to upgrade using the in place upgrade system?"), True, height="10")
 
 
 def custom_config_txt():
@@ -2490,3 +2597,5 @@ if __name__ == "__main__":
             custom_config_txt()
         elif sys.argv[1] == "verifyChrootIntegrity":
             verify_chroot_integrity()
+        elif sys.argv[1] == "UpgradeRaspbianReleasePartTwo":
+            upgrade_raspbian_release_part_two()
