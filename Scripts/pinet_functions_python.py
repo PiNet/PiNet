@@ -529,7 +529,7 @@ def check_string_exists(filename, to_search_for):
     return True
 
 
-def find_replace_any_line(text_file, string, new_string):
+def find_replace_any_line_in_list(text_file, string, new_string):
     """
     Basic find and replace function for entire line.
     Pass it a text file in list form and it will search for strings.
@@ -547,7 +547,7 @@ def find_replace_any_line(text_file, string, new_string):
     return text_file
 
 
-def find_replace_section(text_file, string, new_string):
+def find_replace_section_in_list(text_file, string, new_string):
     """
     Basic find and replace function for section.
     Pass it a text file in list form and it will search for strings.
@@ -882,7 +882,7 @@ def replace_line_or_add(file, string, new_string):
     If it finds a string, it will replace that entire line with new_string
     """
     text_file = read_file(file)
-    text_file = find_replace_any_line(text_file, string, new_string)
+    text_file = find_replace_any_line_in_list(text_file, string, new_string)
     write_file(file, text_file)
 
 
@@ -893,7 +893,7 @@ def replace_bit_or_add(file, string, new_string):
     If it finds a string, it will replace that exact string with new_string
     """
     text_file = read_file(file)
-    text_file = find_replace_section(text_file, string, new_string)
+    text_file = find_replace_section_in_list(text_file, string, new_string)
     write_file(file, text_file)
 
 
