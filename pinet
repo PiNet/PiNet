@@ -1952,9 +1952,12 @@ CheckPipSymbolicLinkBug(){
 CheckDebianVersion(){
     $p checkDebianVersion
     exitstatus=$(gp)
-	if [ "$exitstatus" = "1" ]; then
-	    RebuildOS
-	fi
+    # If 0, no update. If 1, update found but cancelled. If 2, update found and accepted.
+
+    if [ "$exitstatus" = "2" ]; then
+        exec /bin/bash pinet raspbian-upgrade
+        exit
+    fi
 
 }
 
@@ -1987,6 +1990,26 @@ WheezyJessieUpgradePartThree(){
     RebuildOS
     $p resetThemeCacheForAllUsers
     #UpdateAll
+}
+
+
+RaspbianUpgradePartTwo(){
+    $p UpgradeRaspbianReleasePartTwo
+    exitstatus=$(gp)
+
+    # If 1, do normal rebuild, if 2, already done inplace, if 3, backup failed
+
+    if [ "$exitstatus" = "2" ]; then
+        exec /bin/bash pinet
+	    exit
+    fi
+
+	if [ "$exitstatus" = "1" ]; then
+	    RebuildOS
+	    exec /bin/bash pinet
+	    exit
+	fi
+
 }
 
 GetInternalIPAddress(){
@@ -2587,6 +2610,10 @@ Wheezy-upgrade-part-two)
 Wheezy-upgrade-part-three)
     WheezyJessieUpgradePartThree
     ;;
+raspbian-upgrade)
+    RaspbianUpgradePartTwo
+    ;;
+
 esac
 
 if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
