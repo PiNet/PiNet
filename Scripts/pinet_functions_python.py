@@ -1555,7 +1555,7 @@ def install_chroot_software():
     # packages.append(SoftwarePackage("ntp", APT))
     packages.append(SoftwarePackage("nfs-common", APT))
     packages.append(SoftwarePackage("usbutils", APT))
-    packages.append(SoftwarePackage("libfreetype6-dev", APT))
+    #packages.append(SoftwarePackage("libfreetype6-dev", APT))
     packages.append(SoftwarePackage("python3-rpi.gpio", APT))
     packages.append(SoftwarePackage("python-rpi.gpio", APT))
     packages.append(SoftwarePackage("python-pip", APT))
@@ -1708,7 +1708,7 @@ def install_chroot_software():
         copy_file_folder("/tmp/raspi2png", "/opt/ltsp/armhf/usr/local/bin/raspi2png")
         os.chmod("/opt/ltsp/armhf/usr/local/bin/raspi2png", 0o755)
 
-    ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
+    #ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
     run_bash("apt-get upgrade -y")
