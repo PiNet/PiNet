@@ -2043,7 +2043,9 @@ def upgrade_raspbian_inplace(new_release_version):
     ltsp_chroot("apt -y purge pulseaudio*")
     ltsp_chroot("apt full-upgrade -y")
     install_chroot_software()
+    install_pinet_theme()
     reset_theme_cache_for_all_users()
+    check_kernel_file_update_web()
     return True
 
 
@@ -2521,6 +2523,20 @@ def verify_chroot_integrity():
     return
 
 
+def install_pinet_theme():
+    
+    remove_file("/tmp/pinet")
+    run_bash(["git", "clone", "--no-single-branch", "--depth", "1", REPOSITORY, "/tmp/pinet"], run_as_sudo=True)
+    run_bash("(cd /tmp/pinet; git checkout {})".format(RELEASE_BRANCH), run_as_sudo=False)
+    if os.path.isdir("/tmp/pinet/themes/raspi"): 
+        remove_file("/opt/ltsp/armhf/usr/share/ldm/themes/raspi")
+        copy_file_folder("/tmp/pinet/themes/raspi", "/opt/ltsp/armhf/usr/share/ldm/themes/raspi")
+        os.unlink("/opt/ltsp/armhf/etc/alternatives/ldm-theme")
+        run_bash(["ln", "-s", "/usr/share/ldm/themes/raspi", "/opt/ltsp/armhf/etc/alternatives/ldm-theme"], run_as_sudo=True)
+    remove_file("/tmp/pinet")
+    copy_file_folder("/opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png", "/opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png")
+    ltsp_chroot("update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100")
+    
 
 # ------------------------------Main program-------------------------
 
@@ -2599,3 +2615,5 @@ if __name__ == "__main__":
             verify_chroot_integrity()
         elif sys.argv[1] == "UpgradeRaspbianReleasePartTwo":
             upgrade_raspbian_release_part_two()
+        elif sys.argv[1] == "InstallPiNetTheme":
+            install_pinet_theme()

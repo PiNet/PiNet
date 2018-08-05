@@ -403,15 +403,7 @@ whiptail --title $"Install complete" --msgbox $"The client install is complete, 
 RaspiTheme(){
 #Grabs a copy of the PiNet desktop/login theme and installs
 
-rm -rf /tmp/pinet
-git clone --no-single-branch --depth 1 $Repository.git /tmp/pinet #Clones main repository, including boot files
-(cd "/tmp/pinet"; git checkout "$ReleaseBranch")
-cp -r /tmp/pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
-rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
-ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
-rm -rf /tmp/pinet
-cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png
-sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100
+$p InstallPiNetTheme
 
 }
 
