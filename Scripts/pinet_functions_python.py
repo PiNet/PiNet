@@ -1617,8 +1617,8 @@ def install_chroot_software():
     # packages.append(SoftwarePackage("linux-image-3.12-1-rpi", APT))
     # packages.append(SoftwarePackage("linux-image-3.10-3-rpi", APT))
     # packages.append(SoftwarePackage("linux-image-3.2.0-4-rpi", APT))
-    packages.append(SoftwarePackage("linux-image-rpi-rpfv", APT))
-    packages.append(SoftwarePackage("linux-image-rpi2-rpfv", APT))
+    #packages.append(SoftwarePackage("linux-image-rpi-rpfv", APT))
+    #packages.append(SoftwarePackage("linux-image-rpi2-rpfv", APT))
     packages.append(SoftwarePackage("libreoffice", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("libreoffice-gtk", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("myspell-en-gb", APT))
@@ -1647,7 +1647,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("fonts-liberation2", APT))
     packages.append(SoftwarePackage("gldriver-test", APT))
     packages.append(SoftwarePackage("python-gpiozero", APT))
-
+    packages.append(SoftwarePackage("python3-gpiozero", APT))
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
     packages.append(SoftwarePackage("libjpeg-dev", APT))
     #packages.append(SoftwarePackage("pillow", PIP))
