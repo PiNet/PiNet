@@ -72,6 +72,8 @@ RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
 PINET_LOG_DIRPATH = "/var/log"
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
+CURRENT_RASPBIAN_RELEASE = 9
+RASPBIAN_RELEASES = {7: "Wheezy", 8: "Jessie", 9: "Stretch"}
 configFileData = {}
 fileLogger = None
 
