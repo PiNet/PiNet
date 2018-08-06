@@ -1857,7 +1857,6 @@ def decode_bash_output(input_data, decode=False, remove_n=False):
 
 
 def backup_chroot(name=None, override=False):
-    return True # TODO : Remove this once testing done
     make_folder("/opt/PiNet/chrootBackups")
     chroot_size = int(
         decode_bash_output(run_bash("""sudo du -s /opt/ltsp/armhf | awk '{print $1}' """, return_string=True),
@@ -2041,8 +2040,9 @@ def upgrade_raspbian_inplace(new_release_version):
     replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list", "staging", "", replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False) # Remove staging as no longer used beyond Jessie
 
     ltsp_chroot("apt update")
-    ltsp_chroot("apt -y purge pulseaudio*")
+    #ltsp_chroot("apt -y purge pulseaudio*")  # Causing some issues in relation to ltsp-client package, so disabling line for now
     ltsp_chroot("apt full-upgrade -y")
+    ltsp_chroot("apt update")
     install_chroot_software()
     install_pinet_theme()
     reset_theme_cache_for_all_users()
@@ -2054,6 +2054,7 @@ def upgrade_raspbian_inplace(new_release_version):
 
 
 def debian_wheezy_to_jessie_update(try_backup=True):
+    # Now deprecated in favour of the more generic upgrade_raspbian_release_part_one() and upgrade_raspbian_release_part_two()
     whiptail_box("msgbox", _("Raspbian Jessie update"), _(
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")

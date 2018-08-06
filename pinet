@@ -481,7 +481,8 @@ ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e \
 "s|<drawContents>yes</drawContents>|<drawContents>no</drawContents>|"
 ltsp-chroot --arch armhf apt-get install -y raspberrypi-artwork
 ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/raspberrypi-artwork/raspberry-pi-logo.png 100
-ltsp-chroot --arch armhf PCMANFMCFG=/etc/xdg/pcmanfm/LXDE/pcmanfm.conf
+
+PCMANFMCFG=/etc/xdg/pcmanfm/LXDE/pcmanfm.conf
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^wallpaper_mode.*/wallpaper_mode=3/'
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^desktop_bg.*/desktop_bg=#ffffff/'
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^su_cmd.*/su_cmd=gksu %s/'
@@ -1992,6 +1993,9 @@ RaspbianUpgradePartTwo(){
     # If 1, do normal rebuild, if 2, already done inplace, if 3, backup failed
 
     if [ "$exitstatus" = "2" ]; then
+        InstallRaspberryPiUIMods
+        PiConfigFixes
+        NBDRun
         exec /bin/bash pinet
 	    exit
     fi
@@ -2607,7 +2611,7 @@ raspbian-upgrade)
     ;;
 
 esac
-
+PiConfigFixes
 if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. No previous PiNet installation is detected, would you like to run the full PiNet installer? " 8 78
 		exitstatus=$?
