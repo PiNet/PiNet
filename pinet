@@ -203,7 +203,7 @@ fi
 buildClient() {
 #Creates the custom config file needed to build Raspbian and grabs keychain. Then starts the build
 
-wget http://archive.raspbian.org/raspbian.public.key -O - | gpg --import
+wget http://raspbian.raspberrypi.org/raspbian.public.key -O - | gpg --import
 gpg --export 90FDDD2E >> /etc/ltsp/raspbian.public.key.gpg
 
 rm /etc/ltsp/ltsp-raspbian.conf
@@ -211,8 +211,7 @@ rm /etc/ltsp/ltsp-raspbian.conf
 cat <<EOF > /etc/ltsp/ltsp-raspbian.conf
 DEBOOTSTRAP_KEYRING=/etc/ltsp/raspbian.public.key.gpg
 DIST=stretch
-# For alternate raspbian mirrors, see: http://www.raspbian.org/RaspbianMirrors
-MIRROR=http://mirrordirector.raspbian.org/raspbian
+MIRROR=http://raspbian.raspberrypi.org/raspbian
 SECURITY_MIRROR=none
 UPDATES_MIRROR=none
 LOCALE="$LANG UTF-8"
@@ -386,7 +385,7 @@ wolfram-engine shared/accepted-wolfram-eula boolean true
 SELEOF
 #Auto accepts wolfram eula
 
-echo deb http://mirrordirector.raspbian.org/raspbian/ stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
+echo deb http://raspbian.raspberrypi.org/raspbian stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
 
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists

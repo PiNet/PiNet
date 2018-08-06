@@ -909,7 +909,7 @@ def internet_on_urllib(timeout_limit=5, return_type=True):
     except urllib.error.URLError:
         pass
     try:
-        response = urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
+        response = urllib.request.urlopen('http://raspbian.raspberrypi.org/', timeout=int(timeout_limit))
         return_data(0)
         return True
     except urllib.error.URLError:
@@ -1969,11 +1969,11 @@ def get_previously_installed_raspbian_version():
 
 def check_debian_version(): # TODO : Needs some work on this to optimise it better for multiple releases
     web_raspbian_release_version, web_raspbian_release_title = get_current_raspbian_release()
-    if check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ wheezy"):
+    if check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "raspbian/ wheezy"):
         raspbian_version = 7
-    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ jessie"):
+    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "raspbian/ jessie"):
         raspbian_version = 8
-    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "deb http://mirrordirector.raspbian.org/raspbian/ stretch"):
+    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "raspbian/ stretch"):
         raspbian_version = 9
     else:
         raspbian_version = CURRENT_RASPBIAN_RELEASE
@@ -2034,6 +2034,7 @@ def upgrade_raspbian_inplace(new_release_version):
     for release in RASPBIAN_RELEASES.values():
         release = release.lower()
         replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list", "mirrordirector.raspbian.org", "raspbian.raspberrypi.org", replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
         replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
         replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
 
