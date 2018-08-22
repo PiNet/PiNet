@@ -106,6 +106,12 @@ LegacyFixes() {
 	if [ -f "/usr/local/bin/pinet-functions-python.py" ]; then
 	    mv "/usr/local/bin/pinet-functions-python.py" "/usr/local/bin/pinet_functions_python.py"
 	fi
+	
+	if grep -Fxq "cutdown_menus=1" "/opt/ltsp/armhf/etc/xdg/libfm/libfm.conf"; then
+        $p replaceLineOrAdd "/opt/ltsp/armhf/etc/xdg/libfm/libfm.conf" "cutdown_menus=1" "cutdown_menus=0"   
+        UpdateConfig NBDBuildNeeded true
+    fi
+	
 
     # Make sure that all the required Python libraries are installed
 	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
@@ -473,13 +479,12 @@ ltsp-chroot --arch armhf printf 'SUBSYSTEM=="bcm2835-gpiomem", GROUP="pupil", MO
 
 }
 
+
 PiConfigFixes(){
 #Configuration changes to Raspberry Pi files, mostly to do with LXDE instead of Raspbian itself
 
 ltsp-chroot --arch armhf sed /etc/xdg/lxsession/LXDE/desktop.conf -i -e "s|sNet/ThemeName.*|sNet/ThemeName=Mist|"
-ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e \
-"s|<drawContents>yes</drawContents>|<drawContents>no</drawContents>|"
-ltsp-chroot --arch armhf apt-get install -y raspberrypi-artwork
+ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e "s|<drawContents>yes</drawContents>|<drawContents>no</drawContents>|"
 ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/raspberrypi-artwork/raspberry-pi-logo.png 100
 
 PCMANFMCFG=/etc/xdg/pcmanfm/LXDE/pcmanfm.conf
@@ -2424,6 +2429,7 @@ FullInstall(){
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes "NoRecompress"
 		AddSoftware
+		PiConfigFixes
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
@@ -2463,6 +2469,7 @@ if [ $? -eq 0 ]; then
 			fixGroups "NoRecompress"
 			DuplicateLTSConf
     		LegacyFixes "NoRecompress"
+    		PiConfigFixes
     		AddSoftware
 			EnableNBD
     		resetAndCleanup

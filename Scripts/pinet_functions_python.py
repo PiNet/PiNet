@@ -1578,6 +1578,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("libraspberrypi-bin", APT))
     packages.append(SoftwarePackage("i2c-tools", APT))
     packages.append(SoftwarePackage("man-db", APT))
+    packages.append(SoftwarePackage("raspberrypi-artwork", APT))
     packages.append(SoftwarePackage("ca-certificates", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("cifs-utils", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("midori", APT, parameters=("--no-install-recommends",)))
@@ -2233,6 +2234,7 @@ def verify_correct_group_users():
             non_system_users.append(user)
     for user in non_system_users:
         verify_correct_group_single_user(user.pw_name)
+        verify_cutdown_menu_configuration(user.pw_name)
 
 
 def verify_correct_group_single_user(user):
@@ -2242,6 +2244,13 @@ def verify_correct_group_single_user(user):
     missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user))
     for missing_group in missing_groups:
         add_linux_user_to_group(user, missing_group)
+
+
+def verify_cutdown_menu_configuration(username):
+    # This is a hotfix to revert back https://github.com/raspberrypi-ui/libfm-stretch/commit/7b3e62eef0908385633dd4036dea457a0965ac57
+    # Reason for this is cutdown_menus setting to 1 removes the "Places" bar in the file manager.
+    
+    replace_in_text_file("/home/{}/.config/libfm/libfm.conf".format(username), "cutdown_menus=1", "cutdown_menus=0", True, False, True)
 
 
 def select_release_channel():
