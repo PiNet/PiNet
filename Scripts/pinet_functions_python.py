@@ -1035,8 +1035,8 @@ def update_PiNet(release_branch=None):
     """
     Fetches most recent PiNet and PiNet_functions_python.py
     """
-    if release_branch: # Allow release branch to be overridden if needs be.
-        RELEASE_BRANCH = release_branch
+    if not release_branch: # Allow release branch to be overridden if needs be.
+        release_branch = RELEASE_BRANCH
     remove_file("/home/" + os.environ['SUDO_USER'] + "/pinet")
     print("")
     print("----------------------")
@@ -1044,9 +1044,9 @@ def update_PiNet(release_branch=None):
     print("----------------------")
     print("")
     download = True
-    if not download_file(RAW_REPOSITORY + "/" + RELEASE_BRANCH + "/pinet", "/usr/local/bin/pinet"):
+    if not download_file(RAW_REPOSITORY + "/" + release_branch + "/pinet", "/usr/local/bin/pinet"):
         download = False
-    if not download_file(RAW_REPOSITORY + "/" + RELEASE_BRANCH + "/Scripts/pinet_functions_python.py",
+    if not download_file(RAW_REPOSITORY + "/" + release_branch + "/Scripts/pinet_functions_python.py",
                          "/usr/local/bin/pinet_functions_python.py"):
         download = False
     if download:

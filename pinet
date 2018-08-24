@@ -1840,6 +1840,7 @@ ChooseReleaseChannel(){
             rm "/opt/PiNet/PiBootBackup/apt_version.txt"
 
             # If the release channel has changed, restart PiNet software to check for updates etc
+            sleep 2
             Updater
         else
             Menu
@@ -2618,7 +2619,6 @@ raspbian-upgrade)
     ;;
 
 esac
-PiConfigFixes
 if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. No previous PiNet installation is detected, would you like to run the full PiNet installer? " 8 78
 		exitstatus=$?
@@ -2630,6 +2630,7 @@ if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer
 		fi
 fi
 ConfigFileRead  #Reads the main configuration file (/etc/pinet) and loads all values in as environmental variables
+PiConfigFixes
 
 if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected, if not asks for one
 	ChooseReleaseChannel "Restart"
