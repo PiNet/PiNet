@@ -250,7 +250,8 @@ configFixes() {
 #Configuration file changes required after the client is built. These are not once off as they reside inside the Raspberry Pi OS
 
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
-echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
+#echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf LTSP_FATCLIENT LTSP_FATCLIENT=true
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf INIT_COMMAND_RM_NBD_CHECKUPDATE 'INIT_COMMAND_RM_NBD_CHECKUPDATE="rm -rf /usr/share/ldm/rc.d/I01-nbd-checkupdate"'
 DuplicateLTSConf
@@ -259,7 +260,11 @@ ltsp-chroot --arch armhf groupadd -g 628 pupil
 ltsp-chroot --arch armhf groupadd -g 629 teacher
 AddUdevRules
 
-printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/modules 'snd-bcm2835\n' 'snd-bcm2835\n'
+#printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
+
+echo "exit 0" > /opt/ltsp/armhf/etc/rc.local
+
 
 addSoundcardDefault
 
@@ -2015,6 +2020,7 @@ RaspbianUpgradePartTwo(){
     if [ "$exitstatus" = "2" ]; then
         InstallRaspberryPiUIMods
         PiConfigFixes
+        configFixes
         NBDRun
         exec /bin/bash pinet
 	    exit

@@ -1515,7 +1515,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python-tk", APT))
     packages.append(SoftwarePackage("sudo", APT))
     packages.append(SoftwarePackage("sshpass", APT))
-    packages.append(SoftwarePackage("pcmanfm", APT))
+    packages.append(SoftwarePackage("pcmanfm", APT, parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
     packages.append(SoftwarePackage("python3-numpy", APT))
     packages.append(SoftwarePackage("wget", APT))
     packages.append(SoftwarePackage("xpdf", APT))
