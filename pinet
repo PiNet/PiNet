@@ -1972,9 +1972,23 @@ CheckBackupScriptVersion(){
 }
 
 DuplicateLTSConf(){
-    #Duplicate the lts.conf from /opt/ltsp/armhf/etc/lts.conf to /var/lib/tftpboot/ltsp/armhf/lts.conf
-    cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
-
+    #Add symlink to tftp of lts.conf and enable tftp server via dnsmasq
+    ln -s /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
+    #cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
+    
+    if [ ! -f "/etc/dnsmasq.d/pinet.conf" ]; then
+    cat <<EOF1 >  /etc/dnsmasq.d/pinet.conf
+    # Enable TFTP for lts.conf
+    enable-tftp
+    
+    # The TFTP directory. Sometimes /srv/tftp is used instead.
+    tftp-root=/var/lib/tftpboot/
+    
+    # Disable the DNS server functionality of dnsmasq by setting to 0
+    port=0
+EOF1
+    service dnsmasq restart
+    fi
 }
 
 WheezyJessieUpgradePartTwo(){
