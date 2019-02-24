@@ -357,7 +357,7 @@ sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 echo "Adding Raspberry Pi Foundation repository key."
-echo "deb http://archive.raspberrypi.org/debian/ stretch main ui" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+echo "deb http://archive.raspberrypi.org/debian/ stretch main ui staging" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.12 (GNU/Linux)
@@ -396,7 +396,7 @@ wolfram-engine shared/accepted-wolfram-eula boolean true
 SELEOF
 #Auto accepts wolfram eula
 
-echo deb http://raspbian.raspberrypi.org/raspbian stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
+echo deb http://raspbian.raspberrypi.org/raspbian/ stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
 
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists
