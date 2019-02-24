@@ -1437,7 +1437,9 @@ EOF1
 fi
 
 if [ ! -f "/opt/ltsp/armhf/usr/local/bin/pinet" ]; then
-    echo "ltsp-remoteapps gnome-terminal -x sh -c 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
+    echo "ltsp-remoteapps terminator --geometry=1000x600+0+0 -e 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
+    # Gnome terminal now seems to have issues with launching over ltsp-remoteapps, using terminator
+    #echo "ltsp-remoteapps gnome-terminal -x sh -c 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
     UpdateConfig NBDBuildNeeded true
 fi
 
