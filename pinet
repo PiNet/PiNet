@@ -1796,6 +1796,8 @@ FixUIConfigFile(){
 }
 
 CheckRaspberryPiUIModsAllUsers(){
+    FixUIConfigFile "System" "pcmanfm.conf" 
+    FixUIConfigFile "System" "desktop-items-0.conf"
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets all users
 	do
 		if [ -f "/home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf" ]; then
@@ -1806,6 +1808,11 @@ CheckRaspberryPiUIModsAllUsers(){
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf wallpaper= wallpaper=/etc/alternatives/desktop-background
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf side_pane_mode= side_pane_mode=1
 		fi
+		
+		if grep -Fxq "cutdown_menus=1" "/home/$user/.config/libfm/libfm.conf"; then
+            $p replaceLineOrAdd "/home/$user/.config/libfm/libfm.conf" "cutdown_menus=1" "cutdown_menus=0"  
+        fi
+		
 	done
 	$p resetThemeCacheForAllUsers
 }
