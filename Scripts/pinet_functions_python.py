@@ -1644,6 +1644,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python3-flask", APT))
     packages.append(SoftwarePackage("python-picraft", APT))
     packages.append(SoftwarePackage("python3-picraft", APT))
+    packages.append(SoftwarePackage("python3-thonny", APT))
     packages.append(SoftwarePackage("libmtp-runtime", APT))
     packages.append(SoftwarePackage("rsync", APT))
     packages.append(SoftwarePackage("htop", APT))
