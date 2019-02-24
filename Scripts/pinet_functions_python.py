@@ -1565,6 +1565,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python3-pip", APT))
     packages.append(SoftwarePackage("python-picamera", APT))
     packages.append(SoftwarePackage("python3-picamera", APT))
+    packages.append(SoftwarePackage("python3-gpiozero", APT))
     packages.append(SoftwarePackage("x2x", APT))
     packages.append(SoftwarePackage("xserver-xorg-video-fbturbo", APT))
     packages.append(SoftwarePackage("netsurf-common", APT))
