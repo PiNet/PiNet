@@ -1494,7 +1494,7 @@ def install_software_from_file(packages=None):
 
 
 def install_chroot_software():
-    ltsp_chroot("apt-update update")
+    ltsp_chroot("apt-get update")
     ltsp_chroot("apt-get autoremove -y")
     ltsp_chroot("apt-mark hold ca-certificates-java") # Needed to block OpenJDK installing, which fails to install on PiNet
     packages = []
