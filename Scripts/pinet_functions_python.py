@@ -72,6 +72,8 @@ RELEASE_BRANCH = "master"
 CONFIG_FILE_LOCATION = "/etc/pinet"
 PINET_LOG_DIRPATH = "/var/log"
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
+CURRENT_RASPBIAN_RELEASE = 9
+RASPBIAN_RELEASES = {7: "Wheezy", 8: "Jessie", 9: "Stretch"}
 configFileData = {}
 fileLogger = None
 
@@ -527,7 +529,7 @@ def check_string_exists(filename, to_search_for):
     return True
 
 
-def find_replace_any_line(text_file, string, new_string):
+def find_replace_any_line_in_list(text_file, string, new_string):
     """
     Basic find and replace function for entire line.
     Pass it a text file in list form and it will search for strings.
@@ -545,7 +547,7 @@ def find_replace_any_line(text_file, string, new_string):
     return text_file
 
 
-def find_replace_section(text_file, string, new_string):
+def find_replace_section_in_list(text_file, string, new_string):
     """
     Basic find and replace function for section.
     Pass it a text file in list form and it will search for strings.
@@ -880,7 +882,7 @@ def replace_line_or_add(file, string, new_string):
     If it finds a string, it will replace that entire line with new_string
     """
     text_file = read_file(file)
-    text_file = find_replace_any_line(text_file, string, new_string)
+    text_file = find_replace_any_line_in_list(text_file, string, new_string)
     write_file(file, text_file)
 
 
@@ -891,7 +893,7 @@ def replace_bit_or_add(file, string, new_string):
     If it finds a string, it will replace that exact string with new_string
     """
     text_file = read_file(file)
-    text_file = find_replace_section(text_file, string, new_string)
+    text_file = find_replace_section_in_list(text_file, string, new_string)
     write_file(file, text_file)
 
 
@@ -907,7 +909,7 @@ def internet_on_urllib(timeout_limit=5, return_type=True):
     except urllib.error.URLError:
         pass
     try:
-        response = urllib.request.urlopen('http://mirrordirector.raspbian.org/', timeout=int(timeout_limit))
+        response = urllib.request.urlopen('http://raspbian.raspberrypi.org/', timeout=int(timeout_limit))
         return_data(0)
         return True
     except urllib.error.URLError:
@@ -1029,10 +1031,12 @@ def internet_full_status_check(timeoutLimit=5):
     return True
 
 
-def update_PiNet():
+def update_PiNet(release_branch=None):
     """
     Fetches most recent PiNet and PiNet_functions_python.py
     """
+    if not release_branch: # Allow release branch to be overridden if needs be.
+        release_branch = RELEASE_BRANCH
     remove_file("/home/" + os.environ['SUDO_USER'] + "/pinet")
     print("")
     print("----------------------")
@@ -1040,9 +1044,9 @@ def update_PiNet():
     print("----------------------")
     print("")
     download = True
-    if not download_file(RAW_REPOSITORY + "/" + RELEASE_BRANCH + "/pinet", "/usr/local/bin/pinet"):
+    if not download_file(RAW_REPOSITORY + "/" + release_branch + "/pinet", "/usr/local/bin/pinet"):
         download = False
-    if not download_file(RAW_REPOSITORY + "/" + RELEASE_BRANCH + "/Scripts/pinet_functions_python.py",
+    if not download_file(RAW_REPOSITORY + "/" + release_branch + "/Scripts/pinet_functions_python.py",
                          "/usr/local/bin/pinet_functions_python.py"):
         download = False
     if download:
@@ -1490,6 +1494,7 @@ def install_software_from_file(packages=None):
 
 
 def install_chroot_software():
+    ltsp_chroot("apt-get update")
     ltsp_chroot("apt-get autoremove -y")
     ltsp_chroot("apt-mark hold ca-certificates-java") # Needed to block OpenJDK installing, which fails to install on PiNet
     packages = []
@@ -1511,7 +1516,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python-tk", APT))
     packages.append(SoftwarePackage("sudo", APT))
     packages.append(SoftwarePackage("sshpass", APT))
-    packages.append(SoftwarePackage("pcmanfm", APT))
+    packages.append(SoftwarePackage("pcmanfm", APT, parameters=("-o", 'Dpkg::Options::="--force-confold"',)))
     packages.append(SoftwarePackage("python3-numpy", APT))
     packages.append(SoftwarePackage("wget", APT))
     packages.append(SoftwarePackage("xpdf", APT))
@@ -1553,13 +1558,14 @@ def install_chroot_software():
     # packages.append(SoftwarePackage("ntp", APT))
     packages.append(SoftwarePackage("nfs-common", APT))
     packages.append(SoftwarePackage("usbutils", APT))
-    packages.append(SoftwarePackage("libfreetype6-dev", APT))
+    #packages.append(SoftwarePackage("libfreetype6-dev", APT))
     packages.append(SoftwarePackage("python3-rpi.gpio", APT))
     packages.append(SoftwarePackage("python-rpi.gpio", APT))
     packages.append(SoftwarePackage("python-pip", APT))
     packages.append(SoftwarePackage("python3-pip", APT))
     packages.append(SoftwarePackage("python-picamera", APT))
     packages.append(SoftwarePackage("python3-picamera", APT))
+    packages.append(SoftwarePackage("python3-gpiozero", APT))
     packages.append(SoftwarePackage("x2x", APT))
     packages.append(SoftwarePackage("xserver-xorg-video-fbturbo", APT))
     packages.append(SoftwarePackage("netsurf-common", APT))
@@ -1574,6 +1580,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("libraspberrypi-bin", APT))
     packages.append(SoftwarePackage("i2c-tools", APT))
     packages.append(SoftwarePackage("man-db", APT))
+    packages.append(SoftwarePackage("raspberrypi-artwork", APT))
     packages.append(SoftwarePackage("ca-certificates", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("cifs-utils", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("midori", APT, parameters=("--no-install-recommends",)))
@@ -1613,8 +1620,8 @@ def install_chroot_software():
     # packages.append(SoftwarePackage("linux-image-3.12-1-rpi", APT))
     # packages.append(SoftwarePackage("linux-image-3.10-3-rpi", APT))
     # packages.append(SoftwarePackage("linux-image-3.2.0-4-rpi", APT))
-    packages.append(SoftwarePackage("linux-image-rpi-rpfv", APT))
-    packages.append(SoftwarePackage("linux-image-rpi2-rpfv", APT))
+    #packages.append(SoftwarePackage("linux-image-rpi-rpfv", APT))
+    #packages.append(SoftwarePackage("linux-image-rpi2-rpfv", APT))
     packages.append(SoftwarePackage("libreoffice", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("libreoffice-gtk", APT, parameters=("--no-install-recommends",)))
     packages.append(SoftwarePackage("myspell-en-gb", APT))
@@ -1637,13 +1644,14 @@ def install_chroot_software():
     packages.append(SoftwarePackage("python3-flask", APT))
     packages.append(SoftwarePackage("python-picraft", APT))
     packages.append(SoftwarePackage("python3-picraft", APT))
+    packages.append(SoftwarePackage("python3-thonny", APT))
     packages.append(SoftwarePackage("libmtp-runtime", APT))
     packages.append(SoftwarePackage("rsync", APT))
     packages.append(SoftwarePackage("htop", APT))
     packages.append(SoftwarePackage("fonts-liberation2", APT))
     packages.append(SoftwarePackage("gldriver-test", APT))
     packages.append(SoftwarePackage("python-gpiozero", APT))
-
+    packages.append(SoftwarePackage("python3-gpiozero", APT))
     ltsp_chroot("touch /boot/config.txt")  # Required due to bug in sense-hat package installer
     packages.append(SoftwarePackage("libjpeg-dev", APT))
     #packages.append(SoftwarePackage("pillow", PIP))
@@ -1706,7 +1714,7 @@ def install_chroot_software():
         copy_file_folder("/tmp/raspi2png", "/opt/ltsp/armhf/usr/local/bin/raspi2png")
         os.chmod("/opt/ltsp/armhf/usr/local/bin/raspi2png", 0o755)
 
-    ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
+    #ltsp_chroot("sudo apt-get -y purge clipit")  # Remove clipit application as serves no purpose on Raspbian
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y sonic-pi")
     run_bash("sudo DEBIAN_FRONTEND=noninteractive ltsp-chroot --arch armhf apt-get install -y chromium-browser rpi-chromium-mods")
     run_bash("apt-get upgrade -y")
@@ -1941,16 +1949,116 @@ def restore_chroot():
                          False)
 
 
-def check_debian_version():
-    wheezy = check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list",
-                                 "deb http://mirrordirector.raspbian.org/raspbian/ wheezy")
-    if wheezy:
-        debian_wheezy_to_jessie_update()
+def get_current_raspbian_release():
+    release_channel = get_config_file_parameter("ReleaseChannel")
+    if release_channel:
+        release_channel = release_channel.lower()
+    try:
+        release_version = int(requests.get("https://links.pinet.org.uk/current_raspbian_release_{}_version".format(release_channel)).text.strip()[:2])
+        release_title = str(requests.get("https://links.pinet.org.uk/current_raspbian_release_{}_title".format(release_channel)).text.strip()[:10])
+        return release_version, release_title
+    except:
+        return RASPBIAN_RELEASE, "Unknown"
+
+
+def get_previously_installed_raspbian_version():
+    # Get the previously installed Raspbian version after an upgrade
+    try:
+        previous_version = int(get_config_file_parameter("PreviousInstalledRaspbianVersion"))
+        return previous_version
+    except:
+        return 8
+
+
+def check_debian_version(): # TODO : Needs some work on this to optimise it better for multiple releases
+    web_raspbian_release_version, web_raspbian_release_title = get_current_raspbian_release()
+    if check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "raspbian/ wheezy"):
+        raspbian_version = 7
+    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "raspbian/ jessie"):
+        raspbian_version = 8
+    elif check_string_exists("/opt/ltsp/armhf/etc/apt/sources.list", "raspbian/ stretch"):
+        raspbian_version = 9
+    else:
+        raspbian_version = CURRENT_RASPBIAN_RELEASE
+
+    if raspbian_version < web_raspbian_release_version:
+        upgrade_raspbian_release_part_one(RASPBIAN_RELEASES[raspbian_version], web_raspbian_release_title)
+        return
     else:
         return_data(0)
+        return
+
+
+
+    # TODO : The following won't work properly as old versions don't actually know the name of the new versions. Probably have to put that on the web as well...
+    # TODO : Currently working through getting an upgrade working by once upgrade is chosen to go forward, ask them which channel they want to use, download that newer version and have it call something in bash to end up back here.
+
+def upgrade_raspbian_release_part_one(current_release, new_release):  # Runs before new version is installed.
+    if whiptail_box_yes_no(_("Major Raspbian release update"), _("A major update for Raspbian is now available. You are currently running Raspbian {0}, although the next major release (Raspbian {1}) has now been released by the Raspberry Pi Foundation. As they have discontinued support for Raspbian {0}, it is highly recommended to proceed with the following automatic upgrade. To check when your current version will reach end of life/support, please go to https://links.pinet.org.uk/eol. Note the upgrade process will take 2-3 hours and requires an unfiltered internet connection. Would you like to launch the upgrade wizard?".format(current_release, new_release.title())), return_true_false=True, height="17", custom_no="Ignore", custom_yes="Start Upgrade"):
+        select_release_channel()
+        release_channel = get_config_file_parameter("ReleaseChannel").lower()
+        update_PiNet(release_branch="{}-{}".format(new_release, release_channel))
+        set_config_parameter("PreviousInstalledRaspbianVersion", str(current_release))
+        return_data(2)
+        return
+    else: # Upgrade found, but ignored by user
+        return_data(1)
+        return
+
+
+def upgrade_raspbian_release_part_two():  # Runs after new version is installed.
+    old_release = get_previously_installed_raspbian_version()
+    new_release = CURRENT_RASPBIAN_RELEASE
+    backup_name = "Raspbian{}Backup{}".format(RASPBIAN_RELEASES[old_release], str(time.strftime("-%d-%m-%Y")))
+
+    if old_release < 8 or (new_release - old_release) > 1:  # If currently on Wheezy or more than 1 release behind, must force full rebuild.
+        rebuild_required = True
+    else:
+        rebuild_required = False  # If only single release behind (and not on Wheezy), we can offer in place upgrade as option.
+    if not rebuild_required and not whiptail_box_yes_no(_("Inplace upgrade available"), _("This upgrade path supports an inplace upgrade. Inplace upgrades are generally faster, require downloading less from the internet (so useful for capped web connections) and most customisations to Raspbian will come across to the new release. It is though a little risky/unpredictable. If you have not made many customisations, it is recommended to choose standard rebuild. "), return_true_false=True,
+                                                        height="15", custom_yes="Standard rebuild", custom_no="Inplace upgrade"):
+        inplace_upgrade = True
+    else:
+        inplace_upgrade = False
+    whiptail_box("msgbox", _("Backup chroot"), _("Before proceeding with the update, a backup of the Raspbian chroot will be performed. You can revert to this later if need be. It will be called {} and stored at {}.".format(backup_name, "/opt/PiNet/chrootBackups/" + backup_name)), False, height="10")
+    if backup_chroot(backup_name):
+        if inplace_upgrade:
+            upgrade_raspbian_inplace(new_release)
+            return_data(2)
+        else:
+            return_data(1)
+    else:
+        whiptail_box("msgbox", _("Backup failed"), _("The backup has failed. This is likely due to storage issues. Please contact PiNet support for further assistance - http://pinet.org.uk/articles/support.html"), False)
+        return_data(3)
+
+
+
+def upgrade_raspbian_inplace(new_release_version):
+    for release in RASPBIAN_RELEASES.values():
+        release = release.lower()
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list", "mirrordirector.raspbian.org", "raspbian.raspberrypi.org", replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+        replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list", release, RASPBIAN_RELEASES[new_release_version].lower(), replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False)
+
+    replace_in_text_file("/opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list", "staging", "", replace_all_uses=True, replace_entire_line=False, add_if_not_exists=False) # Remove staging as no longer used beyond Jessie
+
+    ltsp_chroot("apt update")
+    #ltsp_chroot("apt -y purge pulseaudio*")  # Causing some issues in relation to ltsp-client package, so disabling line for now
+    ltsp_chroot("apt full-upgrade -y")
+    ltsp_chroot("apt update")
+    install_chroot_software()
+    install_pinet_theme()
+    reset_theme_cache_for_all_users()
+    check_kernel_file_update_web()
+    return True
+
+
+
 
 
 def debian_wheezy_to_jessie_update(try_backup=True):
+    # Now deprecated in favour of the more generic upgrade_raspbian_release_part_one() and upgrade_raspbian_release_part_two()
     whiptail_box("msgbox", _("Raspbian Jessie update"), _(
         "A major update for your version of Raspbian is available. You are currently running Raspbian Wheezy, although the next big release (Raspbian Jessie) has now been released by the Raspberry Pi Foundation. As they have officially discontinued support for Raspbian Wheezy, it is highly recommended you proceed with the automatic update. Note that any custom configurations or changes you have made with Raspbian will be reset on installation of this update. Future updates for PiNet will only support Raspbian Jessie."),
                  False, height="14")
@@ -1967,6 +2075,15 @@ def debian_wheezy_to_jessie_update(try_backup=True):
             return
 
     return_data(0)
+
+
+def debian_jessie_to_stretch_update(previous_release): # TODO - This needs finished off
+    whiptail_box("msgbox", _("Raspbian Stretch update"), _("A major Raspbian release update is now available! Raspbian Stretch has now been released by the Raspberry Pi Foundation and is available for installation with PiNet. The Raspberry Pi Foundation has officially discontinued Raspbian Jessie so upgrading is highly recommended. Note that PiNet Jessie will continue to be supported until 31st August 2018."), False, height="14")
+    proceed_installation = whiptail_box("yesno", _("Proceed"), _("Would you like to proceed with the Raspbian Stretch upgrade? The process will take 1-2 hours and use similar bandwidth to the initial PiNet installation. WARNING - Only proceed if the PiNet server is connected to an unfiltered and reliable internet connection."), True, height="10")
+    if proceed_installation: # TODO : Double check these Whiptail boxes are long enough
+        if previous_release == "jessie":
+            # TODO : Get default no working
+            proceed_installation = whiptail_box("yesno", _("In place upgrade"), _("The current Raspbian version installed supports an in place upgrade to Raspbian Stretch. Although this process is quicker and allows for any Raspbian customisations that have been added to be kept, it can result in unexpected issues/side effects. Would you like to upgrade using the in place upgrade system?"), True, height="10")
 
 
 def custom_config_txt():
@@ -2120,6 +2237,7 @@ def verify_correct_group_users():
             non_system_users.append(user)
     for user in non_system_users:
         verify_correct_group_single_user(user.pw_name)
+        verify_cutdown_menu_configuration(user.pw_name)
 
 
 def verify_correct_group_single_user(user):
@@ -2129,6 +2247,13 @@ def verify_correct_group_single_user(user):
     missing_groups = set(PINET_UNRESTRICTED_GROUPS.keys()) - set(get_users_linux_groups(user))
     for missing_group in missing_groups:
         add_linux_user_to_group(user, missing_group)
+
+
+def verify_cutdown_menu_configuration(username):
+    # This is a hotfix to revert back https://github.com/raspberrypi-ui/libfm-stretch/commit/7b3e62eef0908385633dd4036dea457a0965ac57
+    # Reason for this is cutdown_menus setting to 1 removes the "Places" bar in the file manager.
+    
+    replace_in_text_file("/home/{}/.config/libfm/libfm.conf".format(username), "cutdown_menus=1", "cutdown_menus=0", True, False, True)
 
 
 def select_release_channel():
@@ -2412,6 +2537,20 @@ def verify_chroot_integrity():
     return
 
 
+def install_pinet_theme():
+    
+    remove_file("/tmp/pinet")
+    run_bash(["git", "clone", "--no-single-branch", "--depth", "1", REPOSITORY, "/tmp/pinet"], run_as_sudo=True)
+    run_bash("(cd /tmp/pinet; git checkout {})".format(RELEASE_BRANCH), run_as_sudo=False)
+    if os.path.isdir("/tmp/pinet/themes/raspi"): 
+        remove_file("/opt/ltsp/armhf/usr/share/ldm/themes/raspi")
+        copy_file_folder("/tmp/pinet/themes/raspi", "/opt/ltsp/armhf/usr/share/ldm/themes/raspi")
+        os.unlink("/opt/ltsp/armhf/etc/alternatives/ldm-theme")
+        run_bash(["ln", "-s", "/usr/share/ldm/themes/raspi", "/opt/ltsp/armhf/etc/alternatives/ldm-theme"], run_as_sudo=True)
+    remove_file("/tmp/pinet")
+    copy_file_folder("/opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png", "/opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png")
+    ltsp_chroot("update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100")
+    
 
 # ------------------------------Main program-------------------------
 
@@ -2488,3 +2627,7 @@ if __name__ == "__main__":
             custom_config_txt()
         elif sys.argv[1] == "verifyChrootIntegrity":
             verify_chroot_integrity()
+        elif sys.argv[1] == "UpgradeRaspbianReleasePartTwo":
+            upgrade_raspbian_release_part_two()
+        elif sys.argv[1] == "InstallPiNetTheme":
+            install_pinet_theme()

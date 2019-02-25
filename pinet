@@ -3,8 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-
-version=1.3.2
+version=1.3.3
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -106,6 +105,12 @@ LegacyFixes() {
 	if [ -f "/usr/local/bin/pinet-functions-python.py" ]; then
 	    mv "/usr/local/bin/pinet-functions-python.py" "/usr/local/bin/pinet_functions_python.py"
 	fi
+	
+	if grep -Fxq "cutdown_menus=1" "/opt/ltsp/armhf/etc/xdg/libfm/libfm.conf"; then
+        $p replaceLineOrAdd "/opt/ltsp/armhf/etc/xdg/libfm/libfm.conf" "cutdown_menus=1" "cutdown_menus=0"   
+        UpdateConfig NBDBuildNeeded true
+    fi
+	
 
     # Make sure that all the required Python libraries are installed
 	$PythonStart -c 'import feedparser' 2>/dev/null || (sudo apt-get install -y python3-feedparser  )
@@ -189,7 +194,8 @@ installLTSP() {
 #Installs main packages required by LTSP
 apt-get update && apt-get upgrade -y
 
-apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools bindfs
+apt-get install -y ltsp-server qemu-user-static binfmt-support ldm-server sed git gnome-control-center nfs-kernel-server xml2 openssh-server inotify-tools bindfs net-tools terminator
+update-alternatives --set x-terminal-emulator /usr/bin/gnome-terminal.wrapper
 exitstatus=$?
 if ! [ $exitstatus = 0 ]; then
 	whiptail --title $"ERROR!" --msgbox $"No internet connection detected or other software is already being installed! Please wait 5-10 minutes and try again or connect to the internet " 10 78
@@ -203,7 +209,7 @@ fi
 buildClient() {
 #Creates the custom config file needed to build Raspbian and grabs keychain. Then starts the build
 
-wget http://archive.raspbian.org/raspbian.public.key -O - | gpg --import
+wget http://raspbian.raspberrypi.org/raspbian.public.key -O - | gpg --import
 gpg --export 90FDDD2E >> /etc/ltsp/raspbian.public.key.gpg
 
 rm /etc/ltsp/ltsp-raspbian.conf
@@ -211,8 +217,7 @@ rm /etc/ltsp/ltsp-raspbian.conf
 cat <<EOF > /etc/ltsp/ltsp-raspbian.conf
 DEBOOTSTRAP_KEYRING=/etc/ltsp/raspbian.public.key.gpg
 DIST=stretch
-# For alternate raspbian mirrors, see: http://www.raspbian.org/RaspbianMirrors
-MIRROR=http://mirrordirector.raspbian.org/raspbian
+MIRROR=http://raspbian.raspberrypi.org/raspbian
 SECURITY_MIRROR=none
 UPDATES_MIRROR=none
 LOCALE="$LANG UTF-8"
@@ -245,7 +250,8 @@ configFixes() {
 #Configuration file changes required after the client is built. These are not once off as they reside inside the Raspberry Pi OS
 
 sed -i -e 's,/bin/plymouth quit --retain-splash.*,/bin/plymouth quit --retain-splash || true,g' /opt/ltsp/armhf/etc/init.d/ltsp-client-core
-echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
+#echo 'LTSP_FATCLIENT=true' >> /opt/ltsp/armhf/etc/lts.conf
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf LTSP_FATCLIENT LTSP_FATCLIENT=true
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf REMOTE_APPS REMOTE_APPS=True
 ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/lts.conf INIT_COMMAND_RM_NBD_CHECKUPDATE 'INIT_COMMAND_RM_NBD_CHECKUPDATE="rm -rf /usr/share/ldm/rc.d/I01-nbd-checkupdate"'
 DuplicateLTSConf
@@ -254,7 +260,11 @@ ltsp-chroot --arch armhf groupadd -g 628 pupil
 ltsp-chroot --arch armhf groupadd -g 629 teacher
 AddUdevRules
 
-printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/modules 'snd-bcm2835\n' 'snd-bcm2835\n'
+#printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
+
+echo "exit 0" > /opt/ltsp/armhf/etc/rc.local
+
 
 addSoundcardDefault
 
@@ -386,7 +396,7 @@ wolfram-engine shared/accepted-wolfram-eula boolean true
 SELEOF
 #Auto accepts wolfram eula
 
-echo deb http://mirrordirector.raspbian.org/raspbian/ stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
+echo deb http://raspbian.raspberrypi.org/raspbian/ stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
 
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists
@@ -403,15 +413,7 @@ whiptail --title $"Install complete" --msgbox $"The client install is complete, 
 RaspiTheme(){
 #Grabs a copy of the PiNet desktop/login theme and installs
 
-rm -rf /tmp/pinet
-git clone --no-single-branch --depth 1 $Repository.git /tmp/pinet #Clones main repository, including boot files
-(cd "/tmp/pinet"; git checkout "$ReleaseBranch")
-cp -r /tmp/pinet/themes/raspi /opt/ltsp/armhf/usr/share/ldm/themes/raspi
-rm /opt/ltsp/armhf/etc/alternatives/ldm-theme
-ln -s /usr/share/ldm/themes/raspi /opt/ltsp/armhf/etc/alternatives/ldm-theme
-rm -rf /tmp/pinet
-cp /opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png /opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png
-sudo ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100
+$p InstallPiNetTheme
 
 }
 
@@ -482,15 +484,15 @@ ltsp-chroot --arch armhf printf 'SUBSYSTEM=="bcm2835-gpiomem", GROUP="pupil", MO
 
 }
 
+
 PiConfigFixes(){
 #Configuration changes to Raspberry Pi files, mostly to do with LXDE instead of Raspbian itself
 
 ltsp-chroot --arch armhf sed /etc/xdg/lxsession/LXDE/desktop.conf -i -e "s|sNet/ThemeName.*|sNet/ThemeName=Mist|"
-ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e \
-"s|<drawContents>yes</drawContents>|<drawContents>no</drawContents>|"
-ltsp-chroot --arch armhf apt-get install -y raspberrypi-artwork
+ltsp-chroot --arch armhf sed /etc/xdg/openbox/LXDE/rc.xml -i -e "s|<drawContents>yes</drawContents>|<drawContents>no</drawContents>|"
 ltsp-chroot --arch armhf update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/raspberrypi-artwork/raspberry-pi-logo.png 100
-ltsp-chroot --arch armhf PCMANFMCFG=/etc/xdg/pcmanfm/LXDE/pcmanfm.conf
+
+PCMANFMCFG=/etc/xdg/pcmanfm/LXDE/pcmanfm.conf
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^wallpaper_mode.*/wallpaper_mode=3/'
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^desktop_bg.*/desktop_bg=#ffffff/'
 ltsp-chroot --arch armhf sed "$PCMANFMCFG" -i -e 's/^su_cmd.*/su_cmd=gksu %s/'
@@ -1434,7 +1436,9 @@ EOF1
 fi
 
 if [ ! -f "/opt/ltsp/armhf/usr/local/bin/pinet" ]; then
-    echo "ltsp-remoteapps gnome-terminal -x sh -c 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
+    echo "ltsp-remoteapps terminator --geometry=1000x600+0+0 -e 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
+    # Gnome terminal now seems to have issues with launching over ltsp-remoteapps, using terminator
+    #echo "ltsp-remoteapps gnome-terminal -x sh -c 'sudo bash pinet'" > /opt/ltsp/armhf/usr/local/bin/pinet
     UpdateConfig NBDBuildNeeded true
 fi
 
@@ -1794,6 +1798,8 @@ FixUIConfigFile(){
 }
 
 CheckRaspberryPiUIModsAllUsers(){
+    FixUIConfigFile "System" "pcmanfm.conf" 
+    FixUIConfigFile "System" "desktop-items-0.conf"
 	cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1 | while IFS= read -r user  #Gets all users
 	do
 		if [ -f "/home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf" ]; then
@@ -1804,6 +1810,11 @@ CheckRaspberryPiUIModsAllUsers(){
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf wallpaper= wallpaper=/etc/alternatives/desktop-background
 			#$p replaceLineOrAdd /home/$user/.config/pcmanfm/LXDE-pi/desktop-items-0.conf side_pane_mode= side_pane_mode=1
 		fi
+		
+		if grep -Fxq "cutdown_menus=1" "/home/$user/.config/libfm/libfm.conf"; then
+            $p replaceLineOrAdd "/home/$user/.config/libfm/libfm.conf" "cutdown_menus=1" "cutdown_menus=0"  
+        fi
+		
 	done
 	$p resetThemeCacheForAllUsers
 }
@@ -1843,6 +1854,7 @@ ChooseReleaseChannel(){
             rm "/opt/PiNet/PiBootBackup/apt_version.txt"
 
             # If the release channel has changed, restart PiNet software to check for updates etc
+            sleep 2
             Updater
         else
             Menu
@@ -1953,9 +1965,12 @@ CheckPipSymbolicLinkBug(){
 CheckDebianVersion(){
     $p checkDebianVersion
     exitstatus=$(gp)
-	if [ "$exitstatus" = "1" ]; then
-	    RebuildOS
-	fi
+    # If 0, no update. If 1, update found but cancelled. If 2, update found and accepted.
+
+    if [ "$exitstatus" = "2" ]; then
+        exec /bin/bash pinet raspbian-upgrade
+        exit
+    fi
 
 }
 
@@ -1971,9 +1986,23 @@ CheckBackupScriptVersion(){
 }
 
 DuplicateLTSConf(){
-    #Duplicate the lts.conf from /opt/ltsp/armhf/etc/lts.conf to /var/lib/tftpboot/ltsp/armhf/lts.conf
-    cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
-
+    #Add symlink to tftp of lts.conf and enable tftp server via dnsmasq
+    ln -s /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
+    #cp /opt/ltsp/armhf/etc/lts.conf /var/lib/tftpboot/ltsp/armhf/lts.conf
+    
+    if [ ! -f "/etc/dnsmasq.d/pinet.conf" ]; then
+    cat <<EOF1 >  /etc/dnsmasq.d/pinet.conf
+    # Enable TFTP for lts.conf
+    enable-tftp
+    
+    # The TFTP directory. Sometimes /srv/tftp is used instead.
+    tftp-root=/var/lib/tftpboot/
+    
+    # Disable the DNS server functionality of dnsmasq by setting to 0
+    port=0
+EOF1
+    service dnsmasq restart
+    fi
 }
 
 WheezyJessieUpgradePartTwo(){
@@ -1988,6 +2017,30 @@ WheezyJessieUpgradePartThree(){
     RebuildOS
     $p resetThemeCacheForAllUsers
     #UpdateAll
+}
+
+
+RaspbianUpgradePartTwo(){
+    $p UpgradeRaspbianReleasePartTwo
+    exitstatus=$(gp)
+
+    # If 1, do normal rebuild, if 2, already done inplace, if 3, backup failed
+
+    if [ "$exitstatus" = "2" ]; then
+        InstallRaspberryPiUIMods
+        PiConfigFixes
+        configFixes
+        NBDRun
+        exec /bin/bash pinet
+	    exit
+    fi
+
+	if [ "$exitstatus" = "1" ]; then
+	    RebuildOS
+	    exec /bin/bash pinet
+	    exit
+	fi
+
 }
 
 GetInternalIPAddress(){
@@ -2406,6 +2459,7 @@ FullInstall(){
 		usermod -a -G teacher $SUDO_USER
 		LegacyFixes "NoRecompress"
 		AddSoftware
+		PiConfigFixes
 		EnableNBD #Enables NBD compression
 		resetAndCleanup
 		$p triggerInstall
@@ -2445,6 +2499,7 @@ if [ $? -eq 0 ]; then
 			fixGroups "NoRecompress"
 			DuplicateLTSConf
     		LegacyFixes "NoRecompress"
+    		PiConfigFixes
     		AddSoftware
 			EnableNBD
     		resetAndCleanup
@@ -2588,8 +2643,11 @@ Wheezy-upgrade-part-two)
 Wheezy-upgrade-part-three)
     WheezyJessieUpgradePartThree
     ;;
-esac
+raspbian-upgrade)
+    RaspbianUpgradePartTwo
+    ;;
 
+esac
 if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer to install
     	whiptail --title $"Welcome" --yesno $"Welcome to PiNet. No previous PiNet installation is detected, would you like to run the full PiNet installer? " 8 78
 		exitstatus=$?
@@ -2601,6 +2659,7 @@ if [ ! -d /opt/ltsp/armhf ]; then   # Check if PiNet is installed. If not, offer
 		fi
 fi
 ConfigFileRead  #Reads the main configuration file (/etc/pinet) and loads all values in as environmental variables
+PiConfigFixes
 
 if [ "$ReleaseChannel" = "" ]; then   #Makes sure a release channel is selected, if not asks for one
 	ChooseReleaseChannel "Restart"
