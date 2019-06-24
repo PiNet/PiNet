@@ -1333,8 +1333,10 @@ def check_if_file_contains(file, string):
 
     if unfound:
         return_data(0)
+        return False
     else:
         return_data(1)
+        return True
 
 
 def save_pickled(toSave, path="/tmp/pinetSoftware.dump"):
@@ -2551,6 +2553,9 @@ def install_pinet_theme():
     copy_file_folder("/opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png", "/opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png")
     ltsp_chroot("update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100")
     
+    
+    def check_desktop_theme_configuration():
+        check_if_file_contains(file="/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", string="/etc/alternatives/desktop-background")
 
 # ------------------------------Main program-------------------------
 
