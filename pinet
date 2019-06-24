@@ -27,7 +27,7 @@ RawRepositoryBase="https://raw.github.com/PiNet/"
 Repository="$RepositoryBase$RepositoryName"
 BootRepository="$RepositoryBase$BootRepositoryName"
 RawRepository="$RawRepositoryBase$RepositoryName"
-ReleaseBranch="stretch-alpha"  #Overwriten later on in SetupRepositories()
+ReleaseBranch="buster-alpha"  #Overwriten later on in SetupRepositories()
 ltspBase="/opt/ltsp/"
 cpuArch="armhf"
 
@@ -216,7 +216,7 @@ rm /etc/ltsp/ltsp-raspbian.conf
 
 cat <<EOF > /etc/ltsp/ltsp-raspbian.conf
 DEBOOTSTRAP_KEYRING=/etc/ltsp/raspbian.public.key.gpg
-DIST=stretch
+DIST=buster
 MIRROR=http://raspbian.raspberrypi.org/raspbian
 SECURITY_MIRROR=none
 UPDATES_MIRROR=none
@@ -351,13 +351,13 @@ FixRepo() {
 
 # Adds PiNet repo
 echo "Adding PiNet repository key."
-echo deb http://apt.pinet.org.uk stretch main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
+echo deb http://apt.pinet.org.uk buster main > /opt/ltsp/armhf/etc/apt/sources.list.d/pinet.list
 wget http://apt.pinet.org.uk/pinet.public.key -O /opt/ltsp/armhf/tmp/pinet.public.key
 sudo ltsp-chroot --arch armhf apt-key add /tmp/pinet.public.key
 
 rm -rf /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 echo "Adding Raspberry Pi Foundation repository key."
-echo "deb http://archive.raspberrypi.org/debian/ stretch main ui staging" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
+echo "deb http://archive.raspberrypi.org/debian/ buster main" > /opt/ltsp/armhf/etc/apt/sources.list.d/raspi.list
 ltsp-chroot --arch armhf apt-key add - <<EOF1
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.12 (GNU/Linux)
@@ -391,12 +391,12 @@ m++/7s3K3L0zWopdhMVcgg6Nt9gcjzqN1c0gy55L/g==
 -----END PGP PUBLIC KEY BLOCK-----
 EOF1
 
-ltsp-chroot --arch armhf debconf-set-selections <<SELEOF
-wolfram-engine shared/accepted-wolfram-eula boolean true
-SELEOF
+#ltsp-chroot --arch armhf debconf-set-selections <<SELEOF
+#wolfram-engine shared/accepted-wolfram-eula boolean true
+#SELEOF
 #Auto accepts wolfram eula
 
-echo deb http://raspbian.raspberrypi.org/raspbian/ stretch main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
+echo deb http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi > /opt/ltsp/armhf/etc/apt/sources.list
 
 ltsp-chroot --arch armhf apt-get update
 #Fetches most recent package lists
