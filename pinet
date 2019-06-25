@@ -260,7 +260,7 @@ ltsp-chroot --arch armhf groupadd -g 628 pupil
 ltsp-chroot --arch armhf groupadd -g 629 teacher
 AddUdevRules
 
-ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/modules 'snd-bcm2835\n' 'snd-bcm2835\n'
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/modules 'snd-bcm2835' 'snd-bcm2835'
 #printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
 
 echo "exit 0" > /opt/ltsp/armhf/etc/rc.local
