@@ -1625,8 +1625,8 @@ def install_chroot_software():
     #packages.append(SoftwarePackage("linux-image-rpi-rpfv", APT))
     #packages.append(SoftwarePackage("linux-image-rpi2-rpfv", APT))
     packages.append(SoftwarePackage("libreoffice", APT, parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("libreoffice-gtk", APT, parameters=("--no-install-recommends",)))
-    packages.append(SoftwarePackage("myspell-en-gb", APT))
+    packages.append(SoftwarePackage("libreoffice-pi", APT, parameters=("--no-install-recommends",)))
+    packages.append(SoftwarePackage("hunspell-en-gb", APT))
     packages.append(SoftwarePackage("mythes-en-us", APT))
     packages.append(SoftwarePackage("smartsim", APT))
     packages.append(SoftwarePackage("alacarte", APT))
@@ -1638,7 +1638,7 @@ def install_chroot_software():
     packages.append(SoftwarePackage("raspi-gpio", APT))
     packages.append(SoftwarePackage("libreoffice", APT))
     packages.append(SoftwarePackage("nuscratch", APT))
-    packages.append(SoftwarePackage("iceweasel", APT))
+    packages.append(SoftwarePackage("firefox-esr", APT))
     #packages.append(SoftwarePackage("mu", APT))
     packages.append(SoftwarePackage("mu-editor", APT))
     packages.append(SoftwarePackage("python-twython", APT))
@@ -1698,8 +1698,8 @@ def install_chroot_software():
 
     group_apt_installer(packages)
 
-    ltsp_chroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
-    ltsp_chroot("easy_install3 --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
+    #ltsp_chroot("easy_install --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
+    #ltsp_chroot("easy_install3 --upgrade pip")  # Fixes known "cannot import name IncompleteRead" error
 
     python_packages = []
 
