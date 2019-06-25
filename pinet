@@ -3,7 +3,7 @@
 #
 # See LICENSE file for copyright and license details
 
-version=1.3.3
+version=1.3.4
 
 #PiNet (Previously RaspberryPi-LTSP)
 
@@ -260,7 +260,7 @@ ltsp-chroot --arch armhf groupadd -g 628 pupil
 ltsp-chroot --arch armhf groupadd -g 629 teacher
 AddUdevRules
 
-ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/modules 'snd-bcm2835\n' 'snd-bcm2835\n'
+ReplaceAnyTextOnLine /opt/ltsp/armhf/etc/modules 'snd-bcm2835' 'snd-bcm2835'
 #printf 'snd-bcm2835\n' >> /opt/ltsp/armhf/etc/modules
 
 echo "exit 0" > /opt/ltsp/armhf/etc/rc.local
@@ -521,7 +521,7 @@ fixGroups(){
     ConfigFileRead
     if [ "$NBDBuildNeeded" = "true" ] && [ ! "$1" = "NoRecompress" ] ; then
 		NBDRun
-		whiptail --title $"Reboot required" --msgbox $"A group ID change has taken place to correct an ID mismatch. This is nothing to worry about unless you are seeing repeatedly. Please reboot your PiNet server as soon as possible." 9 78
+		# whiptail --title $"Reboot required" --msgbox $"A group ID change has taken place to correct an ID mismatch. This is nothing to worry about unless you are seeing repeatedly. Please reboot your PiNet server as soon as possible." 9 78
 	fi
 }
 
