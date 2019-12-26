@@ -15,6 +15,8 @@ import crypt
 import csv
 import datetime
 import errno
+import zipfile
+
 import feedparser
 import grp
 import logging
@@ -73,7 +75,7 @@ CONFIG_FILE_LOCATION = "/etc/pinet"
 PINET_LOG_DIRPATH = "/var/log"
 DATA_TRANSFER_FILEPATH = "/tmp/ltsptmp"
 CURRENT_RASPBIAN_RELEASE = 9
-RASPBIAN_RELEASES = {7: "Wheezy", 8: "Jessie", 9: "Stretch"}
+RASPBIAN_RELEASES = {7: "Wheezy", 8: "Jessie", 9: "Stretch", 10: "Buster"}
 configFileData = {}
 fileLogger = None
 
@@ -456,8 +458,8 @@ def get_release_channel():
     if release_channel:
         release_channel = release_channel.lower()
     else:
-        # No ReleaseChannel config value found, assuming Stable.
-        RELEASE_BRANCH = STABLE
+        # No ReleaseChannel config value found, assuming Alpha.
+        RELEASE_BRANCH = ALPHA
         return
     if release_channel == "stable":
         RELEASE_BRANCH = STABLE
@@ -586,7 +588,7 @@ def download_file_urllib(url, save_location):
         return False
 
 
-def download_file(url, save_location):
+def download_file_old(url, save_location):
     try:
         response = requests.get(url, headers={'User-agent': 'Mozilla 5.10'}, timeout=5)
         if response.status_code == requests.codes.ok:
@@ -596,6 +598,21 @@ def download_file(url, save_location):
             return True
         else:
             response.raise_for_status()
+    except requests.RequestException as e:
+        fileLogger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
+        return False
+
+
+def download_file(url, save_location):
+    try:
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(save_location, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
+        fileLogger.debug("Downloaded file from " + url + " to " + save_location + ".")
+        return True
     except requests.RequestException as e:
         fileLogger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
         return False
@@ -2547,22 +2564,70 @@ def verify_chroot_integrity():
 
 
 def install_pinet_theme():
-    
     remove_file("/tmp/pinet")
     run_bash(["git", "clone", "--no-single-branch", "--depth", "1", REPOSITORY, "/tmp/pinet"], run_as_sudo=True)
     run_bash("(cd /tmp/pinet; git checkout {})".format(RELEASE_BRANCH), run_as_sudo=False)
     if os.path.isdir("/tmp/pinet/themes/raspi"): 
-        remove_file("/opt/ltsp/armhf/usr/share/ldm/themes/raspi")
-        copy_file_folder("/tmp/pinet/themes/raspi", "/opt/ltsp/armhf/usr/share/ldm/themes/raspi")
-        os.unlink("/opt/ltsp/armhf/etc/alternatives/ldm-theme")
-        run_bash(["ln", "-s", "/usr/share/ldm/themes/raspi", "/opt/ltsp/armhf/etc/alternatives/ldm-theme"], run_as_sudo=True)
+        remove_file("/srv/ltsp/armhf/usr/share/ldm/themes/raspi")
+        copy_file_folder("/tmp/pinet/themes/raspi", "/srv/ltsp/armhf/usr/share/ldm/themes/raspi")
+        if os.path.exists("/srv/ltsp/armhf/etc/alternatives/ldm-theme"):
+            os.unlink("/srv/ltsp/armhf/etc/alternatives/ldm-theme")
+        run_bash(["ln", "-s", "/usr/share/ldm/themes/raspi", "/srv/ltsp/armhf/etc/alternatives/ldm-theme"], run_as_sudo=True)
     remove_file("/tmp/pinet")
-    copy_file_folder("/opt/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png", "/opt/ltsp/armhf/usr/share/images/desktop-base/pinet.png")
+    copy_file_folder("/srv/ltsp/armhf/usr/share/ldm/themes/raspi/bg.png", "/srv/ltsp/armhf/usr/share/images/desktop-base/pinet.png")
     ltsp_chroot("update-alternatives --install /usr/share/images/desktop-base/desktop-background desktop-background /usr/share/images/desktop-base/pinet.png 100")
+
+
+def check_desktop_theme_configuration():
+    check_if_file_contains(file="/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", string="/etc/alternatives/desktop-background")
+    replace_line_or_add("/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", "wallpaper=", "wallpaper=/etc/alternatives/desktop-background")
+    replace_line_or_add("/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", "wallpaper_mode=", "wallpaper_mode=stretch")
+    replace_line_or_add("/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", "side_pane_mode=", "side_pane_mode=1")
+    replace_line_or_add("/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", "desktop_shadow=", "desktop_shadow=#000000")
+    replace_line_or_add("/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", "desktop_fg=", "desktop_fg=#ffffff")
+
+
+def unzip_file(file_path, output_path):
+    with zipfile.ZipFile(file_path, "r") as zip_ref:
+        zip_ref.extractall(output_path)
+
+
+def pause():
+    input("Pausing...")
+
+
+def installPiNetBuster():
+    # TODO : Need to look at the lts.conf file...
     
-    
-    def check_desktop_theme_configuration():
-        check_if_file_contains(file="/opt/ltsp/armhf/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", string="/etc/alternatives/desktop-background")
+    make_folder("/opt/PiNet/sd_images")
+    download_file("https://downloads.raspberrypi.org/raspbian_full_latest", "/opt/PiNet/sd_images/raspbian_full_latest.zip") # Need to stream, not download to RAM.
+    fileLogger.debug("Download complete of Raspbian, unzipping...")
+    unzip_file("/opt/PiNet/sd_images/raspbian_full_latest.zip", "/opt/PiNet/sd_images/raspbian_full_latest.img")
+    fileLogger.debug("Unzip complete, mounting Raspbian.")
+    output = run_bash("sudo kpartx -v -a /opt/PiNet/sd_images/raspbian_full_latest.img -s", False, True, True)
+    pause()
+    loop_id = output.split("add map loop")[1].split("p1")[0]
+    make_folder("/mnt/pi_sd_root")
+    run_bash("mount /dev/mapper/loop{}p2 /mnt/pi_sd_root".format(loop_id))
+    make_folder("/opt/ltsp/armhf")
+    fileLogger.debug("Copying root partition over to LTSP directory")
+    run_bash("rsync -a /mnt/pi_sd_root/* /opt/ltsp/armhf")
+    fileLogger.debug("Cleaning up root directory")
+    remove_file("/opt/ltsp/armhf/etc/ld.so.preload")
+    run_bash("rm -f /opt/ltsp/armhf/etc/ld.so.preload")
+    run_bash("touch /opt/ltsp/armhf/etc/ld.so.preload")
+    fileLogger.debug("Adding qemu")
+    copy_file_folder("/usr/bin/qemu-arm-static", "/opt/ltsp/armhf/usr/bin/qemu-arm-static")
+    fileLogger.debug("Installing ltsp-client package")
+    ltsp_chroot("apt update")
+    ltsp_chroot("apt install ltsp-client -y")
+    ltsp_chroot("deluser pi")
+    install_pinet_theme()
+    replace_line_or_add("/etc/exports", "/opt/ltsp", "/opt/ltsp *(ro,no_root_squash,async,no_subtree_check)")
+    replace_line_or_add("/etc/exports", "/home", "/home   *(rw,sync,no_subtree_check)")
+    run_bash("ltsp-update-sshkeys")
+    check_desktop_theme_configuration()
+
 
 # ------------------------------Main program-------------------------
 
@@ -2643,3 +2708,5 @@ if __name__ == "__main__":
             upgrade_raspbian_release_part_two()
         elif sys.argv[1] == "InstallPiNetTheme":
             install_pinet_theme()
+        elif sys.argv[1] == "InstallPiNetBuster":
+            installPiNetBuster()
