@@ -696,7 +696,7 @@ def remove_file(file):
         shutil.rmtree(file)
         fileLogger.debug("File at " + file + " has been deleted.")
     except (OSError, IOError):
-        pass
+        fileLogger.debug("File at " + file + " was unable to be deleted!.")
 
 
 def copy_file_folder(src, dest):
