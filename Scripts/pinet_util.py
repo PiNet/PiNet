@@ -1,3 +1,4 @@
+import errno
 import hashlib
 import os
 import logging
@@ -64,6 +65,7 @@ def run_bash(command: Union[str, List[str]], run_as_sudo: bool = True, ignore_er
             fileLogger.debug(f'Executing the following command \"{command}\"')
 
         elif isinstance(command, list):
+            command = [str(section) for section in command]
             # If is a list, make sure Popen is expecting a list by setting shell to False.
             shell = False
             if run_as_sudo:
@@ -79,7 +81,10 @@ def run_bash(command: Union[str, List[str]], run_as_sudo: bool = True, ignore_er
 
     except CalledProcessError as c:
         # If reaching this section, the process failed to execute correctly.
-        fileLogger.debug(f'Command \"{" ".join(command)}\" failed to execute correctly with return code of {result.returncode}!')
+        if isinstance(command, str):
+            fileLogger.debug(f'Command \"{command}\" failed to execute correctly with return code of {result.returncode}!')
+        elif isinstance(command, list):
+            fileLogger.debug(f'Command \"{" ".join(command)}\" failed to execute correctly with return code of {result.returncode}!')
         if not ignore_errors:
             # If should be alerting the user to errors.
             # TODO : Finish error detection here
@@ -154,3 +159,25 @@ def remove_file(file):
         fileLogger.debug("File at " + file + " has been deleted.")
     except (OSError, IOError):
         fileLogger.debug("File at " + file + " was unable to be deleted!.")
+
+
+def ltsp_chroot(command, ignore_errors=False):
+    if isinstance(command, str):
+        ltsp_prefix = "chroot /opt/ltsp/armhf "
+    elif isinstance(command, list):
+        ltsp_prefix = ["chroot", "/opt/ltsp/armhf"]
+    else:
+        return None
+    return run_bash(ltsp_prefix + command, run_as_sudo=True, ignore_errors=ignore_errors)
+
+
+def copy_file_folder(src, dest):
+    try:
+        shutil.copytree(src, dest, symlinks=True)
+        fileLogger.debug(f"File/folder has been copied from {src} to {dest}.")
+    except OSError as e:
+        # If the error was caused because the source wasn't a directory
+        if e.errno == errno.ENOTDIR:
+            shutil.copy(src, dest)
+        else:
+            fileLogger.debug(f"Directory not copied. Error: {e}")

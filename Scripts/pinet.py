@@ -1,3 +1,4 @@
+import glob
 import hashlib
 from typing import List, Union, Tuple
 import requests
@@ -5,6 +6,7 @@ import requests
 from pinet_util import *
 
 RASPBIAN_DATA_ROOT_TAR_XZ = "/opt/PiNet/sd_images/raspbian_full_latest_root.tar.xz"
+RASPBIAN_DATA_ROOT = "/opt/PiNet/sd_images/raspbian_data"
 
 
 def locate_raspbian_download() -> Tuple[str, str]:
@@ -49,15 +51,44 @@ def download_latest_raspbian_image():
     return False
 
 
+def install_ltsp():
+    sources = glob.glob("/etc/apt/sources.list.d/ltsp-ubuntu-ppa*")
+    if not sources:
+        fileLogger.debug("LTSP PPA sources not currently installed, installing now.")
+        run_bash("add-apt-repository ppa:ltsp -y")
+        run_bash("apt update")
+        run_bash("apt install -y ltsp ltsp-binaries dnsmasq nfs-kernel-server openssh-server squashfs-tools ethtool net-tools epoptes qemu binfmt-support qemu-user-static")
+        fileLogger.debug("LTSP packages now installed")
+    else:
+        fileLogger.debug("LTSP PPA sources already found")
+
 
 
 def pinet_buster_installer():
+    fileLogger.debug("------")
+    fileLogger.debug("------")
+    fileLogger.debug("Starting PiNet Buster installation.")
+    install_ltsp()
     make_folder("/opt/PiNet/sd_images/raspbian_data")
+    make_folder("/opt/ltsp/armhf")
     new_file_downloaded = download_latest_raspbian_image()
     if new_file_downloaded or not os.path.exists("/opt/PiNet/sd_images/raspbian_data/var"):
         remove_file("/opt/PiNet/sd_images/raspbian_data")
         make_folder("/opt/PiNet/sd_images/raspbian_data")
         extract_tar_xz_file(RASPBIAN_DATA_ROOT_TAR_XZ, "/opt/PiNet/sd_images/raspbian_data/")
+    fileLogger.debug("Copying Raspbian OS to /opt/ltsp/armhf")
+    run_bash(f"rsync -a {RASPBIAN_DATA_ROOT}/* /opt/ltsp/armhf")
+    fileLogger.debug("Copying Raspbian OS complete")
+    fileLogger.debug("Cleaning up root directory")
+    remove_file("/opt/ltsp/armhf/etc/ld.so.preload")
+    run_bash("rm -f /opt/ltsp/armhf/etc/ld.so.preload")
+    run_bash("touch /opt/ltsp/armhf/etc/ld.so.preload")
+    fileLogger.debug("Adding qemu")
+    copy_file_folder("/usr/bin/qemu-arm-static", "/opt/ltsp/armhf/usr/bin/qemu-arm-static")
+    fileLogger.debug("Installing ltsp-client package")
+    ltsp_chroot("apt update")
+    ltsp_chroot("apt install ltsp-client -y") # This probably isn't the correct approach, should be using ltsp.img now
+    ltsp_chroot("deluser pi")
 
 
 def main():
