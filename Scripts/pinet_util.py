@@ -1,21 +1,22 @@
 import errno
 import hashlib
-import os
 import logging
+import lzma
+import os
 import shutil
 import subprocess
+import tarfile
 from subprocess import CalledProcessError
 from typing import List, Union
-
-import lzma
-import tarfile
-from contextlib import closing
 
 import requests
 
 fileLogger: logging.Logger
 
 PINET_LOG_DIRPATH = "/var/log"
+CHROOT_LOC = "/srv/ltsp/armhf"
+PINET_THEME_LOC = "/usr/share/pinet-theme"
+PINET_THEME_FULL_LOC = f"{CHROOT_LOC}/usr/share/pinet-theme"
 
 def _(placeholder):
     # GNU Gettext placeholder
@@ -136,7 +137,7 @@ def download_file(url, save_location):
     except requests.RequestException as e:
         fileLogger.debug("Failed to download file from {} to {}. Error was {}.".format(url, save_location, e))
         return False
-    
+
 
 def get_sha256_hash(file_path):
     sha256_hash = hashlib.sha256()
@@ -163,12 +164,12 @@ def remove_file(file):
 
 def ltsp_chroot(command, ignore_errors=False):
     if isinstance(command, str):
-        ltsp_prefix = "chroot /opt/ltsp/armhf "
+        ltsp_command = f"chroot {CHROOT_LOC} /bin/bash -c '{command}'"
     elif isinstance(command, list):
-        ltsp_prefix = ["chroot", "/opt/ltsp/armhf"]
+        ltsp_command = ["chroot", CHROOT_LOC, "/bin/bash", "-c", "\'"] + command + ["\'",]
     else:
         return None
-    return run_bash(ltsp_prefix + command, run_as_sudo=True, ignore_errors=ignore_errors)
+    return run_bash(ltsp_command, run_as_sudo=True, ignore_errors=ignore_errors)
 
 
 def copy_file_folder(src, dest):
@@ -181,3 +182,20 @@ def copy_file_folder(src, dest):
             shutil.copy(src, dest)
         else:
             fileLogger.debug(f"Directory not copied. Error: {e}")
+
+
+def find_replace_line(path, search_for, new_line):
+    fileLogger.debug(f"Searching through {path} for {search_for}.")
+    new_file = []
+    found = False
+    with open(path, 'r') as f:
+        for line in f.readlines():
+            if search_for in line:
+                fileLogger.debug(f"Replaced {line} with {new_file} in {path}")
+                new_file.append(f"{new_line}\n")
+                found = True
+            else:
+                new_file.append(line)
+    with open(path, 'w') as f:
+        f.writelines(new_file)
+    return found
