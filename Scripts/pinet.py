@@ -2,6 +2,7 @@ import glob
 from typing import Tuple
 
 from pinet_util import *
+from packaging import version
 
 RASPBIAN_DATA_ROOT_TAR_XZ = "/opt/PiNet/sd_images/raspbian_full_latest_root.tar.xz"
 RASPBIAN_DATA_ROOT = "/opt/PiNet/sd_images/raspbian_data"
@@ -78,6 +79,33 @@ def setup_pinet_theme():
     find_replace_line(f"{CHROOT_LOC}/etc/xdg/pcmanfm/LXDE-pi/desktop-items-1.conf", "wallpaper=", f"wallpaper={PINET_THEME_LOC}/bg.png")
 
 
+def update_initramfs_image(force_update=False):
+    kernel_versions = os.listdir(f"{CHROOT_LOC}/lib/modules")
+    found_kernel_versions = []
+    for kernel_version in kernel_versions:  # Get each individual kernel release
+        clean_kernel_version = kernel_version.split("-")[0].replace("+", "")  # Clean up the folder name, to only include the actual kernel version
+        if len(kernel_version.split(".")) == 3 and clean_kernel_version not in found_kernel_versions:
+            fileLogger.debug(f"Found a kernel version to consider - {clean_kernel_version}")
+            found_kernel_versions.append(clean_kernel_version)
+    if found_kernel_versions:
+        newest_version = found_kernel_versions[0]
+        for found_kernel_version in found_kernel_versions:  # Get the newest kernel release
+            if version.parse(found_kernel_version) > version.parse(newest_version):
+                newest_version = found_kernel_version
+        fileLogger.debug(f"Newest release of kernel found was {newest_version}")
+        versions_to_build = [f"{newest_version}+", f"{newest_version}-v7+", f"{newest_version}-v7l+", f"{newest_version}-v8+"]
+        run_bash("ltsp initrd")
+        for version_to_build in versions_to_build:  # Build the actual initramfs
+            if os.path.exists(f"{CHROOT_LOC}/boot/initrd.img-{version_to_build}"):
+                if force_update:
+                    fileLogger.debug(f"Updating initramfs for {version_to_build}")
+                    ltsp_chroot(f"update-initramfs -u -k {version_to_build}")
+            else:
+                fileLogger.debug(f"Building initramfs for {version_to_build}")
+                ltsp_chroot(f"update-initramfs -c -k {version_to_build}")
+            run_bash(f"cat /srv/tftp/ltsp/ltsp.img {CHROOT_LOC}/boot/initrd.img-{version_to_build} > {CHROOT_LOC}/boot/pinet-initrd.img-{version_to_build}")
+
+
 def pinet_buster_installer():
     fileLogger.debug("------")
     fileLogger.debug("------")
@@ -113,6 +141,7 @@ def pinet_buster_installer():
 
 def main():
     pinet_buster_installer()
+    #update_initramfs_image()
 
 
 main()
