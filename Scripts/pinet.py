@@ -1,7 +1,5 @@
 import glob
-import hashlib
-from typing import List, Union, Tuple
-import requests
+from typing import Tuple
 
 from pinet_util import *
 
@@ -86,25 +84,31 @@ def pinet_buster_installer():
     fileLogger.debug("Starting PiNet Buster installation.")
     install_ltsp()
     make_folder("/opt/PiNet/sd_images/raspbian_data")
-    make_folder("/opt/ltsp/armhf")
+    make_folder(CHROOT_LOC)
     new_file_downloaded = download_latest_raspbian_image()
     if new_file_downloaded or not os.path.exists("/opt/PiNet/sd_images/raspbian_data/var"):
         remove_file("/opt/PiNet/sd_images/raspbian_data")
         make_folder("/opt/PiNet/sd_images/raspbian_data")
         extract_tar_xz_file(RASPBIAN_DATA_ROOT_TAR_XZ, "/opt/PiNet/sd_images/raspbian_data/")
-    fileLogger.debug("Copying Raspbian OS to /opt/ltsp/armhf")
-    run_bash(f"rsync -a {RASPBIAN_DATA_ROOT}/* /opt/ltsp/armhf")
+    fileLogger.debug(f"Copying Raspbian OS to {CHROOT_LOC}")
+    run_bash(f"rsync -a {RASPBIAN_DATA_ROOT}/* {CHROOT_LOC}")
     fileLogger.debug("Copying Raspbian OS complete")
     fileLogger.debug("Cleaning up root directory")
-    remove_file("/opt/ltsp/armhf/etc/ld.so.preload")
-    run_bash("rm -f /opt/ltsp/armhf/etc/ld.so.preload")
-    run_bash("touch /opt/ltsp/armhf/etc/ld.so.preload")
+    remove_file(f"{CHROOT_LOC}/etc/ld.so.preload")
+    run_bash(f"rm -f {CHROOT_LOC}/etc/ld.so.preload")
+    run_bash(f"touch {CHROOT_LOC}/etc/ld.so.preload")
     fileLogger.debug("Adding qemu")
-    copy_file_folder("/usr/bin/qemu-arm-static", "/opt/ltsp/armhf/usr/bin/qemu-arm-static")
+    copy_file_folder("/usr/bin/qemu-arm-static", f"{CHROOT_LOC}/usr/bin/qemu-arm-static")
     fileLogger.debug("Installing ltsp-client package")
     ltsp_chroot("apt update")
-    ltsp_chroot("apt install ltsp-client -y") # This probably isn't the correct approach, should be using ltsp.img now
+    # ltsp_chroot("apt install ltsp-client -y") # This probably isn't the correct approach, should be using ltsp.img now
     ltsp_chroot("deluser pi")
+    ltsp_chroot("/usr/lib/arm-linux-gnueabihf/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders > /usr/lib/arm-linux-gnueabihf/gdk-pixbuf-2.0/2.10.0/loaders.cache")  # Required to fix pixbuf errors
+    ltsp_chroot("apt install epoptes-client -y")
+    ltsp_chroot("apt install sshfs -y")
+    # ltsp_chroot("apt install accountsservice -y") # Not actually needed it seems
+    setup_pinet_theme()
+    find_replace_line(f"{CHROOT_LOC}/etc/init.d/raspi-config", "log_daemon_msg \"Checking if shift key is held down\"", "log_daemon_msg \"Checking if shift key is held down\" \n update-mime-database /usr/share/mime ")  # Temporary hack
 
 
 def main():
