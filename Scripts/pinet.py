@@ -32,7 +32,7 @@ def locate_raspbian_download() -> Tuple[str, str]:
     else:
         fileLogger.error(f"Unable to find Raspbian full data partition entry in NOOBS OS partiton list from {raspbian_os_entry['partitions_info']}...")
         return None, None
-    
+
     return raspbian_os_entry["tarballs"][main_data_partition_id], main_data_partition_record["sha256sum"]
 
 
@@ -62,6 +62,22 @@ def install_ltsp():
     else:
         fileLogger.debug("LTSP PPA sources already found")
 
+
+def install_pinet_theme():
+    fileLogger.debug("Downloading PiNet theme files.")
+    make_folder(PINET_THEME_LOC)
+    download_file("https://raw.githubusercontent.com/PiNet/PiNet/jessie-stable/themes/raspi/bg.png", f"{PINET_THEME_FULL_LOC}/bg.png")
+    download_file("https://raw.githubusercontent.com/PiNet/PiNet/jessie-stable/images/pinet-icon.png", f"{PINET_THEME_FULL_LOC}/logo.png")
+
+
+def setup_pinet_theme():
+    fileLogger.debug("Setting up PiNet theme.")
+    if not os.path.exists(f"{PINET_THEME_FULL_LOC}/bg.png"):
+        install_pinet_theme()
+    find_replace_line(f"{CHROOT_LOC}/etc/lightdm/pi-greeter.conf", "wallpaper=", f"wallpaper={PINET_THEME_LOC}/bg.png")
+    find_replace_line(f"{CHROOT_LOC}/etc/lightdm/pi-greeter.conf", "default-user-image=", f"default-user-image={PINET_THEME_LOC}/logo.png")
+    find_replace_line(f"{CHROOT_LOC}/etc/xdg/pcmanfm/LXDE-pi/desktop-items-0.conf", "wallpaper=", f"wallpaper={PINET_THEME_LOC}/bg.png")
+    find_replace_line(f"{CHROOT_LOC}/etc/xdg/pcmanfm/LXDE-pi/desktop-items-1.conf", "wallpaper=", f"wallpaper={PINET_THEME_LOC}/bg.png")
 
 
 def pinet_buster_installer():
